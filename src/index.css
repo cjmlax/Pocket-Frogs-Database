@@ -112,6 +112,18 @@ p {
   margin: 0;
 }
 
+a {
+  color: var(--accent);
+  text-decoration-color: var(--accent-border);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.15s, opacity 0.15s;
+}
+
+a:hover {
+  text-decoration-color: var(--accent);
+  opacity: 0.8;
+}
+
 code,
 .counter {
   font-family: var(--mono);
