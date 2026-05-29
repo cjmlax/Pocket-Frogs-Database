@@ -1,184 +1,310 @@
-.counter {
-  font-size: 16px;
-  padding: 5px 10px;
-  border-radius: 5px;
-  color: var(--accent);
-  background: var(--accent-bg);
-  border: 2px solid transparent;
-  transition: border-color 0.3s;
-  margin-bottom: 24px;
+/* ─── ComboBox autocomplete ──────────────────────────────────────────────── */
 
-  &:hover {
-    border-color: var(--accent-border);
-  }
-  &:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-}
-
-.hero {
-  position: relative;
-
-  .base,
-  .framework,
-  .vite {
-    inset-inline: 0;
-    margin: 0 auto;
-  }
-
-  .base {
-    width: 170px;
-    position: relative;
-    z-index: 0;
-  }
-
-  .framework,
-  .vite {
-    position: absolute;
-  }
-
-  .framework {
-    z-index: 1;
-    top: 34px;
-    height: 28px;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
-      scale(1.4);
-  }
-
-  .vite {
-    z-index: 0;
-    top: 107px;
-    height: 26px;
-    width: auto;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
-      scale(0.8);
-  }
-}
-
-#center {
+.combobox-field {
   display: flex;
   flex-direction: column;
-  gap: 25px;
-  place-content: center;
-  place-items: center;
-  flex-grow: 1;
-
-  @media (max-width: 1024px) {
-    padding: 32px 20px 24px;
-    gap: 18px;
-  }
+  gap: 5px;
 }
 
-#next-steps {
-  display: flex;
-  border-top: 1px solid var(--border);
-  text-align: left;
-
-  & > div {
-    flex: 1 1 0;
-    padding: 32px;
-    @media (max-width: 1024px) {
-      padding: 24px 20px;
-    }
-  }
-
-  .icon {
-    margin-bottom: 16px;
-    width: 22px;
-    height: 22px;
-  }
-
-  @media (max-width: 1024px) {
-    flex-direction: column;
-    text-align: center;
-  }
+.combobox-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
 }
 
-#docs {
-  border-right: 1px solid var(--border);
-
-  @media (max-width: 1024px) {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-}
-
-#next-steps ul {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  gap: 8px;
-  margin: 32px 0 0;
-
-  .logo {
-    height: 18px;
-  }
-
-  a {
-    color: var(--text-h);
-    font-size: 16px;
-    border-radius: 6px;
-    background: var(--social-bg);
-    display: flex;
-    padding: 6px 12px;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    transition: box-shadow 0.3s;
-
-    &:hover {
-      box-shadow: var(--shadow);
-    }
-    .button-icon {
-      height: 18px;
-      width: 18px;
-    }
-  }
-
-  @media (max-width: 1024px) {
-    margin-top: 20px;
-    flex-wrap: wrap;
-    justify-content: center;
-
-    li {
-      flex: 1 1 calc(50% - 8px);
-    }
-
-    a {
-      width: 100%;
-      justify-content: center;
-      box-sizing: border-box;
-    }
-  }
-}
-
-#spacer {
-  height: 88px;
-  border-top: 1px solid var(--border);
-  @media (max-width: 1024px) {
-    height: 48px;
-  }
-}
-
-.ticks {
+.combobox {
   position: relative;
+}
+
+.combobox-input {
   width: 100%;
+  box-sizing: border-box;
+  /* Extra right padding so text doesn't run under the × button */
+  padding-right: 28px !important;
+}
 
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    top: -4.5px;
-    border: 5px solid transparent;
-  }
+.combobox-confirmed {
+  border-color: var(--accent-border) !important;
+  background: var(--accent-bg) !important;
+}
 
-  &::before {
-    left: 0;
-    border-left-color: var(--border);
-  }
-  &::after {
-    right: 0;
-    border-right-color: var(--border);
-  }
+.combobox-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.combobox-clear:hover {
+  color: var(--text-h);
+}
+
+.combobox-suggestions {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  max-height: 210px;
+  overflow-y: auto;
+  z-index: 20;
+  box-shadow: var(--shadow);
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+}
+
+.combobox-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.combobox-option:hover {
+  background: var(--accent-bg);
+  color: var(--text-h);
+}
+
+/* ─── Frog search page ────────────────────────────────────────────────────── */
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.search-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.search-btn {
+  padding: 9px 24px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--sans);
+  transition: opacity 0.15s;
+}
+
+.search-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.search-btn:not(:disabled):hover {
+  opacity: 0.82;
+}
+
+.search-error {
+  color: var(--accent);
+  font-size: 14px;
+}
+
+.search-hint {
+  color: var(--text);
+  font-size: 14px;
+  margin: 16px 0;
+}
+
+/* ─── Data table ─────────────────────────────────────────────────────────── */
+
+.table-toolbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.table-toolbar h1 {
+  margin: 0;
+}
+
+.search-input {
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  font-family: var(--sans);
+  width: 220px;
+  outline: none;
+}
+
+.search-input:focus {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.table-wrapper {
+  overflow: auto;
+  max-height: 68vh;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+thead {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 1;
+  box-shadow: 0 1px 0 var(--border);
+}
+
+th {
+  text-align: left;
+  padding: 10px 14px;
+  color: var(--text-h);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+th.sortable:hover {
+  background: var(--code-bg);
+}
+
+td {
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+tr:hover td {
+  background: var(--accent-bg);
+}
+
+.table-pagination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.table-pagination button {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  color: var(--text-h);
+  padding: 5px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 15px;
+  font-family: var(--sans);
+  transition: background 0.15s;
+}
+
+.table-pagination button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.table-pagination button:not(:disabled):hover {
+  background: var(--accent-bg);
+}
+
+.pagination-count {
+  margin-left: auto;
+}
+
+/* ─── Nav ─────────────────────────────────────────────────────────────────── */
+
+/* Sticky nav bar */
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 52px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+}
+
+.nav-links {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.nav-brand {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text-h);
+  text-decoration: none;
+  margin-right: 12px;
+}
+
+.nav-links a {
+  color: var(--text);
+  text-decoration: none;
+  font-size: 15px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.nav-links a:hover {
+  color: var(--text-h);
+  background: var(--code-bg);
+}
+
+/* React Router adds .active when the route matches */
+.nav-links a.active {
+  color: var(--accent);
+}
+
+.theme-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: var(--sans);
+  transition: background 0.15s;
+}
+
+.theme-btn:hover {
+  background: var(--code-bg);
+}
+
+main {
+  flex: 1;
+  padding: 32px 24px;
 }
