@@ -28,12 +28,12 @@ function DailyFrogDropdown() {
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
       >
-        Daily Frog {open ? '▲' : '▼'}
+        Frog of the Day {open ? '▲' : '▼'}
       </button>
 
       {open && (
         <div className="daily-frog-panel">
-          <span className="daily-frog-panel-label">Frog of the Day</span>
+          <span className="daily-frog-panel-label">PFDB Frog of the Day</span>
           <p className="daily-frog-panel-name">
             {name ?? 'Loading…'}
           </p>
@@ -70,9 +70,10 @@ export default function Layout() {
     <>
       <header className="site-header">
         <nav className="nav-links">
-          <NavLink to="/" className="nav-brand" end>PFDB</NavLink>
-          <NavLink to="/frogs">Frogs</NavLink>
-          <NavLink to="/weekly">Weekly</NavLink>
+          <NavLink to="/" className="nav-brand" end>Home</NavLink>
+          <NavLink to="/frogs">Frog Search</NavLink>
+          <NavLink to="/weekly">Weekly Sets</NavLink>
+          <NavLink to="/breeds">Breed Overview</NavLink>
         </nav>
         <div className="header-right">
           <DailyFrogDropdown />

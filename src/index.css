@@ -12,6 +12,10 @@
   --social-bg: rgba(244, 243, 236, 0.5);
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --cell-max-bg: rgba(34, 197, 94, 0.18);
+  --cell-max-text: #15803d;
+  --cell-min-bg: rgba(239, 68, 68, 0.18);
+  --cell-min-text: #b91c1c;
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
@@ -46,6 +50,10 @@
     --social-bg: rgba(47, 48, 58, 0.5);
     --shadow:
       rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+    --cell-max-bg: rgba(34, 197, 94, 0.2);
+    --cell-max-text: #4ade80;
+    --cell-min-bg: rgba(239, 68, 68, 0.2);
+    --cell-min-text: #f87171;
   }
 
   #social .button-icon {
@@ -77,6 +85,10 @@ html.dark-mode {
   --social-bg: rgba(47, 48, 58, 0.5);
   --shadow:
     rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+  --cell-max-bg: rgba(34, 197, 94, 0.2);
+  --cell-max-text: #4ade80;
+  --cell-min-bg: rgba(239, 68, 68, 0.2);
+  --cell-min-text: #f87171;
 }
 
 body {

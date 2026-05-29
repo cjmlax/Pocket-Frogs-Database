@@ -413,3 +413,62 @@ main {
   flex: 1;
   padding: 32px 24px;
 }
+
+/* ─── Breed Overview ─────────────────────────────────────────────────────── */
+
+.breed-stat-select {
+  width: 100%;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+/* Corner cell is sticky in both axes (top via parent thead, left explicitly) */
+.breed-corner {
+  position: sticky;
+  left: 0;
+  background: var(--bg);
+  z-index: 2;
+}
+
+.breed-row-label {
+  position: sticky;
+  left: 0;
+  background: var(--bg);
+  z-index: 1;
+  text-align: left !important;
+  font-weight: 600;
+}
+
+.breed-summary-label {
+  font-style: italic;
+  font-weight: normal;
+  color: var(--text);
+}
+
+/* Vertical separator between data columns and summary columns */
+.breed-summary-divider {
+  border-left: 2px solid var(--border) !important;
+}
+
+/* Horizontal separator between data rows and footer summary rows */
+.breed-footer-divider td,
+.breed-footer-divider th {
+  border-top: 2px solid var(--border) !important;
+}
+
+/* Data cells center-aligned */
+.breed-grid td {
+  text-align: center;
+}
+
+.breed-cell-max {
+  background: var(--cell-max-bg) !important;
+  color: var(--cell-max-text);
+  font-weight: 600;
+}
+
+.breed-cell-min {
+  background: var(--cell-min-bg) !important;
+  color: var(--cell-min-text);
+  font-weight: 600;
+}
