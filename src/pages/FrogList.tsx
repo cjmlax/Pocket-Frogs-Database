@@ -155,7 +155,7 @@ export default function FrogList() {
 
   return (
     <div>
-      <h1>Frog Explorer</h1>
+      <h1>Frog Lookup</h1>
 
       <div className="filter-grid">
         <ComboBox

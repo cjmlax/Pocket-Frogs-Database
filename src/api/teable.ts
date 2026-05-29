@@ -138,6 +138,22 @@ export async function searchFrogs<T extends Record<string, unknown>>(
   return allRecords;
 }
 
+// Fetches all frogs for a breed with 24-hour IndexedDB caching to avoid
+// repeat API calls — breed data changes infrequently.
+export async function fetchBreedFrogs<T extends Record<string, unknown>>(
+  breedId: string,
+): Promise<TeableRecord<T>[]> {
+  const cacheKey = `breed-frogs-${breedId}`;
+  const cached = (await get(cacheKey)) as { records: TeableRecord<T>[]; ts: number } | undefined;
+  if (cached && Date.now() - cached.ts < 86_400_000) {
+    console.log(`%c breed-frogs-${breedId} cache hit`, 'color: #4CAF50');
+    return cached.records;
+  }
+  const records = await searchFrogs<T>({ breed: breedId });
+  await set(cacheKey, { records, ts: Date.now() });
+  return records;
+}
+
 // Fetches a single frog record by its Teable record ID
 export async function fetchFrogById<T extends Record<string, unknown>>(
   recordId: string,

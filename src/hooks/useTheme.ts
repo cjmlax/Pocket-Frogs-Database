@@ -1,12 +1,7 @@
 import { useState, useEffect } from 'react';
 
-type ThemeMode = 'light' | 'dark' | null; // null = follow system
+export type ThemeMode = 'light' | 'dark' | null; // null = follow system
 
-const LABELS: Record<string, string> = {
-  light: '🌞 Light',
-  dark: '🌙 Dark',
-  system: '💻 System',
-};
 
 export function useTheme() {
   const [theme, setTheme] = useState<ThemeMode>(
@@ -24,20 +19,14 @@ export function useTheme() {
     // null = system: no class needed, the CSS media query handles it
   }, [theme]);
 
-  function toggle() {
-    setTheme(current => {
-      if (!current) {
-        localStorage.setItem('theme', 'light');
-        return 'light';
-      } else if (current === 'light') {
-        localStorage.setItem('theme', 'dark');
-        return 'dark';
-      } else {
-        localStorage.removeItem('theme');
-        return null;
-      }
-    });
+  function choose(mode: ThemeMode) {
+    if (mode === null) {
+      localStorage.removeItem('theme');
+    } else {
+      localStorage.setItem('theme', mode);
+    }
+    setTheme(mode);
   }
 
-  return { theme, toggle, label: LABELS[theme ?? 'system'] };
+  return { theme, choose };
 }

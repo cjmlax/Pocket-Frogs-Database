@@ -1,5 +1,16 @@
 /* ─── Home page ──────────────────────────────────────────────────────────── */
 
+.home {
+  display: flex;
+  gap: 40px;
+  align-items: flex-start;
+}
+
+.home-main {
+  flex: 1;
+  min-width: 0;
+}
+
 .home-text {
   display: flex;
   flex-direction: column;
@@ -7,51 +18,41 @@
   max-width: 680px;
 }
 
-/* ─── Daily Frog nav dropdown ────────────────────────────────────────────── */
+.home-cards {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Link that looks like plain text — used for navigable cards/labels */
+a.plain-link,
+a.plain-link:hover {
+  color: inherit;
+  text-decoration: none;
+  opacity: 1;
+}
+
+.frog-card {
+  width: 200px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: sticky;
+  top: 68px; /* clears the 52px nav bar + a small gap */
+}
+
+/* ─── Daily Frog card shared styles ─────────────────────────────────────── */
 
 .header-right {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.daily-frog-btn {
-  position: relative;
-}
-
-.daily-frog-trigger {
-  background: var(--accent-bg);
-  border: 1px solid var(--accent-border);
-  color: var(--accent);
-  padding: 4px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-  font-family: var(--sans);
-  white-space: nowrap;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.daily-frog-trigger:hover,
-.daily-frog-trigger[aria-expanded="true"] {
-  background: var(--accent-bg);
-  border-color: var(--accent);
-}
-
-.daily-frog-panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 16px 18px;
-  min-width: 220px;
-  box-shadow: var(--shadow);
-  z-index: 50;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
 }
 
 .daily-frog-panel-label {
@@ -122,7 +123,7 @@
 }
 
 .combobox-input {
-  width: 100%;
+  width: 100% !important;
   box-sizing: border-box;
   /* Extra right padding so text doesn't run under the × button */
   padding-right: 28px !important;
@@ -180,7 +181,7 @@
   color: var(--text-h);
 }
 
-/* ─── Frog search page ────────────────────────────────────────────────────── */
+/* ─── Frog lookup page ────────────────────────────────────────────────────── */
 
 .filter-grid {
   display: grid;
@@ -241,7 +242,7 @@
 }
 
 .table-toolbar h1 {
-  margin: 0;
+  margin: 32px 0 0;
 }
 
 .search-input {
@@ -393,20 +394,73 @@ tr:hover td {
   color: var(--accent);
 }
 
-.theme-btn {
+.settings-wrap {
+  position: relative;
+}
+
+.settings-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 4px 10px;
+  padding: 5px 7px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 13px;
-  font-family: var(--sans);
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 
-.theme-btn:hover {
+.settings-btn:hover,
+.settings-btn[aria-expanded="true"] {
   background: var(--code-bg);
+  color: var(--text-h);
+}
+
+.settings-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  box-shadow: var(--shadow);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Each row of setting icons */
+.settings-row {
+  display: flex;
+  gap: 4px;
+}
+
+.settings-theme-opt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: none;
+  color: var(--text);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.settings-theme-opt:hover {
+  background: var(--code-bg);
+  color: var(--text-h);
+}
+
+.settings-theme-opt.active {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  color: var(--accent);
 }
 
 main {
@@ -422,12 +476,29 @@ main {
   cursor: pointer;
 }
 
+/* Remove the max-height so the whole grid is visible on one page scroll */
+.breed-grid-wrapper {
+  max-height: none;
+}
+
 /* Corner cell is sticky in both axes (top via parent thead, left explicitly) */
 .breed-corner {
   position: sticky;
   left: 0;
   background: var(--bg);
   z-index: 2;
+}
+
+/* Secondary color headers rotate vertically — shrinks each column from ~60px to ~20px */
+.breed-col-header {
+  writing-mode: vertical-lr;
+  transform: rotate(180deg);
+  height: 90px;
+  vertical-align: bottom;
+  padding: 6px 3px !important;
+  font-size: 12px;
+  text-align: left;
+  white-space: nowrap;
 }
 
 .breed-row-label {
@@ -437,12 +508,23 @@ main {
   z-index: 1;
   text-align: left !important;
   font-weight: 600;
+  white-space: nowrap;
+  font-size: 12px;
+  padding: 4px 8px !important;
 }
 
 .breed-summary-label {
   font-style: italic;
   font-weight: normal;
   color: var(--text);
+}
+
+/* Compact data cells */
+.breed-grid td {
+  text-align: center;
+  font-size: 12px;
+  padding: 4px 6px !important;
+  min-width: 0;
 }
 
 /* Vertical separator between data columns and summary columns */
@@ -456,11 +538,6 @@ main {
   border-top: 2px solid var(--border) !important;
 }
 
-/* Data cells center-aligned */
-.breed-grid td {
-  text-align: center;
-}
-
 .breed-cell-max {
   background: var(--cell-max-bg) !important;
   color: var(--cell-max-text);
@@ -471,4 +548,52 @@ main {
   background: var(--cell-min-bg) !important;
   color: var(--cell-min-text);
   font-weight: 600;
+}
+
+/* Summary columns (Min/Avg/Max per row) and footer rows get a tinted background
+   to visually separate aggregate data from raw cell values */
+.breed-grid .breed-summary {
+  background: var(--code-bg);
+}
+
+.breed-grid .breed-footer td,
+.breed-grid .breed-footer th {
+  background: var(--code-bg);
+}
+
+/* Disable the global tr:hover rule — crosshair hover is handled via JS classes */
+.breed-grid tr:hover td,
+.breed-grid tr:hover th {
+  background: inherit;
+}
+
+/* Footer row cells that have row-hover but NOT col-hover should stay transparent
+   so the column-inversion effect is preserved. The :not(.col-hover) exclusion
+   lets the col-hover column and the cursor cell (cell-hover) still light up. */
+.breed-grid .breed-footer .row-hover:not(.col-hover):not(.breed-cell-max):not(.breed-cell-min) {
+  background: inherit !important;
+}
+
+/* Row or column arm of the crosshair — skip min/max cells so they stay visible */
+.breed-grid .row-hover:not(.breed-cell-max):not(.breed-cell-min),
+.breed-grid .col-hover:not(.breed-cell-max):not(.breed-cell-min) {
+  background: var(--code-bg) !important;
+}
+
+/* Summary cells in the hovered column turn white — vertical inversion that
+   mirrors the footer-row horizontal inversion. More specific than the general
+   .col-hover rule so it wins for summary cells. */
+.breed-grid .breed-summary.col-hover:not(.breed-cell-max):not(.breed-cell-min) {
+  background: var(--bg) !important;
+}
+
+/* Deeper accent on the cursor cell — same exclusion for min/max */
+.breed-grid .cell-hover:not(.breed-cell-max):not(.breed-cell-min) {
+  background: var(--accent-bg) !important;
+}
+
+/* Outline always shows on the cursor cell regardless of min/max color */
+.breed-grid .cell-hover {
+  outline: 1px solid var(--accent-border);
+  outline-offset: -1px;
 }
