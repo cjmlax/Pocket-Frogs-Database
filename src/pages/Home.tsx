@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { useDailyFrog } from '../hooks/useDailyFrog';
 import { fetchTable, type TeableRecord } from '../api/teable';
+import { formatNum } from '../utils/format';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -11,13 +12,41 @@ interface WeeklyFields extends Record<string, unknown> {
   SetDate?:  string;
   Stamp?:    number;
   LevelReq?: number;
+  NameA?:    string;
+  NameB?:    string;
+  NameC?:    string;
+  NameD?:    string;
+  NameE?:    string;
+  NameF?:    string;
+  NameG?:    string;
+  NameH?:    string;
 }
 
-// Returns the current ISO 8601 week string, e.g. "2026-W22"
+const FROG_SLOTS = ['NameA', 'NameB', 'NameC', 'NameD', 'NameE', 'NameF', 'NameG', 'NameH'] as const;
+
+// New sets release at 2pm Eastern Time on Monday, so before that cutoff we
+// return the previous week's string. Intl handles EST/EDT automatically.
 function getCurrentISOWeek(): string {
-  const d = new Date();
-  const dayOfWeek = d.getUTCDay() || 7; // Mon=1 … Sun=7
-  d.setUTCDate(d.getUTCDate() + 4 - dayOfWeek); // shift to nearest Thursday
+  const now = new Date();
+
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    weekday: 'long',
+    hour: 'numeric',
+    hour12: false,
+  }).formatToParts(now);
+
+  const weekday = parts.find(p => p.type === 'weekday')?.value ?? '';
+  const hour    = parseInt(parts.find(p => p.type === 'hour')?.value ?? '12', 10);
+
+  // Before 2pm ET on Monday, show last week's set
+  const date = (weekday === 'Monday' && hour < 14)
+    ? new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    : now;
+
+  const d = new Date(date);
+  const dayOfWeek = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayOfWeek);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   return `${d.getUTCFullYear()}-${String(weekNo).padStart(2, '0')}`;
@@ -39,15 +68,15 @@ function DailyFrogCard() {
         <div className="daily-frog-stats">
           <div className="daily-frog-stat">
             <span className="daily-frog-stat-label">Value</span>
-            <span className="daily-frog-stat-value">{value ?? '—'}</span>
+            <span className="daily-frog-stat-value">{formatNum(value)}</span>
           </div>
           <div className="daily-frog-stat">
             <span className="daily-frog-stat-label">Speed</span>
-            <span className="daily-frog-stat-value">{speed ?? '—'}</span>
+            <span className="daily-frog-stat-value">{formatNum(speed)}</span>
           </div>
           <div className="daily-frog-stat">
             <span className="daily-frog-stat-label">Stamina</span>
-            <span className="daily-frog-stat-value">{stamina ?? '—'}</span>
+            <span className="daily-frog-stat-value">{formatNum(stamina)}</span>
           </div>
         </div>
       ) : (
@@ -58,6 +87,8 @@ function DailyFrogCard() {
 }
 
 function WeeklySetCard() {
+  const [expanded, setExpanded] = useState(false);
+
   const { data: records, isLoading } = useQuery({
     queryKey: ['table', 'weekly'],
     queryFn: () => fetchTable<WeeklyFields>('weekly'),
@@ -92,13 +123,32 @@ function WeeklySetCard() {
             </div>
             <div className="daily-frog-stat">
               <span className="daily-frog-stat-label">Reward</span>
-              <span className="daily-frog-stat-value">{thisWeek.fields.Stamp ?? '—'}</span>
+              <span className="daily-frog-stat-value">{formatNum(thisWeek.fields.Stamp)}</span>
             </div>
             <div className="daily-frog-stat">
               <span className="daily-frog-stat-label">Min Lvl</span>
-              <span className="daily-frog-stat-value">{thisWeek.fields.LevelReq ?? '—'}</span>
+              <span className="daily-frog-stat-value">{formatNum(thisWeek.fields.LevelReq)}</span>
             </div>
           </div>
+
+          {expanded && (
+            <ol className="weekly-frog-list">
+              {FROG_SLOTS.map(slot => (
+                <li key={slot} className="weekly-frog-item">
+                  {thisWeek.fields[slot] || <span>&nbsp;</span>}
+                </li>
+              ))}
+            </ol>
+          )}
+
+          <button
+            className="weekly-expand-btn"
+            onClick={() => setExpanded(e => !e)}
+            aria-expanded={expanded}
+            aria-label={expanded ? 'Collapse frog list' : 'Expand frog list'}
+          >
+            <span className={`weekly-expand-arrow${expanded ? ' open' : ''}`}>▼</span>
+          </button>
         </>
       ) : (
         <p className="daily-frog-loading">No set found for {currentWeek}.</p>

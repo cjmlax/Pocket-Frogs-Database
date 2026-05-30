@@ -13,6 +13,7 @@ import {
 } from '@tanstack/react-table';
 import { fetchTable, searchFrogs, type TeableRecord, type FrogFilter } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
+import { formatNum } from '../utils/format';
 
 interface BreedFields  extends Record<string, unknown> { Breed?:      string }
 interface BaseFields   extends Record<string, unknown> { BaseColors?: string }
@@ -70,9 +71,9 @@ const columns = [
   col.accessor(r => cell(r.fields.Breed),       { id: 'breed',   header: 'Breed' }),
   col.accessor(r => cell(r.fields.Primary),     { id: 'base',    header: 'Base Color' }),
   col.accessor(r => cell(r.fields.Secondary),   { id: 'sec',     header: 'Secondary' }),
-  col.accessor(r => r.fields.Value   ?? 0,      { id: 'value',   header: 'Value' }),
-  col.accessor(r => r.fields.Speed   ?? 0,      { id: 'speed',   header: 'Speed' }),
-  col.accessor(r => r.fields.Stamina ?? 0,      { id: 'stamina', header: 'Stamina' }),
+  col.accessor(r => r.fields.Value   ?? 0, { id: 'value',   header: 'Value',   cell: i => formatNum(i.getValue()) }),
+  col.accessor(r => r.fields.Speed   ?? 0, { id: 'speed',   header: 'Speed',   cell: i => formatNum(i.getValue()) }),
+  col.accessor(r => r.fields.Stamina ?? 0, { id: 'stamina', header: 'Stamina', cell: i => formatNum(i.getValue()) }),
 ];
 
 export default function FrogList() {

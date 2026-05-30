@@ -1,8 +1,11 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { fetchTable, fetchBreedFrogs } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
+import { formatNum } from '../utils/format';
+
+// ── Interfaces ────────────────────────────────────────────────────────────────
 
 interface BreedFields extends Record<string, unknown> { Breed?: string }
 interface BaseFields  extends Record<string, unknown> { BaseColors?: string }
@@ -14,12 +17,60 @@ interface FrogFields  extends Record<string, unknown> {
   Stamina?:   number;
 }
 
+// ── Stat icons ────────────────────────────────────────────────────────────────
+
+function IconCoins() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <ellipse cx="12" cy="5" rx="8" ry="2.5"/>
+      <path d="M4 5v3.5c0 1.38 3.58 2.5 8 2.5s8-1.12 8-2.5V5"/>
+      <path d="M4 8.5v3.5c0 1.38 3.58 2.5 8 2.5s8-1.12 8-2.5V8.5"/>
+      <path d="M4 12v3.5c0 1.38 3.58 2.5 8 2.5s8-1.12 8-2.5V12"/>
+      <path d="M4 16v3.5c0 1.38 3.58 2.5 8 2.5s8-1.12 8-2.5V16"/>
+    </svg>
+  );
+}
+
+function IconLightning() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/>
+    </svg>
+  );
+}
+
+function IconDumbbell() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6.5 6.5v11M17.5 6.5v11"/>
+      <path d="M3 9h4v6H3zM17 9h4v6h-4z"/>
+      <line x1="7" y1="12" x2="17" y2="12"/>
+    </svg>
+  );
+}
+
+function IconTrophy() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+      <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+      <path d="M4 22h16"/>
+      <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+      <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
+    </svg>
+  );
+}
+
+// ── Data ──────────────────────────────────────────────────────────────────────
+
 type StatKey = 'Value' | 'Speed' | 'Stamina' | 'Race';
-const STAT_OPTIONS: { value: StatKey; label: string }[] = [
-  { value: 'Value',   label: 'Value' },
-  { value: 'Speed',   label: 'Speed' },
-  { value: 'Stamina', label: 'Stamina' },
-  { value: 'Race',    label: 'Speed + Stamina' },
+
+const STAT_OPTIONS: { value: StatKey; icon: ReactNode; label: string }[] = [
+  { value: 'Value',   icon: <IconCoins/>,    label: 'Value' },
+  { value: 'Speed',   icon: <IconLightning/>, label: 'Speed' },
+  { value: 'Stamina', icon: <IconDumbbell/>, label: 'Stamina' },
+  { value: 'Race',    icon: <IconTrophy/>,   label: 'Speed + Stamina' },
 ];
 
 function getStat(fields: FrogFields, stat: StatKey): number | null {
@@ -34,38 +85,40 @@ function getStat(fields: FrogFields, stat: StatKey): number | null {
 
 function summarize(nums: number[], type: 'min' | 'avg' | 'max'): string {
   if (!nums.length) return '—';
-  if (type === 'min') return String(Math.min(...nums));
-  if (type === 'max') return String(Math.max(...nums));
-  return (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(0);
+  if (type === 'min') return Math.min(...nums).toLocaleString();
+  if (type === 'max') return Math.max(...nums).toLocaleString();
+  return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length).toLocaleString();
 }
 
 const HOVER_CLASSES = ['row-hover', 'col-hover', 'cell-hover'] as const;
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function BreedOverview() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tableRef = useRef<HTMLTableElement>(null);
 
-  const [breedSelection, setBreedSelection] = useState<ComboOption | null>(() => {
+  // Single breed state — updated immediately when user confirms a selection.
+  // Clearing the ComboBox keeps the previous breed visible.
+  const [breed, setBreed] = useState<ComboOption | null>(() => {
     const id = searchParams.get('breedId'), label = searchParams.get('breedLabel');
     return id && label ? { id, label } : null;
   });
+
+  // Stat is independent of the breed query — changing it recomputes gridMap
+  // instantly without a new API call.
   const [stat, setStat] = useState<StatKey>(() => {
     const s = searchParams.get('stat') as StatKey | null;
     return STAT_OPTIONS.find(o => o.value === s)?.value ?? 'Value';
   });
-  const [submitted, setSubmitted] = useState<{ breed: ComboOption; stat: StatKey } | null>(() => {
-    const id = searchParams.get('breedId'), label = searchParams.get('breedLabel');
-    const s = searchParams.get('stat') as StatKey | null;
-    return id && label ? { breed: { id, label }, stat: s ?? 'Value' } : null;
-  });
 
   useEffect(() => {
-    if (!submitted) return;
+    if (!breed) return;
     setSearchParams(
-      { breedId: submitted.breed.id, breedLabel: submitted.breed.label, stat: submitted.stat },
+      { breedId: breed.id, breedLabel: breed.label, stat },
       { replace: true },
     );
-  }, [submitted, setSearchParams]);
+  }, [breed, stat, setSearchParams]);
 
   const { data: breeds } = useQuery({ queryKey: ['table', 'breeds'], queryFn: () => fetchTable<BreedFields>('breeds') });
   const { data: bases  } = useQuery({ queryKey: ['table', 'bases'],  queryFn: () => fetchTable<BaseFields>('bases')  });
@@ -77,25 +130,24 @@ export default function BreedOverview() {
   );
 
   const { data: frogs, isFetching, error } = useQuery({
-    queryKey: ['breed-overview', submitted?.breed.id],
-    queryFn:  () => fetchBreedFrogs<FrogFields>(submitted!.breed.id),
-    enabled:  submitted !== null,
+    queryKey: ['breed-overview', breed?.id],
+    queryFn:  () => fetchBreedFrogs<FrogFields>(breed!.id),
+    enabled:  breed !== null,
     staleTime: 1000 * 60 * 60 * 24,
   });
 
-  // Keys are the frog's fullname ("Base Sec Breed") — mirrors the original
-  // BreedDataDisplay logic and avoids parsing linked-record field formats.
+  // gridMap depends on stat directly so changing the stat button is instant.
   const gridMap = useMemo(() => {
-    if (!frogs || !submitted) return new Map<string, number>();
+    if (!frogs || !breed) return new Map<string, number>();
     const map = new Map<string, number>();
     for (const frog of frogs) {
       const name = frog.fields.fullname;
       if (!name) continue;
-      const val = getStat(frog.fields, submitted.stat);
+      const val = getStat(frog.fields, stat);
       if (val !== null) map.set(name, val);
     }
     return map;
-  }, [frogs, submitted]);
+  }, [frogs, breed, stat]);
 
   const allValues = useMemo(() => Array.from(gridMap.values()), [gridMap]);
   const globalMin = allValues.length ? Math.min(...allValues) : null;
@@ -109,11 +161,10 @@ export default function BreedOverview() {
   }
 
   function gridKey(baseName: string, secName: string) {
-    return `${baseName} ${secName} ${submitted?.breed.label ?? ''}`;
+    return `${baseName} ${secName} ${breed?.label ?? ''}`;
   }
 
-  // ── Crosshair hover via event delegation ──────────────────────────────────
-  // Direct DOM class toggling avoids re-rendering the whole table on mousemove.
+  // ── Crosshair hover ───────────────────────────────────────────────────────
 
   function clearHover() {
     tableRef.current?.querySelectorAll<HTMLElement>('.row-hover,.col-hover,.cell-hover')
@@ -142,39 +193,33 @@ export default function BreedOverview() {
         <ComboBox
           label="Breed"
           options={breedOptions}
-          initialSelection={breedSelection}
-          onSelect={opt => setBreedSelection(opt)}
+          initialSelection={breed}
+          onSelect={opt => { if (opt) setBreed(opt); }}
         />
         <div className="combobox-field">
-          <label className="combobox-label" htmlFor="stat-select">Stat</label>
-          <select
-            id="stat-select"
-            className="search-input breed-stat-select"
-            value={stat}
-            onChange={e => setStat(e.target.value as StatKey)}
-          >
-            {STAT_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+          <label className="combobox-label">Stat</label>
+          <div className="settings-row">
+            {STAT_OPTIONS.map(({ value, icon, label }) => (
+              <button
+                key={value}
+                className={`settings-theme-opt${stat === value ? ' active' : ''}`}
+                onClick={() => setStat(value)}
+                aria-label={label}
+                title={label}
+              >
+                {icon}
+              </button>
             ))}
-          </select>
+          </div>
         </div>
       </div>
 
-      <div className="search-actions">
-        <button
-          className="search-btn"
-          onClick={() => breedSelection && setSubmitted({ breed: breedSelection, stat })}
-          disabled={breedSelection === null || isFetching}
-        >
-          {isFetching ? 'Loading…' : 'Search'}
-        </button>
-        {error && <span className="search-error">Error loading data.</span>}
-      </div>
+      {error && <p className="search-error">Error loading data.</p>}
 
-      {submitted === null ? (
-        <p className="search-hint">Select a breed above, then click Generate.</p>
+      {breed === null ? (
+        <p className="search-hint">Select a breed above to generate the grid.</p>
       ) : isFetching ? (
-        <p className="search-hint">Loading frogs for {submitted.breed.label}…</p>
+        <p className="search-hint">Loading frogs for {breed.label}…</p>
       ) : bases && secs ? (
         <div className="table-wrapper breed-grid-wrapper">
           <table
@@ -217,7 +262,7 @@ export default function BreedOverview() {
                           data-row={base.id}
                           data-col={sec.id}
                         >
-                          {v ?? '—'}
+                          {v !== null ? formatNum(v) : '—'}
                         </td>
                       );
                     })}

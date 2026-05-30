@@ -47,6 +47,66 @@ a.plain-link:hover {
   top: 68px; /* clears the 52px nav bar + a small gap */
 }
 
+/* Frog list inside the weekly set card */
+.weekly-frog-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+  counter-reset: frog-slot;
+}
+
+.weekly-frog-item {
+  counter-increment: frog-slot;
+  font-size: 12px;
+  color: var(--text);
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  min-height: 1.6em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.weekly-frog-item::before {
+  content: counter(frog-slot);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 12px;
+  text-align: right;
+}
+
+/* Slim toggle button flush to the card bottom */
+.weekly-expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(100% + 36px);
+  margin: 10px -18px -16px;
+  background: var(--code-bg);
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 6px 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.weekly-expand-btn:hover {
+  background: var(--accent-bg);
+}
+
+.weekly-expand-arrow {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--accent);
+  transition: transform 0.2s ease;
+}
+
+.weekly-expand-arrow.open {
+  transform: rotate(180deg);
+}
+
 /* ─── Daily Frog card shared styles ─────────────────────────────────────── */
 
 .header-right {
