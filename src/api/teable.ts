@@ -21,6 +21,9 @@ export const TABLES = {
   secs:   { id: 'tbl5bLdOraLU5UDwNX2', take: 30 },
   frogs:  { id: 'tblgaaUnZGx1i61RCOZ', take: 1000 },
   weekly: { id: 'tblOuIZRVGlTPLAfM56', take: 300 },
+  chroma: { id: 'tbluqJI6VaHK0fWiPo6', take: 1000 },
+  glass:  { id: 'tblaToM9WCudYNtRjaV', take: 1000 },
+  levels: { id: 'tblD0zbgzX4vYjMPws2', take: 50 },
 } as const;
 
 export type TableKey = keyof typeof TABLES;
@@ -87,6 +90,16 @@ export async function fetchTable<T extends Record<string, unknown>>(
 ): Promise<TeableRecord<T>[]> {
   const { id, take } = TABLES[key];
   const result = await apiFetch<T>(id, key, take, 'fieldKeyType=dbFieldName');
+  return result.records;
+}
+
+// Special-combination tables (Chroma / Glass) use display field names so the
+// "Frog 1" / "Frog 2" link fields are easy to read. ETag-cached like other tables.
+export async function fetchCombos<T extends Record<string, unknown>>(
+  key: 'chroma' | 'glass',
+): Promise<TeableRecord<T>[]> {
+  const { id, take } = TABLES[key];
+  const result = await apiFetch<T>(id, key, take, 'fieldKeyType=name');
   return result.records;
 }
 

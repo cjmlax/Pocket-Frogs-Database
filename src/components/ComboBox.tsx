@@ -1,8 +1,11 @@
-import { useState, useRef, useEffect, useId } from 'react';
+import { useState, useRef, useEffect, useId, useMemo } from 'react';
 
 export interface ComboOption {
   id: string;
   label: string;
+  /** Optional secondary text (e.g. a breed's level) shown next to the label
+   *  and also matched by the filter input. */
+  detail?: string;
 }
 
 interface ComboBoxProps {
@@ -12,6 +15,8 @@ interface ComboBoxProps {
   onSelect: (option: ComboOption | null) => void;
   /** Restores a previously confirmed selection (e.g. from URL params on remount) */
   initialSelection?: ComboOption | null;
+  /** When true, keep the given option order instead of sorting alphabetically */
+  presorted?: boolean;
 }
 
 export default function ComboBox({
@@ -20,6 +25,7 @@ export default function ComboBox({
   placeholder = 'Type to filter…',
   onSelect,
   initialSelection = null,
+  presorted = false,
 }: ComboBoxProps) {
   const inputId = useId();
   const [inputValue, setInputValue] = useState(initialSelection?.label ?? '');
@@ -37,9 +43,17 @@ export default function ComboBox({
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, []);
 
+  // Sort alphabetically by default; callers that pre-sort (e.g. breeds by level)
+  // pass presorted to keep their order.
+  const sortedOptions = useMemo(
+    () => (presorted ? options : [...options].sort((a, b) => a.label.localeCompare(b.label))),
+    [options, presorted],
+  );
+
   const suggestions = inputValue.trim()
-    ? options.filter(o => o.label.toLowerCase().includes(inputValue.toLowerCase()))
-    : options.slice(0, 8);
+    ? sortedOptions.filter(o =>
+        `${o.label} ${o.detail ?? ''}`.toLowerCase().includes(inputValue.toLowerCase()))
+    : sortedOptions;
 
   function handleInput(value: string) {
     setInputValue(value);
@@ -92,7 +106,8 @@ export default function ComboBox({
                 role="option"
                 onMouseDown={e => { e.preventDefault(); handlePick(opt); }}
               >
-                {opt.label}
+                <span className="combobox-option-label">{opt.label}</span>
+                {opt.detail && <span className="combobox-option-detail">{opt.detail}</span>}
               </li>
             ))}
           </ul>

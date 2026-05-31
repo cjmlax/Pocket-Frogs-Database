@@ -5,6 +5,7 @@ import FrogList from './pages/FrogList';
 import FrogDetail from './pages/FrogDetail';
 import WeeklyList from './pages/WeeklyList';
 import BreedOverview from './pages/BreedOverview';
+import BreedingPairs from './pages/BreedingPairs';
 
 const router = createBrowserRouter([
   {
@@ -16,6 +17,7 @@ const router = createBrowserRouter([
       { path: 'frogs/:id', element: <FrogDetail /> },
       { path: 'weekly', element: <WeeklyList /> },
       { path: 'breeds', element: <BreedOverview /> },
+      { path: 'breeding', element: <BreedingPairs /> },
     ],
   },
 ]);

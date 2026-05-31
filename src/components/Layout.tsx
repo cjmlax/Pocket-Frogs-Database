@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router';
 import { useTheme, type ThemeMode } from '../hooks/useTheme';
+import { useBreedSort, selectBreedSort } from '../hooks/useBreedSort';
 import '../App.css';
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
@@ -51,6 +52,7 @@ const THEME_OPTIONS: { mode: ThemeMode; icon: React.ReactNode; label: string }[]
 
 function SettingsDropdown() {
   const { theme, choose } = useTheme();
+  const breedSort = useBreedSort();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -90,6 +92,26 @@ function SettingsDropdown() {
               </button>
             ))}
           </div>
+
+          <div className="settings-row">
+            <span className="settings-row-label" title="Breed sort order">Breed:</span>
+            <button
+              className={`settings-theme-opt${breedSort.key === 'alpha' ? ' active' : ''}`}
+              onClick={() => selectBreedSort('alpha')}
+              aria-label="Sort breeds alphabetically"
+              title="Alphabetical Sort"
+            >
+              A{breedSort.key === 'alpha' && (breedSort.dir === 'asc' ? ' ↑' : ' ↓')}
+            </button>
+            <button
+              className={`settings-theme-opt${breedSort.key === 'level' ? ' active' : ''}`}
+              onClick={() => selectBreedSort('level')}
+              aria-label="Sort breeds by level"
+              title="Level Sort"
+            >
+              #{breedSort.key === 'level' && (breedSort.dir === 'asc' ? ' ↑' : ' ↓')}
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -107,6 +129,7 @@ export default function Layout() {
           <NavLink to="/frogs">Frog Lookup</NavLink>
           <NavLink to="/weekly">Weekly Sets</NavLink>
           <NavLink to="/breeds">Breed Overview</NavLink>
+          <NavLink to="/breeding">Breeding Pairs</NavLink>
         </nav>
         <div className="header-right">
           <SettingsDropdown />

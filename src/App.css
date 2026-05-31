@@ -230,6 +230,10 @@ a.plain-link:hover {
 }
 
 .combobox-option {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
   padding: 8px 12px;
   cursor: pointer;
   font-size: 14px;
@@ -239,6 +243,184 @@ a.plain-link:hover {
 .combobox-option:hover {
   background: var(--accent-bg);
   color: var(--text-h);
+}
+
+/* Secondary detail (e.g. breed level) shown to the right of the option label */
+.combobox-option-detail {
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.65;
+  white-space: nowrap;
+}
+
+/* ─── Breeding Pairs page ─────────────────────────────────────────────────── */
+
+.breeding-parents {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.parent-group {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px 18px;
+}
+
+.parent-title {
+  margin: 0;
+  font-size: 18px;
+}
+
+/* Cost bar sits flush atop the results table as a connected header */
+.breeding-cost {
+  font-size: 15px;
+  color: var(--text);
+  margin: 0;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  padding: 10px 14px;
+}
+
+.breeding-cost strong {
+  color: var(--text-h);
+}
+
+/* Square off the table's top corners so it joins the cost bar seamlessly */
+.breeding-cost + .table-wrapper {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.breeding-special {
+  font-size: 15px;
+  color: var(--accent);
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 0 0 16px;
+}
+
+.breeding-special strong {
+  color: var(--accent);
+}
+
+/* Clickable camera icon next to a special-combination callout */
+.screenshot-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  margin-left: 8px;
+  padding: 3px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--accent);
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.screenshot-btn:hover {
+  background: var(--bg);
+}
+
+/* Image lightbox overlay */
+.lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 40px;
+}
+
+.lightbox-image {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  object-fit: contain;
+}
+
+.lightbox-close {
+  position: fixed;
+  top: 16px;
+  right: 24px;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 36px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 12px;
+}
+
+.profit-positive {
+  color: var(--cell-max-text);
+  font-weight: 600;
+}
+
+.profit-negative {
+  color: var(--cell-min-text);
+  font-weight: 600;
+}
+
+/* Transposed results: stats as rows, offspring as columns */
+.breeding-results td {
+  text-align: center;
+}
+
+/* First column (stat labels) sticks to the left while scrolling horizontally */
+.breeding-results .breeding-row-label {
+  position: sticky;
+  left: 0;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  z-index: 1;
+  white-space: nowrap;
+}
+
+.breeding-results .breeding-frog-name {
+  text-align: center;
+  color: var(--text-h);
+}
+
+/* Each word of the 3-word frog name on its own centered line */
+.breeding-frog-word {
+  display: block;
+}
+
+/* Subtle alternating column shading to separate offspring (mirrors the
+   original gray columns). Child 1 is the sticky label, so even children are
+   the 1st, 3rd, 5th… offspring. */
+.breeding-results td:nth-child(even),
+.breeding-results .breeding-frog-name:nth-child(even) {
+  background: var(--code-bg);
+}
+
+/* Crosshair hover — mirrors the Breed Overview grid. Uses accent-bg so the
+   highlight is visible over both the plain and zebra-shaded columns. */
+.breeding-results .row-hover,
+.breeding-results .col-hover {
+  background: var(--accent-bg) !important;
+}
+
+/* The exact cell under the cursor gets an outline to stand out from the arms */
+.breeding-results .cell-hover {
+  background: var(--accent-bg) !important;
+  outline: 1px solid var(--accent-border);
+  outline-offset: -1px;
 }
 
 /* ─── Frog lookup page ────────────────────────────────────────────────────── */
@@ -496,13 +678,35 @@ tr:hover td {
 .settings-row {
   display: flex;
   gap: 4px;
+  align-items: center;
+}
+
+/* Text label at the start of a settings row (e.g. "Breed:") */
+.settings-row-label {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  padding-right: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Letter/symbol options (A / #) reuse the icon-button sizing with text */
+.settings-theme-opt {
+  font-size: 16px;
+  font-weight: 600;
+  font-family: var(--sans);
 }
 
 .settings-theme-opt {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
+  flex: 1;
+  min-width: 34px;
   height: 34px;
   border-radius: 4px;
   border: 1px solid transparent;
@@ -534,6 +738,47 @@ main {
   width: 100%;
   box-sizing: border-box;
   cursor: pointer;
+}
+
+/* Breed info box above the grid */
+.breed-info {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--code-bg);
+  padding: 14px 18px;
+  margin-bottom: 20px;
+}
+
+.breed-info-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+}
+
+.breed-info-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.breed-info-stat-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+
+.breed-info-stat-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.breed-info-note {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--accent);
 }
 
 /* Remove the max-height so the whole grid is visible on one page scroll */
@@ -621,33 +866,20 @@ main {
   background: var(--code-bg);
 }
 
-/* Disable the global tr:hover rule — crosshair hover is handled via JS classes */
-.breed-grid tr:hover td,
-.breed-grid tr:hover th {
+/* Disable the global tr:hover rule (td-only) — crosshair hover is handled via
+   JS classes. Scoped to td so it doesn't strip the summary headers' shading. */
+.breed-grid tr:hover td {
   background: inherit;
 }
 
-/* Footer row cells that have row-hover but NOT col-hover should stay transparent
-   so the column-inversion effect is preserved. The :not(.col-hover) exclusion
-   lets the col-hover column and the cursor cell (cell-hover) still light up. */
-.breed-grid .breed-footer .row-hover:not(.col-hover):not(.breed-cell-max):not(.breed-cell-min) {
-  background: inherit !important;
-}
-
-/* Row or column arm of the crosshair — skip min/max cells so they stay visible */
+/* Crosshair arms — purple highlight (matches the Breeding Pairs table).
+   Skips min/max cells so their green/red colors still show through. */
 .breed-grid .row-hover:not(.breed-cell-max):not(.breed-cell-min),
 .breed-grid .col-hover:not(.breed-cell-max):not(.breed-cell-min) {
-  background: var(--code-bg) !important;
+  background: var(--accent-bg) !important;
 }
 
-/* Summary cells in the hovered column turn white — vertical inversion that
-   mirrors the footer-row horizontal inversion. More specific than the general
-   .col-hover rule so it wins for summary cells. */
-.breed-grid .breed-summary.col-hover:not(.breed-cell-max):not(.breed-cell-min) {
-  background: var(--bg) !important;
-}
-
-/* Deeper accent on the cursor cell — same exclusion for min/max */
+/* Cursor cell — same purple fill plus an outline to anchor the crosshair */
 .breed-grid .cell-hover:not(.breed-cell-max):not(.breed-cell-min) {
   background: var(--accent-bg) !important;
 }

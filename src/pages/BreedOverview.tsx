@@ -4,10 +4,17 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchTable, fetchBreedFrogs } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
 import { formatNum } from '../utils/format';
+import { breedOptionsFrom } from '../utils/breeds';
+import { useBreedSort } from '../hooks/useBreedSort';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
-interface BreedFields extends Record<string, unknown> { Breed?: string }
+interface BreedFields extends Record<string, unknown> {
+  Breed?:       string;
+  Level?:       unknown;   // link → { id, title } where title is the level number
+  Version?:     string;
+  Promotional?: boolean;
+}
 interface BaseFields  extends Record<string, unknown> { BaseColors?: string }
 interface SecFields   extends Record<string, unknown> { Sec_Color?:  string }
 interface FrogFields  extends Record<string, unknown> {
@@ -15,6 +22,21 @@ interface FrogFields  extends Record<string, unknown> {
   Value?:     number;
   Speed?:     number;
   Stamina?:   number;
+}
+interface LevelFields extends Record<string, unknown> {
+  Level_No?:   number;
+  Hatch?:      string;
+  Growth?:     string;
+  Flies?:      number;
+  Rarity?:     string;
+  Restricted?: boolean;
+}
+
+// Pulls the linked record's id from a Teable link field ({ id, title } or array).
+function linkId(val: unknown): string | null {
+  const first = Array.isArray(val) ? val[0] : val;
+  if (first && typeof first === 'object' && 'id' in first) return String((first as { id: unknown }).id);
+  return null;
 }
 
 // ── Stat icons ────────────────────────────────────────────────────────────────
@@ -123,11 +145,24 @@ export default function BreedOverview() {
   const { data: breeds } = useQuery({ queryKey: ['table', 'breeds'], queryFn: () => fetchTable<BreedFields>('breeds') });
   const { data: bases  } = useQuery({ queryKey: ['table', 'bases'],  queryFn: () => fetchTable<BaseFields>('bases')  });
   const { data: secs   } = useQuery({ queryKey: ['table', 'secs'],   queryFn: () => fetchTable<SecFields>('secs')    });
+  const { data: levels } = useQuery({ queryKey: ['table', 'levels'], queryFn: () => fetchTable<LevelFields>('levels') });
 
+  const breedSort = useBreedSort();
   const breedOptions = useMemo<ComboOption[]>(
-    () => breeds?.map(r => ({ id: r.id, label: r.fields.Breed ?? r.id })) ?? [],
-    [breeds],
+    () => breedOptionsFrom(breeds, breedSort),
+    [breeds, breedSort],
   );
+
+  // Resolve the selected breed to its record + linked Level row for the info box.
+  // Independent of the stat selector and the frog grid.
+  const breedInfo = useMemo(() => {
+    if (!breed || !breeds) return null;
+    const rec = breeds.find(b => b.id === breed.id);
+    if (!rec) return null;
+    const levelId = linkId(rec.fields.Level);
+    const level = levels?.find(l => l.id === levelId) ?? null;
+    return { rec, level };
+  }, [breed, breeds, levels]);
 
   const { data: frogs, isFetching, error } = useQuery({
     queryKey: ['breed-overview', breed?.id],
@@ -193,6 +228,7 @@ export default function BreedOverview() {
         <ComboBox
           label="Breed"
           options={breedOptions}
+          presorted
           initialSelection={breed}
           onSelect={opt => { if (opt) setBreed(opt); }}
         />
@@ -215,6 +251,47 @@ export default function BreedOverview() {
       </div>
 
       {error && <p className="search-error">Error loading data.</p>}
+
+      {breedInfo && (
+        <div className="breed-info">
+          <div className="breed-info-stats">
+            <div className="breed-info-stat">
+              <span className="breed-info-stat-label">Level</span>
+              <span className="breed-info-stat-value">{breedInfo.level?.fields.Level_No ?? '—'}</span>
+            </div>
+            <div className="breed-info-stat">
+              <span className="breed-info-stat-label">Release Version</span>
+              <span className="breed-info-stat-value">{breedInfo.rec.fields.Version ?? '—'}</span>
+            </div>
+            <div className="breed-info-stat">
+              <span className="breed-info-stat-label">Hatch Time</span>
+              <span className="breed-info-stat-value">{breedInfo.level?.fields.Hatch ?? '—'}</span>
+            </div>
+            <div className="breed-info-stat">
+              <span className="breed-info-stat-label">Growth Time</span>
+              <span className="breed-info-stat-value">{breedInfo.level?.fields.Growth ?? '—'}</span>
+            </div>
+            <div className="breed-info-stat">
+              <span className="breed-info-stat-label">Flies to Tame</span>
+              <span className="breed-info-stat-value">{formatNum(breedInfo.level?.fields.Flies)}</span>
+            </div>
+            <div className="breed-info-stat">
+              <span className="breed-info-stat-label">Rarity</span>
+              <span className="breed-info-stat-value">{breedInfo.level?.fields.Rarity ?? '—'}</span>
+            </div>
+          </div>
+          {breedInfo.level?.fields.Restricted && (
+            <p className="breed-info-note">
+              ⚠ Restricted — This breed can only be found in the pond and cannot be traded to another player.
+            </p>
+          )}
+          {breedInfo.rec.fields.Promotional && (
+            <p className="breed-info-note">
+              ★ Promotional — This breed can only be obtained via the FrogMart or player trade. AKA POP Frog or Potion Frog.
+            </p>
+          )}
+        </div>
+      )}
 
       {breed === null ? (
         <p className="search-hint">Select a breed above to generate the grid.</p>
@@ -275,7 +352,7 @@ export default function BreedOverview() {
 
               {(['min', 'avg', 'max'] as const).map((type, i) => (
                 <tr key={type} className={`breed-footer${i === 0 ? ' breed-footer-divider' : ''}`}>
-                  <th className="breed-row-label breed-summary-label">
+                  <th className="breed-row-label breed-summary-label" data-row={`f-${type}`}>
                     {type === 'min' ? 'Min' : type === 'avg' ? 'Avg' : 'Max'}
                   </th>
                   {secs.map(sec => {

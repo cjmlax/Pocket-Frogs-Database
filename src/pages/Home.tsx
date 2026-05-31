@@ -101,7 +101,9 @@ function WeeklySetCard() {
 
   return (
     <div className="frog-card">
-      <span className="daily-frog-panel-label">Weekly Set</span>
+      <span className="daily-frog-panel-label">
+        Weekly Set{thisWeek?.fields.SetDate ? ` ${thisWeek.fields.SetDate}` : ''}
+      </span>
       {isLoading ? (
         <p className="daily-frog-loading">Loading…</p>
       ) : thisWeek ? (
@@ -115,12 +117,7 @@ function WeeklySetCard() {
             </Link>
           </p>
           <div className="daily-frog-stats">
-            <div className="daily-frog-stat">
-              <span className="daily-frog-stat-label">Set</span>
-              <span className="daily-frog-stat-value">
-                {thisWeek.fields.SetDate?.slice(-2) ?? '—'}
-              </span>
-            </div>
+
             <div className="daily-frog-stat">
               <span className="daily-frog-stat-label">Reward</span>
               <span className="daily-frog-stat-value">{formatNum(thisWeek.fields.Stamp)}</span>
@@ -128,6 +125,12 @@ function WeeklySetCard() {
             <div className="daily-frog-stat">
               <span className="daily-frog-stat-label">Min Lvl</span>
               <span className="daily-frog-stat-value">{formatNum(thisWeek.fields.LevelReq)}</span>
+            </div>
+              <div className="daily-frog-stat">
+              <span className="daily-frog-stat-label">Count</span>
+              <span className="daily-frog-stat-value">
+                {FROG_SLOTS.filter(slot => thisWeek.fields[slot]).length}
+              </span>
             </div>
           </div>
 
@@ -167,7 +170,8 @@ export default function Home() {
         <div className="home-text">
           <p>An unofficial, searchable database of information for the mobile game Pocket Frogs.</p>
           <p>This website is a continuation of my <a href="https://docs.google.com/spreadsheets/d/1TNTK09vM8tlj6BC8haobuWCQvV4qNyDsRYsf-4hXdCc/" target="_blank">Google Spreadsheet</a>, meant to present the data better and allow for a smoother experience (that's also less reliant on Google).</p>
-          <p>This website is also two terrible things combined — a work in progress and vibe-coded. Please be patient while I work out the kinks and improve the experience. If you feel the urge to help out, I'm throwing this up on <a href="https://github.com/cjmlax/Pocket-Frogs-Database" target="_blank">GitHub</a>.</p>
+          <p>This website is also two challenging/terrible things combined — a work in progress and vibe-coded. Please be patient while I work out the kinks and improve the experience. If you feel the urge to contribute on the code side, I'm throwing this up on <a href="https://github.com/cjmlax/Pocket-Frogs-Database" target="_blank">GitHub</a> as a repository.</p>
+          <p>Additionally, I'm happy to take any feedback you have about the site in it's current state. <a href="https://teable.cjmlax.com/share/shre9SHevGPtThTpVGz/view" target="_blank">Click here</a> to fill out a quick form so I can capture anything that can be improved on from your perspectives! Keep in mind that feature requests are welcome, though I'll be working towards feature parity with the Google Sheet before making any other major additions.</p>
         </div>
       </div>
       <div className="home-cards">

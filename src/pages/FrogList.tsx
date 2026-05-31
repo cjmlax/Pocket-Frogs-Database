@@ -14,6 +14,8 @@ import {
 import { fetchTable, searchFrogs, type TeableRecord, type FrogFilter } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
 import { formatNum } from '../utils/format';
+import { breedOptionsFrom } from '../utils/breeds';
+import { useBreedSort } from '../hooks/useBreedSort';
 
 interface BreedFields  extends Record<string, unknown> { Breed?:      string }
 interface BaseFields   extends Record<string, unknown> { BaseColors?: string }
@@ -111,7 +113,8 @@ export default function FrogList() {
   const { data: bases  } = useQuery({ queryKey: ['table', 'bases'],  queryFn: () => fetchTable<BaseFields>('bases')  });
   const { data: secs   } = useQuery({ queryKey: ['table', 'secs'],   queryFn: () => fetchTable<SecFields>('secs')    });
 
-  const breedOptions = useMemo<ComboOption[]>(() => breeds?.map(r => ({ id: r.id, label: r.fields.Breed      ?? r.id })) ?? [], [breeds]);
+  const breedSort = useBreedSort();
+  const breedOptions = useMemo<ComboOption[]>(() => breedOptionsFrom(breeds, breedSort), [breeds, breedSort]);
   const baseOptions  = useMemo<ComboOption[]>(() => bases?.map( r => ({ id: r.id, label: r.fields.BaseColors  ?? r.id })) ?? [], [bases]);
   const secOptions   = useMemo<ComboOption[]>(() => secs?.map(  r => ({ id: r.id, label: r.fields.Sec_Color   ?? r.id })) ?? [], [secs]);
 
@@ -174,6 +177,7 @@ export default function FrogList() {
         <ComboBox
           label="Breed"
           options={breedOptions}
+          presorted
           initialSelection={selection.breed ?? null}
           onSelect={opt => setSelection(s => ({ ...s, breed: opt ?? undefined }))}
         />
