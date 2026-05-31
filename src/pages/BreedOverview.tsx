@@ -260,8 +260,8 @@ export default function BreedOverview() {
               <span className="breed-info-stat-value">{breedInfo.level?.fields.Level_No ?? '—'}</span>
             </div>
             <div className="breed-info-stat">
-              <span className="breed-info-stat-label">Release Version</span>
-              <span className="breed-info-stat-value">{breedInfo.rec.fields.Version ?? '—'}</span>
+              <span className="breed-info-stat-label">Flies to Tame</span>
+              <span className="breed-info-stat-value">{formatNum(breedInfo.level?.fields.Flies)}</span>
             </div>
             <div className="breed-info-stat">
               <span className="breed-info-stat-label">Hatch Time</span>
@@ -272,12 +272,12 @@ export default function BreedOverview() {
               <span className="breed-info-stat-value">{breedInfo.level?.fields.Growth ?? '—'}</span>
             </div>
             <div className="breed-info-stat">
-              <span className="breed-info-stat-label">Flies to Tame</span>
-              <span className="breed-info-stat-value">{formatNum(breedInfo.level?.fields.Flies)}</span>
-            </div>
-            <div className="breed-info-stat">
               <span className="breed-info-stat-label">Rarity</span>
               <span className="breed-info-stat-value">{breedInfo.level?.fields.Rarity ?? '—'}</span>
+            </div>
+            <div className="breed-info-stat">
+              <span className="breed-info-stat-label">Release Version</span>
+              <span className="breed-info-stat-value">{breedInfo.rec.fields.Version ?? '—'}</span>
             </div>
           </div>
           {breedInfo.level?.fields.Restricted && (
