@@ -24,15 +24,16 @@ interface FrogFields extends Record<string, unknown> {
   Speed?:     number;
   Stamina?:   number;
 }
-interface BreedFields extends Record<string, unknown> { Breed?: string; Level?: unknown }
+interface BreedFields extends Record<string, unknown> { Breed?: string; Level?: unknown; Promotional?: boolean }
 interface BaseFields  extends Record<string, unknown> { BaseColors?: string }
 interface SecFields   extends Record<string, unknown> { Sec_Color?:  string }
 interface LevelFields extends Record<string, unknown> {
-  Level_No?: number;
-  Hatch?:    string;
-  Growth?:   string;
-  Flies?:    number;
-  Rarity?:   string;
+  Level_No?:   number;
+  Hatch?:      string;
+  Growth?:     string;
+  Flies?:      number;
+  Rarity?:     string;
+  Restricted?: boolean;
 }
 
 // Chroma / Glass combination tables — Frog 1 / Frog 2 link to the frogs table.
@@ -162,14 +163,19 @@ export default function FrogDetail() {
   const stamina = typeof frog?.fields.Stamina === 'number' ? frog.fields.Stamina : null;
   const racing  = speed === null && stamina === null ? null : (speed ?? 0) + (stamina ?? 0);
 
-  // Level / hatch / growth / flies / rarity come from the breed's linked Level
-  // record (frog → breed → Level), the same chain the Breed Overview uses.
+  // The frog's breed record — used for level resolution and the Promotional flag.
+  const breedRec = useMemo(
+    () => (frog && breeds ? breeds.find(b => b.id === linkId(frog.fields.Breed)) ?? null : null),
+    [frog, breeds],
+  );
+
+  // Level / hatch / growth / flies / rarity / restricted come from the breed's
+  // linked Level record (frog → breed → Level), the same chain Breed Overview uses.
   const level = useMemo(() => {
-    if (!frog || !breeds || !levels) return null;
-    const breedRec = breeds.find(b => b.id === linkId(frog.fields.Breed));
-    const levelId = breedRec ? linkId(breedRec.fields.Level) : null;
+    if (!breedRec || !levels) return null;
+    const levelId = linkId(breedRec.fields.Level);
     return levels.find(l => l.id === levelId) ?? null;
-  }, [frog, breeds, levels]);
+  }, [breedRec, levels]);
 
   // Weekly sets that include this frog in any of their eight slots.
   const weeklyMatches = useMemo(() => {
@@ -290,6 +296,17 @@ export default function FrogDetail() {
               <span className="breed-info-stat-value">{level?.fields.Rarity ?? '—'}</span>
             </div>
           </div>
+
+          {level?.fields.Restricted && (
+            <p className="breed-info-note">
+              ⚠ Restricted — This breed can only be found in the pond and cannot be traded to another player.
+            </p>
+          )}
+          {breedRec?.fields.Promotional && (
+            <p className="breed-info-note">
+              ★ Promotional — This breed can only be obtained via the FrogMart or player trade. AKA POP Frog or Potion Frog.
+            </p>
+          )}
 
           {specials.length > 0 && (
             <div className="frog-detail-specials">
