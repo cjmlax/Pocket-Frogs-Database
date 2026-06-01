@@ -138,6 +138,11 @@ a.plain-link:hover {
   padding-top: 10px;
 }
 
+/* 2×2 layout for the Frog of the Day card (Level / Value over Speed / Stamina) */
+.daily-frog-stats--2col {
+  grid-template-columns: 1fr 1fr;
+}
+
 .daily-frog-stat {
   display: flex;
   flex-direction: column;
@@ -816,20 +821,36 @@ main {
   font-weight: 400;
 }
 
-/* Highlight the frog slots that belong to the focused breed */
-.weekly-frog-match {
-  background: var(--accent-soft);
-  color: var(--text-h);
-  font-weight: 600;
+/* Frog Detail page */
+.frog-detail-name {
+  font-size: 22px;
+  margin: 20px 0 4px;
 }
 
-/* This table's rows don't get the global hover tint — it washes out the
-   highlighted slots above. The crosshair grid above keeps its hover. */
-.breed-weekly tbody tr:hover td {
-  background: transparent;
+.frog-detail-stats {
+  margin: 12px 0 20px;
 }
-.breed-weekly tbody tr:hover td.weekly-frog-match {
-  background: var(--accent-soft);
+
+/* Special-combination callouts on the Frog Detail page */
+.frog-detail-specials {
+  margin: 16px 0;
+}
+
+/* Potion / Stamp reward column header */
+.weekly-reward-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.weekly-reward-header svg {
+  display: block;
+}
+
+/* Highlight the frog slots that belong to the focused breed — purple text
+   rather than a background fill. */
+.weekly-frog-match {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 /* Corner cell is sticky in both axes (top via parent thead, left explicitly) */

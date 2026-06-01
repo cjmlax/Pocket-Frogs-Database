@@ -2,19 +2,28 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchTable, searchFrogs, type TeableRecord, type FrogFilter } from '../api/teable';
 
-interface BreedFields extends Record<string, unknown> { Breed?:      string }
+interface BreedFields extends Record<string, unknown> { Breed?: string; Level?: unknown }
 interface BaseFields  extends Record<string, unknown> { BaseColors?: string }
 interface SecFields   extends Record<string, unknown> { Sec_Color?:  string }
+interface LevelFields extends Record<string, unknown> { Level_No?: number }
 interface FrogFields  extends Record<string, unknown> {
   Value?:   number;
   Speed?:   number;
   Stamina?: number;
 }
 
+// Pulls the linked record's id from a Teable link field ({ id, title } or array).
+function linkId(val: unknown): string | null {
+  const first = Array.isArray(val) ? val[0] : val;
+  if (first && typeof first === 'object' && 'id' in first) return String((first as { id: unknown }).id);
+  return null;
+}
+
 interface DailySelection {
-  name:   string;
-  filter: FrogFilter;
-  seed:   number;
+  name:    string;
+  filter:  FrogFilter;
+  seed:    number;
+  levelId: string | null;
 }
 
 function computeSelection(
@@ -41,9 +50,10 @@ function computeSelection(
   const breedRec = breeds[Math.floor(Math.abs(seedBreed) * breeds.length)];
 
   return {
-    name:   `${baseRec.fields.BaseColors ?? '?'} ${secRec.fields.Sec_Color ?? '?'} ${breedRec.fields.Breed ?? '?'}`,
-    filter: { base: baseRec.id, secondary: secRec.id, breed: breedRec.id },
-    seed:   x,
+    name:    `${baseRec.fields.BaseColors ?? '?'} ${secRec.fields.Sec_Color ?? '?'} ${breedRec.fields.Breed ?? '?'}`,
+    filter:  { base: baseRec.id, secondary: secRec.id, breed: breedRec.id },
+    seed:    x,
+    levelId: linkId(breedRec.fields.Level),
   };
 }
 
@@ -52,6 +62,7 @@ export function useDailyFrog() {
   const { data: breeds } = useQuery({ queryKey: ['table', 'breeds'], queryFn: () => fetchTable<BreedFields>('breeds') });
   const { data: bases  } = useQuery({ queryKey: ['table', 'bases'],  queryFn: () => fetchTable<BaseFields>('bases')  });
   const { data: secs   } = useQuery({ queryKey: ['table', 'secs'],   queryFn: () => fetchTable<SecFields>('secs')    });
+  const { data: levels } = useQuery({ queryKey: ['table', 'levels'], queryFn: () => fetchTable<LevelFields>('levels') });
 
   const selection = useMemo(
     () => computeSelection(breeds ?? [], bases ?? [], secs ?? []),
@@ -74,8 +85,15 @@ export function useDailyFrog() {
     return frogs[Math.floor(Math.abs(seedFrog) * frogs.length)];
   }, [frogs, selection]);
 
+  const level = useMemo(() => {
+    if (!selection?.levelId || !levels) return null;
+    const rec = levels.find(l => l.id === selection.levelId);
+    return rec?.fields.Level_No ?? null;
+  }, [selection, levels]);
+
   return {
     name:      selection?.name   ?? null,
+    level,
     value:     frog?.fields.Value    ?? null,
     speed:     frog?.fields.Speed    ?? null,
     stamina:   frog?.fields.Stamina  ?? null,

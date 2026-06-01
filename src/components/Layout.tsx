@@ -127,6 +127,7 @@ export default function Layout() {
         <nav className="nav-links">
           <NavLink to="/" className="nav-brand" end>Home</NavLink>
           <NavLink to="/frogs">Frog Lookup</NavLink>
+          <NavLink to="/frog">Frog Detail</NavLink>
           <NavLink to="/weekly">Weekly Sets</NavLink>
           <NavLink to="/breeds">Breed Overview</NavLink>
           <NavLink to="/breeding">Breeding Pairs</NavLink>

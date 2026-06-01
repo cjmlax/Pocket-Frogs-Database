@@ -418,7 +418,7 @@ export default function BreedOverview() {
         </div>
       ) : null}
 
-      {breed !== null && weeklyMatches.length > 0 && (
+      {breed !== null && (
         <div className="breed-weekly">
           <h2 className="breed-weekly-title">
             Weekly Sets featuring {breed.label}{' '}

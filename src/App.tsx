@@ -14,7 +14,8 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: 'frogs', element: <FrogList /> },
-      { path: 'frogs/:id', element: <FrogDetail /> },
+      { path: 'frog', element: <FrogDetail /> },
+      { path: 'frog/:id', element: <FrogDetail /> },
       { path: 'weekly', element: <WeeklyList /> },
       { path: 'breeds', element: <BreedOverview /> },
       { path: 'breeding', element: <BreedingPairs /> },

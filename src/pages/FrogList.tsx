@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router';
+import { useSearchParams, Link } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
@@ -69,7 +69,11 @@ function cell(val: unknown): string {
 const col = createColumnHelper<TeableRecord<FrogFields>>();
 
 const columns = [
-  col.accessor(r => r.fields.fullname ?? '—',  { id: 'name',    header: 'Frog Name' }),
+  col.accessor(r => r.fields.fullname ?? '—',  {
+    id: 'name',
+    header: 'Frog Name',
+    cell: i => <Link to={`/frog/${i.row.original.id}`} className="plain-link">{i.getValue()}</Link>,
+  }),
   col.accessor(r => cell(r.fields.Breed),       { id: 'breed',   header: 'Breed' }),
   col.accessor(r => cell(r.fields.Primary),     { id: 'base',    header: 'Base Color' }),
   col.accessor(r => cell(r.fields.Secondary),   { id: 'sec',     header: 'Secondary' }),

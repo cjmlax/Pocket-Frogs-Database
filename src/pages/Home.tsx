@@ -66,8 +66,7 @@ function getCurrentISOWeek(): string {
 // ── Cards ─────────────────────────────────────────────────────────────────────
 
 function DailyFrogCard() {
-  const { name, value, speed, stamina, isLoading } = useDailyFrog();
-  const hasStats = value !== null || speed !== null || stamina !== null;
+  const { name, level, value, speed, stamina, isLoading } = useDailyFrog();
 
   return (
     <div className="frog-card">
@@ -75,8 +74,12 @@ function DailyFrogCard() {
       <p className="daily-frog-panel-name">
         {isLoading ? 'Loading…' : (name ?? '—')}
       </p>
-      {hasStats ? (
-        <div className="daily-frog-stats">
+      {!isLoading && (
+        <div className="daily-frog-stats daily-frog-stats--2col">
+          <div className="daily-frog-stat">
+            <span className="daily-frog-stat-label">Level</span>
+            <span className="daily-frog-stat-value">{formatNum(level)}</span>
+          </div>
           <div className="daily-frog-stat">
             <span className="daily-frog-stat-label">Value</span>
             <span className="daily-frog-stat-value">{formatNum(value)}</span>
@@ -90,8 +93,6 @@ function DailyFrogCard() {
             <span className="daily-frog-stat-value">{formatNum(stamina)}</span>
           </div>
         </div>
-      ) : (
-        !isLoading && <p className="daily-frog-loading">No stats found.</p>
       )}
     </div>
   );
