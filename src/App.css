@@ -150,12 +150,14 @@ a.plain-link:hover {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text);
+  text-align: center;
 }
 
 .daily-frog-stat-value {
   font-size: 20px;
   font-weight: 600;
   color: var(--text-h);
+  text-align: center;
 }
 
 .daily-frog-loading {
@@ -742,11 +744,22 @@ main {
 
 /* Breed info box above the grid */
 .breed-info {
+  display: flow-root; /* contain the floated stock image */
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--code-bg);
   padding: 14px 18px;
   margin-bottom: 20px;
+}
+
+.breed-info-image {
+  float: left;
+  height: 57px;       /* match the height of one label + value stat */
+  width: auto;
+  object-fit: contain;
+  margin: 0 16px 0 0;
+  border-radius: 6px;
+  background: var(--bg);
 }
 
 .breed-info-stats {
@@ -786,6 +799,23 @@ main {
 /* Remove the max-height so the whole grid is visible on one page scroll */
 .breed-grid-wrapper {
   max-height: none;
+}
+
+/* Weekly Sets box at the bottom of the Breed Overview page */
+.breed-weekly {
+  margin-top: 28px;
+}
+
+.breed-weekly-title {
+  font-size: 18px;
+  margin: 0 0 12px;
+}
+
+/* Highlight the frog slots that belong to the focused breed */
+.weekly-frog-match {
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
 }
 
 /* Corner cell is sticky in both axes (top via parent thead, left explicitly) */

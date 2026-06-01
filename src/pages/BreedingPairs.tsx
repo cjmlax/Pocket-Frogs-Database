@@ -4,6 +4,7 @@ import { fetchTable, fetchBreedFrogs, fetchCombos, type TeableRecord } from '../
 import ComboBox, { type ComboOption } from '../components/ComboBox';
 import { formatNum } from '../utils/format';
 import { breedOptionsFrom } from '../utils/breeds';
+import { attachmentUrl } from '../utils/attachments';
 import { useBreedSort } from '../hooks/useBreedSort';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
@@ -25,8 +26,6 @@ interface ComboFields extends Record<string, unknown> {
   'Screenshot'?: unknown;
 }
 
-const TEABLE_ORIGIN = 'https://teable.cjmlax.com';
-
 interface ParentSel {
   base:  ComboOption | null;
   sec:   ComboOption | null;
@@ -43,17 +42,6 @@ function linkId(val: unknown): string | null {
     return String((first as { id: unknown }).id);
   }
   return null;
-}
-
-// Extracts a displayable URL from a Teable attachment field. Falls back to the
-// relative path (prefixed with the Teable origin) when no presigned URL exists.
-function attachmentUrl(val: unknown): string | null {
-  const first = Array.isArray(val) ? val[0] : val;
-  if (!first || typeof first !== 'object') return null;
-  const o = first as Record<string, unknown>;
-  const url = (o.presignedUrl ?? o.url) as string | undefined;
-  if (!url) return null;
-  return url.startsWith('http') ? url : `${TEABLE_ORIGIN}${url}`;
 }
 
 // All 8 offspring trait combinations: each character picks parent A's or B's

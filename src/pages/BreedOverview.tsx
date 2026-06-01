@@ -1,8 +1,11 @@
 import { useState, useMemo, useEffect, useRef, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
+import { type SortingState } from '@tanstack/react-table';
 import { fetchTable, fetchBreedFrogs } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
+import WeeklyTable, { type WeeklyFields, WEEKLY_FROG_FIELDS } from '../components/WeeklyTable';
+import { attachmentUrl } from '../utils/attachments';
 import { formatNum } from '../utils/format';
 import { breedOptionsFrom } from '../utils/breeds';
 import { useBreedSort } from '../hooks/useBreedSort';
@@ -10,10 +13,11 @@ import { useBreedSort } from '../hooks/useBreedSort';
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
 interface BreedFields extends Record<string, unknown> {
-  Breed?:       string;
-  Level?:       unknown;   // link → { id, title } where title is the level number
-  Version?:     string;
-  Promotional?: boolean;
+  Breed?:        string;
+  Level?:        unknown;   // link → { id, title } where title is the level number
+  Version?:      string;
+  Promotional?:  boolean;
+  Stock_Image?:  unknown;  // attachment field
 }
 interface BaseFields  extends Record<string, unknown> { BaseColors?: string }
 interface SecFields   extends Record<string, unknown> { Sec_Color?:  string }
@@ -161,7 +165,8 @@ export default function BreedOverview() {
     if (!rec) return null;
     const levelId = linkId(rec.fields.Level);
     const level = levels?.find(l => l.id === levelId) ?? null;
-    return { rec, level };
+    const image = attachmentUrl(rec.fields.Stock_Image);
+    return { rec, level, image };
   }, [breed, breeds, levels]);
 
   const { data: frogs, isFetching, error } = useQuery({
@@ -187,6 +192,33 @@ export default function BreedOverview() {
   const allValues = useMemo(() => Array.from(gridMap.values()), [gridMap]);
   const globalMin = allValues.length ? Math.min(...allValues) : null;
   const globalMax = allValues.length ? Math.max(...allValues) : null;
+
+  // ── Weekly sets featuring this breed ──────────────────────────────────────
+  const { data: weekly } = useQuery({
+    queryKey: ['table', 'weekly'],
+    queryFn:  () => fetchTable<WeeklyFields>('weekly'),
+  });
+
+  // Fullnames of every frog in the selected breed, used to match weekly slots.
+  const breedFrogNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const frog of frogs ?? []) {
+      if (frog.fields.fullname) names.add(frog.fields.fullname);
+    }
+    return names;
+  }, [frogs]);
+
+  const weeklyMatches = useMemo(() => {
+    if (!weekly || breedFrogNames.size === 0) return [];
+    return weekly.filter(set =>
+      WEEKLY_FROG_FIELDS.some(f => {
+        const name = set.fields[f];
+        return typeof name === 'string' && breedFrogNames.has(name);
+      }),
+    );
+  }, [weekly, breedFrogNames]);
+
+  const [weeklySort, setWeeklySort] = useState<SortingState>([{ id: 'date', desc: true }]);
 
   function cellClass(val: number | null): string {
     if (val === null || globalMin === globalMax) return '';
@@ -254,6 +286,13 @@ export default function BreedOverview() {
 
       {breedInfo && (
         <div className="breed-info">
+          {breedInfo.image && (
+            <img
+              className="breed-info-image"
+              src={breedInfo.image}
+              alt={`${breed?.label ?? 'Breed'} stock art`}
+            />
+          )}
           <div className="breed-info-stats">
             <div className="breed-info-stat">
               <span className="breed-info-stat-label">Level</span>
@@ -378,6 +417,19 @@ export default function BreedOverview() {
           </table>
         </div>
       ) : null}
+
+      {breed !== null && weeklyMatches.length > 0 && (
+        <div className="breed-weekly">
+          <h2 className="breed-weekly-title">Weekly Sets featuring {breed.label}</h2>
+          <WeeklyTable
+            data={weeklyMatches}
+            sorting={weeklySort}
+            onSortingChange={setWeeklySort}
+            paginate={false}
+            highlightNames={breedFrogNames}
+          />
+        </div>
+      )}
     </div>
   );
 }
