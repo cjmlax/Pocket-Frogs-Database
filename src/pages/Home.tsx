@@ -24,27 +24,38 @@ interface WeeklyFields extends Record<string, unknown> {
 
 const FROG_SLOTS = ['NameA', 'NameB', 'NameC', 'NameD', 'NameE', 'NameF', 'NameG', 'NameH'] as const;
 
-// New sets release at 2pm Eastern Time on Monday, so before that cutoff we
-// return the previous week's string. Intl handles EST/EDT automatically.
+// New sets release at 2pm Eastern Time on Monday. The "current week" is anchored
+// to that cutoff: before 2pm ET on Monday we still report the previous week's
+// string. Intl handles EST/EDT automatically.
 function getCurrentISOWeek(): string {
   const now = new Date();
 
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/New_York',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
     weekday: 'long',
     hour: 'numeric',
     hour12: false,
   }).formatToParts(now);
 
-  const weekday = parts.find(p => p.type === 'weekday')?.value ?? '';
-  const hour    = parseInt(parts.find(p => p.type === 'hour')?.value ?? '12', 10);
+  const get = (type: string) => parts.find(p => p.type === type)?.value ?? '';
+  const year    = parseInt(get('year'), 10);
+  const month   = parseInt(get('month'), 10);
+  const day     = parseInt(get('day'), 10);
+  const weekday = get('weekday');
+  const hour    = parseInt(get('hour') || '12', 10) % 24; // en-US can report '24' at midnight
 
-  // Before 2pm ET on Monday, show last week's set
-  const date = (weekday === 'Monday' && hour < 14)
-    ? new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-    : now;
+  // Build a UTC date from the Eastern-Time calendar day so the ISO-week math
+  // below is consistent regardless of where this code runs.
+  const d = new Date(Date.UTC(year, month - 1, day));
 
-  const d = new Date(date);
+  // Before 2pm ET on Monday, roll back to last week's set.
+  if (weekday === 'Monday' && hour < 14) {
+    d.setUTCDate(d.getUTCDate() - 7);
+  }
+
   const dayOfWeek = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayOfWeek);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));

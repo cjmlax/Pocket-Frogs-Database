@@ -811,11 +811,25 @@ main {
   margin: 0 0 12px;
 }
 
+.breed-weekly-count {
+  color: var(--text);
+  font-weight: 400;
+}
+
 /* Highlight the frog slots that belong to the focused breed */
 .weekly-frog-match {
-  background: var(--accent);
-  color: var(--bg);
+  background: var(--accent-soft);
+  color: var(--text-h);
   font-weight: 600;
+}
+
+/* This table's rows don't get the global hover tint — it washes out the
+   highlighted slots above. The crosshair grid above keeps its hover. */
+.breed-weekly tbody tr:hover td {
+  background: transparent;
+}
+.breed-weekly tbody tr:hover td.weekly-frog-match {
+  background: var(--accent-soft);
 }
 
 /* Corner cell is sticky in both axes (top via parent thead, left explicitly) */

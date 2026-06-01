@@ -420,7 +420,10 @@ export default function BreedOverview() {
 
       {breed !== null && weeklyMatches.length > 0 && (
         <div className="breed-weekly">
-          <h2 className="breed-weekly-title">Weekly Sets featuring {breed.label}</h2>
+          <h2 className="breed-weekly-title">
+            Weekly Sets featuring {breed.label}{' '}
+            <span className="breed-weekly-count">({weeklyMatches.length})</span>
+          </h2>
           <WeeklyTable
             data={weeklyMatches}
             sorting={weeklySort}
