@@ -320,6 +320,69 @@ a.plain-link:hover {
   color: var(--accent);
 }
 
+/* ─── Submit a Combination page ─────────────────────────────────────────────── */
+.submit-extras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.submit-optional {
+  color: var(--text);
+  font-weight: 400;
+}
+
+.submit-note {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 72px;
+  resize: vertical;
+  font-family: var(--sans);
+}
+
+.submit-file {
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--text);
+}
+
+.submit-actions {
+  margin: 8px 0 16px;
+}
+
+.submit-btn {
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 9px 22px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.submit-btn:not(:disabled):hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.submit-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.submit-success {
+  font-size: 15px;
+  color: var(--accent);
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 0 0 16px;
+}
+
 /* Clickable camera icon next to a special-combination callout */
 .screenshot-btn {
   display: inline-flex;
@@ -819,6 +882,38 @@ main {
 .breed-weekly-count {
   color: var(--text);
   font-weight: 400;
+}
+
+/* Title + Export CSV button on one row */
+.breed-weekly-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Export CSV toolbar above the breed value grid */
+.breed-grid-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+/* CSV download button — mirrors the pagination button styling */
+.csv-btn {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  color: var(--text-h);
+  padding: 5px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: var(--sans);
+  white-space: nowrap;
+}
+
+.csv-btn:hover {
+  background: var(--accent-bg);
 }
 
 /* Frog Detail page */

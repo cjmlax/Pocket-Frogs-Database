@@ -123,7 +123,9 @@ export default function WeeklyTable({
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    // Only paginate when asked; without this row model getRowModel() returns the
+    // full filtered set, so paginate={false} callers see every row.
+    getPaginationRowModel: paginate ? getPaginationRowModel() : undefined,
     initialState: { pagination: { pageSize } },
   });
 

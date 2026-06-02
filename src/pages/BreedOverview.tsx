@@ -7,6 +7,7 @@ import ComboBox, { type ComboOption } from '../components/ComboBox';
 import WeeklyTable, { type WeeklyFields, WEEKLY_FROG_FIELDS } from '../components/WeeklyTable';
 import { attachmentUrl } from '../utils/attachments';
 import { formatNum } from '../utils/format';
+import { downloadCsv } from '../utils/csv';
 import { breedOptionsFrom } from '../utils/breeds';
 import { useBreedSort } from '../hooks/useBreedSort';
 
@@ -114,6 +115,14 @@ function summarize(nums: number[], type: 'min' | 'avg' | 'max'): string {
   if (type === 'min') return Math.min(...nums).toLocaleString();
   if (type === 'max') return Math.max(...nums).toLocaleString();
   return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length).toLocaleString();
+}
+
+// Raw numeric summary (no locale separators) for CSV export — '' when empty.
+function summarizeRaw(nums: number[], type: 'min' | 'avg' | 'max'): number | '' {
+  if (!nums.length) return '';
+  if (type === 'min') return Math.min(...nums);
+  if (type === 'max') return Math.max(...nums);
+  return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length);
 }
 
 const HOVER_CLASSES = ['row-hover', 'col-hover', 'cell-hover'] as const;
@@ -231,6 +240,63 @@ export default function BreedOverview() {
     return `${baseName} ${secName} ${breed?.label ?? ''}`;
   }
 
+  // ── CSV export ────────────────────────────────────────────────────────────
+
+  function handleExportGrid() {
+    if (!bases || !secs || !breed) return;
+    const secNames = secs.map(sec => sec.fields.Sec_Color ?? sec.id);
+    const rows: (string | number | '')[][] = [
+      [`Base \\ Secondary`, ...secNames, 'Min', 'Avg', 'Max'],
+    ];
+
+    bases.forEach(base => {
+      const baseName = base.fields.BaseColors ?? base.id;
+      const rowNums: number[] = [];
+      const cells = secNames.map(secName => {
+        const v = gridMap.get(gridKey(baseName, secName));
+        if (v !== undefined) rowNums.push(v);
+        return v ?? '';
+      });
+      rows.push([baseName, ...cells,
+        summarizeRaw(rowNums, 'min'), summarizeRaw(rowNums, 'avg'), summarizeRaw(rowNums, 'max')]);
+    });
+
+    (['min', 'avg', 'max'] as const).forEach(type => {
+      const label = type === 'min' ? 'Min' : type === 'avg' ? 'Avg' : 'Max';
+      const cells = secNames.map(secName => {
+        const colNums: number[] = [];
+        bases.forEach(base => {
+          const v = gridMap.get(gridKey(base.fields.BaseColors ?? base.id, secName));
+          if (v !== undefined) colNums.push(v);
+        });
+        return summarizeRaw(colNums, type);
+      });
+      const overall = summarizeRaw(allValues, type);
+      rows.push([label, ...cells,
+        type === 'min' ? overall : '', type === 'avg' ? overall : '', type === 'max' ? overall : '']);
+    });
+
+    downloadCsv(`${breed.label} ${stat} grid`, rows);
+  }
+
+  function handleExportWeekly() {
+    if (!breed) return;
+    const rows: (string | number | '')[][] = [
+      ['Name', 'Year-Set', 'Stamp', 'Min Lvl',
+        ...WEEKLY_FROG_FIELDS.map((_, i) => `Frog ${String.fromCharCode(65 + i)}`)],
+    ];
+    weeklyMatches.forEach(set => {
+      rows.push([
+        set.fields.SetName ?? '',
+        set.fields.SetDate ?? '',
+        set.fields.Stamp ?? '',
+        set.fields.LevelReq ?? '',
+        ...WEEKLY_FROG_FIELDS.map(f => (set.fields[f] as string | undefined) ?? ''),
+      ]);
+    });
+    downloadCsv(`${breed.label} weekly sets`, rows);
+  }
+
   // ── Crosshair hover ───────────────────────────────────────────────────────
 
   function clearHover() {
@@ -337,6 +403,10 @@ export default function BreedOverview() {
       ) : isFetching ? (
         <p className="search-hint">Loading frogs for {breed.label}…</p>
       ) : bases && secs ? (
+        <>
+        <div className="breed-grid-toolbar">
+          <button className="csv-btn" onClick={handleExportGrid}>⬇ Export CSV</button>
+        </div>
         <div className="table-wrapper breed-grid-wrapper">
           <table
             className="breed-grid"
@@ -416,14 +486,20 @@ export default function BreedOverview() {
             </tbody>
           </table>
         </div>
+        </>
       ) : null}
 
       {breed !== null && (
         <div className="breed-weekly">
-          <h2 className="breed-weekly-title">
-            Weekly Sets featuring {breed.label}{' '}
-            <span className="breed-weekly-count">({weeklyMatches.length})</span>
-          </h2>
+          <div className="breed-weekly-head">
+            <h2 className="breed-weekly-title">
+              Weekly Sets featuring {breed.label}{' '}
+              <span className="breed-weekly-count">({weeklyMatches.length})</span>
+            </h2>
+            {weeklyMatches.length > 0 && (
+              <button className="csv-btn" onClick={handleExportWeekly}>⬇ Export CSV</button>
+            )}
+          </div>
           <WeeklyTable
             data={weeklyMatches}
             sorting={weeklySort}

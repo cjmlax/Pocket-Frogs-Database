@@ -6,6 +6,7 @@ import FrogDetail from './pages/FrogDetail';
 import WeeklyList from './pages/WeeklyList';
 import BreedOverview from './pages/BreedOverview';
 import BreedingPairs from './pages/BreedingPairs';
+import SubmitCombo from './pages/SubmitCombo';
 
 const router = createBrowserRouter([
   {
@@ -19,6 +20,7 @@ const router = createBrowserRouter([
       { path: 'weekly', element: <WeeklyList /> },
       { path: 'breeds', element: <BreedOverview /> },
       { path: 'breeding', element: <BreedingPairs /> },
+      { path: 'submit', element: <SubmitCombo /> },
     ],
   },
 ]);
