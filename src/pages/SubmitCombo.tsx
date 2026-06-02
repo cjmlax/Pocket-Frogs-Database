@@ -210,11 +210,9 @@ export default function SubmitCombo() {
 
   return (
     <div>
-      <h1>Submit a Combination</h1>
+      <h1>Glass/Chroma Submissions</h1>
       <p className="search-hint" style={{ marginTop: 0 }}>
-        Know a Chroma or Glass pairing that isn't in the database yet? Enter the two parent
-        frogs and check the pairing first — if it's new, you'll be able to add the special
-        frog it produces. Submissions are reviewed before they're added.
+        If you've discovered a Glass or Chroma breeding mutation, submit that combination here. The page will check against the database once both parents are entered. If there isn't an existing match, you can complete the rest of the form to submit. I'll review all submissions manually before pushing them into the database.
       </p>
 
       {!checked ? (
@@ -295,9 +293,9 @@ export default function SubmitCombo() {
 
           {/* Inline guidance about the current selection */}
           {resolving ? (
-            <p className="search-hint">Checking those frogs…</p>
+            <p className="search-hint">Checking…</p>
           ) : unknownFrog ? (
-            <p className="search-error">One of the selected base / secondary / breed combinations isn't a known frog.</p>
+            <p className="search-error">One of the selected combinations isn't a known frog.</p>
           ) : lostPartial ? (
             <p className="search-error">Finish or clear the Lost Frog selection.</p>
           ) : !sourceValid ? (
@@ -305,7 +303,7 @@ export default function SubmitCombo() {
           ) : alreadyExists ? (
             <p className="breeding-special">This {variant === 'chroma' ? 'Chroma' : 'Glass'} pairing is already in the database — switch the type above.</p>
           ) : needsScreenshot ? (
-            <p className="search-hint">Add a screenshot of the combination to submit.</p>
+            <p className="search-hint">Screenshots are required for submission.</p>
           ) : null}
 
           <div className="submit-actions">
