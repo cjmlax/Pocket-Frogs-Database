@@ -471,6 +471,11 @@ a.plain-link:hover {
   display: block;
 }
 
+/* A frog slot replaced by a special (Chroma/Glass) result frog */
+.breeding-results .breeding-frog-special {
+  color: var(--accent);
+}
+
 /* Subtle alternating column shading to separate offspring (mirrors the
    original gray columns). Child 1 is the sticky label, so even children are
    the 1st, 3rd, 5th… offspring. */

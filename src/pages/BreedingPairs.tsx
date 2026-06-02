@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { fetchTable, fetchBreedFrogs, fetchCombos, type TeableRecord } from '../api/teable';
+import { useQuery, useQueries } from '@tanstack/react-query';
+import { fetchTable, fetchBreedFrogs, fetchCombos, fetchFrogById, type TeableRecord } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
 import { formatNum } from '../utils/format';
 import { breedOptionsFrom } from '../utils/breeds';
@@ -19,12 +19,21 @@ interface FrogFields  extends Record<string, unknown> {
   Stamina?:  number;
 }
 
-// Chroma / Glass combination tables — Frog 1 / Frog 2 are links to the frogs table
+// Chroma / Glass combination tables — Frog 1 / Frog 2 are links to the frogs table.
+// Result Frog / Lost Frog describe the in-game swap: when this pair pops, the
+// Lost Frog offspring is replaced by the (special) Result Frog.
 interface ComboFields extends Record<string, unknown> {
-  'Frog 1'?:     unknown;
-  'Frog 2'?:     unknown;
-  'Screenshot'?: unknown;
+  'Frog 1'?:      unknown;
+  'Frog 2'?:      unknown;
+  'Screenshot'?:  unknown;
+  'Result Frog'?: unknown; // dbFieldName: result_frog
+  'Lost Frog'?:   unknown; // dbFieldName: lost_frog
 }
+
+// Display-name keys for the swap fields (combos are fetched with fieldKeyType=name).
+// Adjust here if the Teable field display names differ.
+const RESULT_FROG_FIELD = 'Result Frog';
+const LOST_FROG_FIELD = 'Lost Frog';
 
 interface ParentSel {
   base:  ComboOption | null;
@@ -40,6 +49,16 @@ function linkId(val: unknown): string | null {
   const first = Array.isArray(val) ? val[0] : val;
   if (first && typeof first === 'object' && 'id' in first) {
     return String((first as { id: unknown }).id);
+  }
+  return null;
+}
+
+// Linked record's display title (used as a fallback name before its full record
+// loads).
+function linkTitle(val: unknown): string | null {
+  const first = Array.isArray(val) ? val[0] : val;
+  if (first && typeof first === 'object' && 'title' in first) {
+    return String((first as { title: unknown }).title);
   }
   return null;
 }
@@ -167,8 +186,9 @@ export default function BreedingPairs() {
   );
 
   // Check the parent pair against the Chroma/Glass tables (either order).
-  // Matches on frog record ID, the reliable link-field key.
-  const specials = useMemo(() => {
+  // Matches on frog record ID, the reliable link-field key. Collects every match
+  // (a pair can hit both tables), each carrying the Lost→Result swap it defines.
+  const specialMatches = useMemo(() => {
     if (!frogA || !frogB) return [];
     const a = frogA.id, b = frogB.id;
     const matches = (rec: TeableRecord<ComboFields>) => {
@@ -176,13 +196,61 @@ export default function BreedingPairs() {
       const f2 = linkId(rec.fields['Frog 2']);
       return (f1 === a && f2 === b) || (f1 === b && f2 === a);
     };
-    const found: { type: string; screenshot: string | null }[] = [];
-    const chroma = (chromaCombos ?? []).find(matches);
-    if (chroma) found.push({ type: 'Chroma', screenshot: attachmentUrl(chroma.fields['Screenshot']) });
-    const glass = (glassCombos ?? []).find(matches);
-    if (glass) found.push({ type: 'Glass', screenshot: attachmentUrl(glass.fields['Screenshot']) });
-    return found;
+    const out: {
+      type: string;
+      screenshot: string | null;
+      lostId: string | null;
+      resultId: string | null;
+      resultTitle: string | null;
+    }[] = [];
+    const scan = (combos: TeableRecord<ComboFields>[] | undefined, type: string) =>
+      (combos ?? []).filter(matches).forEach(rec =>
+        out.push({
+          type,
+          screenshot: attachmentUrl(rec.fields['Screenshot']),
+          lostId: linkId(rec.fields[LOST_FROG_FIELD]),
+          resultId: linkId(rec.fields[RESULT_FROG_FIELD]),
+          resultTitle: linkTitle(rec.fields[RESULT_FROG_FIELD]),
+        }),
+      );
+    scan(chromaCombos, 'Chroma');
+    scan(glassCombos, 'Glass');
+    return out;
   }, [frogA, frogB, chromaCombos, glassCombos]);
+
+  // Resolve each Result Frog's record (stats + fullname) for the swapped slot.
+  // Shares the ['frog', id] cache with the Frog Detail page.
+  const resultIds = useMemo(
+    () => Array.from(new Set(specialMatches.map(s => s.resultId).filter(Boolean))) as string[],
+    [specialMatches],
+  );
+  const resultQueries = useQueries({
+    queries: resultIds.map(id => ({
+      queryKey: ['frog', id],
+      queryFn:  () => fetchFrogById<FrogFields>(id),
+      enabled:  !!id,
+      staleTime: 1000 * 60 * 60 * 24,
+    })),
+  });
+  const resultById = useMemo(() => {
+    const m = new Map<string, TeableRecord<FrogFields>>();
+    resultIds.forEach((id, i) => {
+      const data = resultQueries[i]?.data;
+      if (data) m.set(id, data);
+    });
+    return m;
+  }, [resultIds, resultQueries]);
+
+  // Lost-frog record id → the Result Frog that takes its place in the grid.
+  const replacementByLostId = useMemo(() => {
+    const m = new Map<string, { resultId: string; resultTitle: string | null; type: string }>();
+    for (const s of specialMatches) {
+      if (s.lostId && s.resultId) {
+        m.set(s.lostId, { resultId: s.resultId, resultTitle: s.resultTitle, type: s.type });
+      }
+    }
+    return m;
+  }, [specialMatches]);
 
   const result = useMemo(() => {
     if (!allSelected) return null;
@@ -205,6 +273,7 @@ export default function BreedingPairs() {
       const speed   = statInt(frog?.fields.Speed);
       const stamina = statInt(frog?.fields.Stamina);
       return [{
+        id:      frog?.id ?? null,
         name,
         found:   frog !== null,
         value,
@@ -212,11 +281,38 @@ export default function BreedingPairs() {
         speed,
         stamina,
         racing:  speed !== null && stamina !== null ? speed + stamina : null,
+        special: null as string | null,
       }];
     });
 
     return { cost, offspring };
   }, [allSelected, index, pa, pb, frogA, frogB]);
+
+  // Apply special-pair swaps: each offspring matching a Lost Frog is replaced by
+  // its Result Frog (real stats, profit recomputed against the same cost).
+  const displayedOffspring = useMemo(() => {
+    if (!result) return [];
+    if (replacementByLostId.size === 0) return result.offspring;
+    return result.offspring.map(o => {
+      const repl = o.id ? replacementByLostId.get(o.id) : undefined;
+      if (!repl) return o;
+      const rec = resultById.get(repl.resultId);
+      const value   = statInt(rec?.fields.Value);
+      const speed   = statInt(rec?.fields.Speed);
+      const stamina = statInt(rec?.fields.Stamina);
+      return {
+        id:      repl.resultId,
+        name:    rec?.fields.fullname ?? repl.resultTitle ?? o.name,
+        found:   true,
+        value,
+        profit:  value !== null ? value - result.cost : null,
+        speed,
+        stamina,
+        racing:  speed !== null && stamina !== null ? speed + stamina : null,
+        special: repl.type,
+      };
+    });
+  }, [result, replacementByLostId, resultById]);
 
   // ── Crosshair hover (mirrors the Breed Overview grid) ─────────────────────
   function clearHover() {
@@ -256,8 +352,8 @@ export default function BreedingPairs() {
         <p className="search-hint">Loading frog data…</p>
       ) : result ? (
         <>
-          {specials.map(s => (
-            <p key={s.type} className="breeding-special">
+          {specialMatches.map((s, i) => (
+            <p key={`${s.type}-${i}`} className="breeding-special">
               ✨ This pairing is known to produce a <strong>{s.type}</strong> frog!
               {s.screenshot && (
                 <button
@@ -286,8 +382,14 @@ export default function BreedingPairs() {
               <tbody>
                 <tr>
                   <th className="breeding-row-label" data-row="frog">Frog</th>
-                  {result.offspring.map((o, i) => (
-                    <th key={o.name} className="breeding-frog-name" data-row="frog" data-col={i}>
+                  {displayedOffspring.map((o, i) => (
+                    <th
+                      key={i}
+                      className={`breeding-frog-name${o.special ? ' breeding-frog-special' : ''}`}
+                      data-row="frog"
+                      data-col={i}
+                      title={o.special ? `${o.special} replacement` : undefined}
+                    >
                       {o.name.split(' ').map((word, w) => (
                         <span key={w} className="breeding-frog-word">{word}</span>
                       ))}
@@ -296,14 +398,14 @@ export default function BreedingPairs() {
                 </tr>
                 <tr>
                   <th className="breeding-row-label" data-row="value">Value</th>
-                  {result.offspring.map((o, i) => (
-                    <td key={o.name} data-row="value" data-col={i}>{o.value !== null ? formatNum(o.value) : (o.found ? '—' : 'Not Found')}</td>
+                  {displayedOffspring.map((o, i) => (
+                    <td key={i} data-row="value" data-col={i}>{o.value !== null ? formatNum(o.value) : (o.found ? '—' : 'Not Found')}</td>
                   ))}
                 </tr>
                 <tr>
                   <th className="breeding-row-label" data-row="profit">Net Profit</th>
-                  {result.offspring.map((o, i) => (
-                    <td key={o.name} data-row="profit" data-col={i} className={
+                  {displayedOffspring.map((o, i) => (
+                    <td key={i} data-row="profit" data-col={i} className={
                       o.profit === null ? undefined
                         : o.profit > 0 ? 'profit-positive'
                         : o.profit < 0 ? 'profit-negative'
@@ -315,20 +417,20 @@ export default function BreedingPairs() {
                 </tr>
                 <tr>
                   <th className="breeding-row-label" data-row="speed">Speed</th>
-                  {result.offspring.map((o, i) => (
-                    <td key={o.name} data-row="speed" data-col={i}>{o.speed !== null ? formatNum(o.speed) : '—'}</td>
+                  {displayedOffspring.map((o, i) => (
+                    <td key={i} data-row="speed" data-col={i}>{o.speed !== null ? formatNum(o.speed) : '—'}</td>
                   ))}
                 </tr>
                 <tr>
                   <th className="breeding-row-label" data-row="stamina">Stamina</th>
-                  {result.offspring.map((o, i) => (
-                    <td key={o.name} data-row="stamina" data-col={i}>{o.stamina !== null ? formatNum(o.stamina) : '—'}</td>
+                  {displayedOffspring.map((o, i) => (
+                    <td key={i} data-row="stamina" data-col={i}>{o.stamina !== null ? formatNum(o.stamina) : '—'}</td>
                   ))}
                 </tr>
                 <tr>
                   <th className="breeding-row-label" data-row="racing">Racing Stat</th>
-                  {result.offspring.map((o, i) => (
-                    <td key={o.name} data-row="racing" data-col={i}>{o.racing !== null ? formatNum(o.racing) : '—'}</td>
+                  {displayedOffspring.map((o, i) => (
+                    <td key={i} data-row="racing" data-col={i}>{o.racing !== null ? formatNum(o.racing) : '—'}</td>
                   ))}
                 </tr>
               </tbody>
