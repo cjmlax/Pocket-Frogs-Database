@@ -333,14 +333,6 @@ a.plain-link:hover {
   font-weight: 400;
 }
 
-.submit-note {
-  width: 100%;
-  box-sizing: border-box;
-  min-height: 72px;
-  resize: vertical;
-  font-family: var(--sans);
-}
-
 .submit-file {
   font-family: var(--sans);
   font-size: 14px;

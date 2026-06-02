@@ -6,12 +6,16 @@
 const SUBMIT_API = (import.meta.env.VITE_SUBMIT_API ?? 'https://pfdb-api.cjmlax.com').replace(/\/$/, '');
 
 export interface ComboSubmission {
-  variant:   'chroma' | 'glass';
-  frog1Id:   string;
-  frog2Id:   string;
-  frog1Name: string;
-  frog2Name: string;
-  note?:     string;
+  variant:        'chroma' | 'glass';
+  frog1Id:        string;
+  frog2Id:        string;
+  frog1Name:      string;
+  frog2Name:      string;
+  resultFrogId:   string;
+  resultFrogName: string;
+  lostFrogId?:    string;
+  lostFrogName?:  string;
+  sourceLink?:    string;
 }
 
 // Posts a combo submission as multipart/form-data (so an optional screenshot can
