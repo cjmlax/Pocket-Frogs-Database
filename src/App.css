@@ -983,6 +983,55 @@ main {
   background: var(--accent-bg);
 }
 
+.csv-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* ─── Downloads page ─────────────────────────────────────────────────────── */
+
+.export-table-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 560px;
+}
+
+.export-table-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+}
+
+.export-table-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.export-table-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.export-table-meta {
+  font-size: 12px;
+}
+
+.export-table-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
 /* Frog Detail page */
 .frog-detail-name {
   font-size: 22px;

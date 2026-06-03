@@ -132,6 +132,7 @@ export default function Layout() {
           <NavLink to="/breeds">Breed Overview</NavLink>
           <NavLink to="/breeding">Breeding Pairs</NavLink>
           <NavLink to="/submit">Submit</NavLink>
+          <NavLink to="/downloads">Downloads</NavLink>
         </nav>
         <div className="header-right">
           <SettingsDropdown />

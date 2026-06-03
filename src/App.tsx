@@ -7,6 +7,7 @@ import WeeklyList from './pages/WeeklyList';
 import BreedOverview from './pages/BreedOverview';
 import BreedingPairs from './pages/BreedingPairs';
 import SubmitCombo from './pages/SubmitCombo';
+import Downloads from './pages/Downloads';
 
 const router = createBrowserRouter([
   {
@@ -21,6 +22,7 @@ const router = createBrowserRouter([
       { path: 'breeds', element: <BreedOverview /> },
       { path: 'breeding', element: <BreedingPairs /> },
       { path: 'submit', element: <SubmitCombo /> },
+      { path: 'downloads', element: <Downloads /> },
     ],
   },
 ]);
