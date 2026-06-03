@@ -71,7 +71,7 @@ function FrogInputs({
 // ── Page ────────────────────────────────────────────────────────────────────────
 
 export default function SubmitCombo() {
-  const [variant, setVariant] = useState<Variant>('chroma');
+  const [variant, setVariant] = useState<Variant>('glass');
   const [p1, setP1] = useState<ParentSel>(EMPTY);
   const [p2, setP2] = useState<ParentSel>(EMPTY);
   const [pResult, setPResult] = useState<ParentSel>(EMPTY);
@@ -184,10 +184,10 @@ export default function SubmitCombo() {
   // ── Phase 2: the rest of the submission (only after a successful check) ─────
   const resultReady =
     picked(pResult) && !!frogR &&
+    picked(pLost) && !!frogL &&
     !resolving && !unknownFrog && !lostPartial && sourceValid && !alreadyExists &&
     colorConstraintMet;
-  const needsScreenshot = checked && resultReady && !screenshot;
-  const canSubmit = checked && resultReady && !!screenshot && !submitting;
+  const canSubmit = checked && resultReady && !submitting;
 
   async function handleSubmit() {
     if (!canSubmit || !frog1 || !frog2 || !frogR) return;
@@ -206,6 +206,7 @@ export default function SubmitCombo() {
         screenshot,
       );
       setResult({ ok: true, message: 'Thanks! Your submission was received and is pending review.' });
+      setTimeout(() => setResult(null), 3000);
       setP1(EMPTY); setP2(EMPTY); setPResult(EMPTY); setPLost(EMPTY);
       setSourceLink(''); setScreenshot(null); setChecked(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -299,12 +300,12 @@ export default function SubmitCombo() {
                 </div>
               }
             />
-            <FrogInputs title="Lost Frog" hint="(optional)" sel={pLost} onChange={setPLost} baseOpts={baseOpts} secOpts={secOpts} breedOpts={breedOpts} />
+            <FrogInputs title="Lost Frog" sel={pLost} onChange={setPLost} baseOpts={baseOpts} secOpts={secOpts} breedOpts={breedOpts} />
           </div>
 
           <div className="submit-extras">
             <div className="combobox-field">
-              <label className="combobox-label" htmlFor="combo-shot">Screenshot</label>
+              <label className="combobox-label" htmlFor="combo-shot">Screenshot <span className="submit-optional">(optional)</span></label>
               <input
                 id="combo-shot"
                 ref={fileRef}
@@ -346,8 +347,6 @@ export default function SubmitCombo() {
             </p>
           ) : alreadyExists ? (
             <p className="breeding-special">This {variant === 'chroma' ? 'Chroma' : 'Glass'} pairing is already in the database — switch the type above.</p>
-          ) : needsScreenshot ? (
-            <p className="search-hint">Screenshots are required for submission.</p>
           ) : null}
 
           <div className="submit-actions">
