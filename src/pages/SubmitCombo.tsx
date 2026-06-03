@@ -94,6 +94,21 @@ export default function SubmitCombo() {
   const baseOpts  = useMemo<ComboOption[]>(() => bases?.map(r => ({ id: r.id, label: r.fields.BaseColors ?? r.id })) ?? [], [bases]);
   const secOpts   = useMemo<ComboOption[]>(() => secs?.map( r => ({ id: r.id, label: r.fields.Sec_Color  ?? r.id })) ?? [], [secs]);
 
+  // The single valid choice for each variant's required color on the result frog.
+  // Glass requires Base Color = "Glass"; Chroma requires Secondary Color = "Chroma".
+  const glassBaseOpt  = useMemo(() => baseOpts.find(o => o.label === 'Glass')  ?? null, [baseOpts]);
+  const chromaSecOpt  = useMemo(() => secOpts.find(o => o.label === 'Chroma')  ?? null, [secOpts]);
+
+  // Result frog pickers are narrowed to the one valid option for the active variant.
+  const resultBaseOpts = useMemo(
+    () => variant === 'glass'  && glassBaseOpt  ? [glassBaseOpt]  : baseOpts,
+    [variant, glassBaseOpt, baseOpts],
+  );
+  const resultSecOpts  = useMemo(
+    () => variant === 'chroma' && chromaSecOpt  ? [chromaSecOpt]  : secOpts,
+    [variant, chromaSecOpt, secOpts],
+  );
+
   // Resolve each picked frog via its breed's frogs (shared 24h cache, deduped).
   const q1 = useQuery({ queryKey: ['breed-frogs', p1.breed?.id],      queryFn: () => fetchBreedFrogs<FrogFields>(p1.breed!.id),      enabled: !!p1.breed,      staleTime: DAY });
   const q2 = useQuery({ queryKey: ['breed-frogs', p2.breed?.id],      queryFn: () => fetchBreedFrogs<FrogFields>(p2.breed!.id),      enabled: !!p2.breed,      staleTime: DAY });
@@ -128,6 +143,11 @@ export default function SubmitCombo() {
 
   const sourceTrim = sourceLink.trim();
   const sourceValid = sourceTrim === '' || isUrl(sourceTrim);
+
+  const colorConstraintMet =
+    variant === 'glass'  ? pResult.base?.id === glassBaseOpt?.id :
+    variant === 'chroma' ? pResult.sec?.id  === chromaSecOpt?.id :
+    true;
 
   // Existing combos, to warn about duplicate parent pairs before submitting.
   const { data: chromaCombos } = useQuery({ queryKey: ['table', 'chroma'], queryFn: () => fetchCombos<ComboFields>('chroma') });
@@ -164,7 +184,8 @@ export default function SubmitCombo() {
   // ── Phase 2: the rest of the submission (only after a successful check) ─────
   const resultReady =
     picked(pResult) && !!frogR &&
-    !resolving && !unknownFrog && !lostPartial && sourceValid && !alreadyExists;
+    !resolving && !unknownFrog && !lostPartial && sourceValid && !alreadyExists &&
+    colorConstraintMet;
   const needsScreenshot = checked && resultReady && !screenshot;
   const canSubmit = checked && resultReady && !!screenshot && !submitting;
 
@@ -195,11 +216,27 @@ export default function SubmitCombo() {
     }
   }
 
+  // Returns the pResult state with the active variant's required color pre-set.
+  function constrainedResult(v: Variant): ParentSel {
+    return {
+      base:  v === 'glass'  ? glassBaseOpt  : null,
+      sec:   v === 'chroma' ? chromaSecOpt  : null,
+      breed: null,
+    };
+  }
+
   // Lock in the verified parents and reveal the rest of the form.
   function handleProceed() {
     if (!canProceed) return;
+    setPResult(constrainedResult(variant));
     setChecked(true);
     setResult(null);
+  }
+
+  // Switching variants resets the result frog so the constrained color updates.
+  function handleVariantChange(v: Variant) {
+    setVariant(v);
+    setPResult(constrainedResult(v));
   }
 
   // Unlock the parents to correct an input error (re-check required to proceed).
@@ -240,20 +277,21 @@ export default function SubmitCombo() {
 
           <div className="breeding-parents">
             <FrogInputs
+              key={variant}
               title="Result Frog"
               sel={pResult}
               onChange={setPResult}
-              baseOpts={baseOpts}
-              secOpts={secOpts}
+              baseOpts={resultBaseOpts}
+              secOpts={resultSecOpts}
               breedOpts={breedOpts}
               control={
                 <div className="settings-row type-toggle">
-                  {(['chroma', 'glass'] as const).map(v => (
+                  {(['glass', 'chroma'] as const).map(v => (
                     <button
                       key={v}
                       type="button"
                       className={`settings-theme-opt${variant === v ? ' active' : ''}`}
-                      onClick={() => setVariant(v)}
+                      onClick={() => handleVariantChange(v)}
                     >
                       {v === 'chroma' ? 'Chroma' : 'Glass'}
                     </button>
@@ -266,19 +304,6 @@ export default function SubmitCombo() {
 
           <div className="submit-extras">
             <div className="combobox-field">
-              <label className="combobox-label" htmlFor="combo-source">Source link <span className="submit-optional">(optional)</span></label>
-              <input
-                id="combo-source"
-                className="search-input"
-                style={{ width: '100%' }}
-                type="url"
-                inputMode="url"
-                value={sourceLink}
-                placeholder="https://… where the combination was posted"
-                onChange={e => setSourceLink(e.target.value)}
-              />
-            </div>
-            <div className="combobox-field">
               <label className="combobox-label" htmlFor="combo-shot">Screenshot</label>
               <input
                 id="combo-shot"
@@ -287,6 +312,19 @@ export default function SubmitCombo() {
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/gif"
                 onChange={e => setScreenshot(e.target.files?.[0] ?? null)}
+              />
+            </div>
+            <div className="combobox-field">
+              <label className="combobox-label" htmlFor="combo-source">Attribution link <span className="submit-optional">(optional)</span></label>
+              <input
+                id="combo-source"
+                className="search-input"
+                style={{ width: '100%' }}
+                type="url"
+                inputMode="url"
+                value={sourceLink}
+                placeholder="https://… link to Discord/Reddit/etc post"
+                onChange={e => setSourceLink(e.target.value)}
               />
             </div>
           </div>
@@ -299,7 +337,13 @@ export default function SubmitCombo() {
           ) : lostPartial ? (
             <p className="search-error">Finish or clear the Lost Frog selection.</p>
           ) : !sourceValid ? (
-            <p className="search-error">The source link must be a valid http(s) URL.</p>
+            <p className="search-error">The attribution link must be a valid http(s) URL.</p>
+          ) : !colorConstraintMet ? (
+            <p className="search-error">
+              {variant === 'glass'
+                ? 'The result frog\'s Base Color must be Glass.'
+                : 'The result frog\'s Secondary Color must be Chroma.'}
+            </p>
           ) : alreadyExists ? (
             <p className="breeding-special">This {variant === 'chroma' ? 'Chroma' : 'Glass'} pairing is already in the database — switch the type above.</p>
           ) : needsScreenshot ? (
