@@ -5,7 +5,8 @@ const EXPORT_API = (import.meta.env.VITE_SUBMIT_API ?? 'https://pfdb-api.cjmlax.
 interface TableMeta {
   slug: string;
   label: string;
-  lastExported: string | null;
+  hash: string | null;
+  exportedAt: string | null;
 }
 
 function timeAgo(iso: string): string {
@@ -47,14 +48,17 @@ export default function Downloads() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${slug}-${new Date().toISOString().slice(0, 10)}.csv`;
+      // Filename comes from Content-Disposition on the server (includes hash).
+      // The fallback here is overridden by the browser honouring that header.
+      a.download = `${slug}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      setTables(ts =>
-        ts?.map(t => t.slug === slug ? { ...t, lastExported: new Date().toISOString() } : t) ?? null,
-      );
+      // Re-fetch meta so the displayed hash updates for everyone, not just the downloader.
+      const fresh: TableMeta[] | null = await fetch(`${EXPORT_API}/api/export`)
+        .then(r => r.ok ? r.json() : null).catch(() => null);
+      if (fresh) setTables(fresh);
     } catch {
       setDlErrors(e => ({ ...e, [slug]: 'Download failed. Please try again.' }));
     } finally {
@@ -75,12 +79,14 @@ export default function Downloads() {
         <p className="search-hint">Loading…</p>
       ) : (
         <div className="export-table-list">
-          {tables.map(({ slug, label, lastExported }) => (
+          {tables.map(({ slug, label, hash, exportedAt }) => (
             <div key={slug} className="export-table-row">
               <div className="export-table-info">
                 <span className="export-table-name">{label}</span>
                 <span className="export-table-meta submit-optional">
-                  {lastExported ? `Last exported ${timeAgo(lastExported)}` : 'Not yet exported this session'}
+                  {hash
+                    ? <>Fingerprint: <code>{hash}</code> · {exportedAt ? timeAgo(exportedAt) : ''}</>
+                    : 'Not yet exported'}
                 </span>
               </div>
               <div className="export-table-action">
