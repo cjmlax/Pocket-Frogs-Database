@@ -8,4 +8,8 @@ export default defineConfig({
     react(),
     tailwindcss()
   ],
+  build: {
+    outDir: '\\\\CMHEX\\Media\\PFDB-React',
+    emptyOutDir: true,
+  },
 })
