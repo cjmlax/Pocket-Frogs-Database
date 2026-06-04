@@ -106,7 +106,7 @@ export default function Downloads() {
                     {hash
                       ? <>Fingerprint: <code>{hash}</code> · export checked {exportedAt ? timeAgo(exportedAt) : '—'}</>
                       : 'Export hash not yet generated'}
-                    {sourceTs && <> · source updated {timeAgo(sourceTs)}</>}
+                    {sourceTs && <> · source updated {new Date(sourceTs).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</>}
                   </span>
                 </div>
                 <div className="export-table-action">
