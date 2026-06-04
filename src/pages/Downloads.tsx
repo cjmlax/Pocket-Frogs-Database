@@ -70,7 +70,7 @@ export default function Downloads() {
     <div>
       <h1>Database Exports</h1>
       <p className="search-hint" style={{ marginTop: 0 }}>
-        Data is available for export as it's stored in the database. Note that this is stored as I coded it, and I don't currently have a guide to decipher it. The exports are direct from the database and the fingerprints are updated every 24 hrs. If your filename has the same hash as below, you do not need to re-export the data.
+        Data is available for export as it's stored in the database. Note that this is stored as I coded it, and I don't currently have a guide to decipher it. The exports are direct from the database and the fingerprints are checked/updated when anyone pulls a download, or at least every 24 hrs. If your filename has the same hash as below, you do not need to re-export the data.
       </p>
 
       {loadError ? (
