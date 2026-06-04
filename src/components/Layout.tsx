@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { NavLink, Outlet } from 'react-router';
+import { NavLink, Outlet, useLocation } from 'react-router';
 import { useTheme } from '../hooks/useTheme';
 import { useBreedSort, selectBreedSort } from '../hooks/useBreedSort';
 import { useColorSort, selectColorSort } from '../hooks/useColorSort';
@@ -50,6 +50,65 @@ function IconMonitor() {
       <line x1="8" y1="21" x2="16" y2="21"/>
       <line x1="12" y1="17" x2="12" y2="21"/>
     </svg>
+  );
+}
+
+// ── Submit dropdown ───────────────────────────────────────────────────────────
+
+function SubmitDropdown() {
+  const [open, setOpen] = useState(false);
+  const [panelPos, setPanelPos] = useState({ top: 0, left: 0 });
+  const btnRef   = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const isActive = location.pathname.startsWith('/submit');
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (
+        btnRef.current   && !btnRef.current.contains(e.target as Node) &&
+        panelRef.current && !panelRef.current.contains(e.target as Node)
+      ) setOpen(false);
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
+  useEffect(() => { setOpen(false); }, [location.pathname]);
+
+  function handleOpen() {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPanelPos({ top: r.bottom + 4, left: r.left });
+    }
+    setOpen(o => !o);
+  }
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        className={`submit-nav-btn${isActive ? ' active' : ''}`}
+        onClick={handleOpen}
+        aria-expanded={open}
+      >
+        Submit ▾
+      </button>
+      {open && (
+        <div
+          ref={panelRef}
+          className="submit-nav-panel"
+          style={{ top: panelPos.top, left: panelPos.left }}
+        >
+          <NavLink to="/submit" end className="submit-nav-link" onClick={() => setOpen(false)}>
+            Combo
+          </NavLink>
+          <NavLink to="/submit/weekly" className="submit-nav-link" onClick={() => setOpen(false)}>
+            Weekly Set
+          </NavLink>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -167,7 +226,7 @@ function NavBar() {
         <NavLink to="/weekly">Weekly Sets</NavLink>
         <NavLink to="/breeds">Breed Overview</NavLink>
         <NavLink to="/breeding">Breeding Pairs</NavLink>
-        <NavLink to="/submit">Submit</NavLink>
+        <SubmitDropdown />
         <NavLink to="/downloads">Downloads</NavLink>
       </nav>
       <button

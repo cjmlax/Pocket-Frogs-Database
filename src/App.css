@@ -876,6 +876,68 @@ tr:hover .pin-btn,
   color: var(--accent);
 }
 
+/* ─── Submit dropdown nav ────────────────────────────────────────────────── */
+
+.submit-nav-btn {
+  color: var(--text);
+  background: none;
+  border: none;
+  font-size: 15px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  white-space: nowrap;
+  font-family: var(--sans);
+}
+
+.submit-nav-btn:hover { color: var(--text-h); background: var(--code-bg); }
+.submit-nav-btn.active { color: var(--accent); }
+
+.submit-nav-panel {
+  position: fixed;
+  z-index: 200;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  min-width: 130px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.submit-nav-link {
+  color: var(--text);
+  text-decoration: none;
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.submit-nav-link:hover { color: var(--text-h); background: var(--code-bg); }
+.submit-nav-link.active { color: var(--accent); }
+
+/* ─── Weekly set submit page ─────────────────────────────────────────────── */
+
+.weekly-submit-fields {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  max-width: 480px;
+}
+
+.weekly-submit-fields .combobox-field {
+  flex: 1;
+  min-width: 180px;
+}
+
+.weekly-frog-slots {
+  flex-wrap: wrap;
+}
+
 .settings-wrap {
   position: relative;
 }

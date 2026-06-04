@@ -18,6 +18,35 @@ export interface ComboSubmission {
   sourceLink?:    string;
 }
 
+export interface WeeklySetSubmission {
+  setName: string;
+  reward:  number;
+  frogs:   string[]; // 4–8 resolved frog full names
+}
+
+export async function submitWeeklySet(data: WeeklySetSubmission): Promise<void> {
+  const form = new FormData();
+  form.append('type', 'weekly');
+  form.append('payload', JSON.stringify(data));
+  form.append('hp_url', '');
+
+  let res: Response;
+  try {
+    res = await fetch(`${SUBMIT_API}/api/submit`, { method: 'POST', body: form });
+  } catch {
+    throw new Error('Could not reach the submission service. Please try again later.');
+  }
+
+  if (!res.ok) {
+    let detail = `Submission failed (HTTP ${res.status}).`;
+    try {
+      const body = await res.json();
+      if (body?.error) detail = String(body.error);
+    } catch { /* keep default */ }
+    throw new Error(detail);
+  }
+}
+
 // Posts a combo submission as multipart/form-data (so an optional screenshot can
 // ride along). Resolves on success, throws with a readable message otherwise.
 export async function submitCombo(data: ComboSubmission, screenshot?: File | null): Promise<void> {
