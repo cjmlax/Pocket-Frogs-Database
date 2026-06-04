@@ -37,6 +37,7 @@ export default function Downloads() {
   const [downloading, setDownloading] = useState<Record<string, boolean>>({});
   const [dlErrors, setDlErrors] = useState<Record<string, string>>({});
   const [tsMeta, setTsMeta] = useState<Map<string, string> | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetch(`${EXPORT_API}/api/export`)
@@ -48,6 +49,17 @@ export default function Downloads() {
       .then(setTsMeta)
       .catch(() => {}); // non-critical — page works fine without it
   }, []);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      const fresh: TableMeta[] | null = await fetch(`${EXPORT_API}/api/export`)
+        .then(r => r.ok ? r.json() : null).catch(() => null);
+      if (fresh) setTables(fresh);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   async function handleDownload(slug: string) {
     setDownloading(d => ({ ...d, [slug]: true }));
@@ -84,7 +96,22 @@ export default function Downloads() {
 
   return (
     <div>
-      <h1>Database Exports</h1>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <h1>Database Exports</h1>
+        <button
+          className={`refresh-btn${refreshing ? ' spinning' : ''}`}
+          onClick={handleRefresh}
+          disabled={refreshing}
+          title="Refresh export data"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+            <path d="M16 16h5v5"/>
+          </svg>
+        </button>
+      </div>
       <p className="search-hint" style={{ marginTop: 0 }}>
         Data is available for export as it's stored in the database. Note that this is stored as I coded it, and I don't currently have a guide to decipher it. The exports are direct from the database and the fingerprints are checked/updated when anyone pulls a download, or at least every 24 hrs. If your filename has the same hash as below, you do not need to re-export the data.
       </p>

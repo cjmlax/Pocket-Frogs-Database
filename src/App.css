@@ -1093,6 +1093,29 @@ main {
 
 /* ─── Downloads page ─────────────────────────────────────────────────────── */
 
+.refresh-btn {
+  background: none;
+  border: none;
+  color: var(--text-h);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  opacity: 0.55;
+  margin-top: 4px;
+}
+
+.refresh-btn:hover { opacity: 1; }
+.refresh-btn:disabled { opacity: 0.25; cursor: default; }
+.refresh-btn svg { width: 18px; height: 18px; }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.refresh-btn.spinning svg { animation: spin 0.75s linear infinite; }
+
 .export-table-list {
   display: flex;
   flex-direction: column;
