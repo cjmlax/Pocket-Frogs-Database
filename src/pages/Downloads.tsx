@@ -53,7 +53,7 @@ export default function Downloads() {
   async function handleRefresh() {
     setRefreshing(true);
     try {
-      const fresh: TableMeta[] | null = await fetch(`${EXPORT_API}/api/export`)
+      const fresh: TableMeta[] | null = await fetch(`${EXPORT_API}/api/export`, { cache: 'no-store' })
         .then(r => r.ok ? r.json() : null).catch(() => null);
       if (fresh) setTables(fresh);
     } finally {
@@ -84,7 +84,7 @@ export default function Downloads() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       // Re-fetch meta so the displayed hash updates for everyone, not just the downloader.
-      const fresh: TableMeta[] | null = await fetch(`${EXPORT_API}/api/export`)
+      const fresh: TableMeta[] | null = await fetch(`${EXPORT_API}/api/export`, { cache: 'no-store' })
         .then(r => r.ok ? r.json() : null).catch(() => null);
       if (fresh) setTables(fresh);
     } catch {
