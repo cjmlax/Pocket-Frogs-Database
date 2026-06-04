@@ -177,6 +177,45 @@ export async function fetchBreedFrogs<T extends Record<string, unknown>>(
   return records;
 }
 
+// ── Weekly set availability ────────────────────────────────────────────────
+// Field ID for "Year/Set Identifier" in the weekly table (fld0g2OJuIM4fScLjfS).
+// Computed client-side using the same ET timezone + Monday 2pm cutoff as the server.
+
+function getCurrentISOWeek(): string {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    weekday: 'long', hour: 'numeric', hour12: false,
+  }).formatToParts(now);
+  const get = (type: string) => parts.find(p => p.type === type)?.value ?? '';
+  const year    = parseInt(get('year'),  10);
+  const month   = parseInt(get('month'), 10);
+  const day     = parseInt(get('day'),   10);
+  const weekday = get('weekday');
+  const hour    = parseInt(get('hour') || '12', 10) % 24;
+  const d = new Date(Date.UTC(year, month - 1, day));
+  if (weekday === 'Monday' && hour < 14) d.setUTCDate(d.getUTCDate() - 7);
+  const dow = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dow);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${d.getUTCFullYear()}-${String(weekNo).padStart(2, '0')}`;
+}
+
+export async function checkWeeklyStatus(): Promise<{ week: string; exists: boolean }> {
+  const week = getCurrentISOWeek();
+  const filter = JSON.stringify({
+    conjunction: 'and',
+    filterSet: [{ fieldId: 'fld0g2OJuIM4fScLjfS', operator: 'is', value: week }],
+  });
+  const url = `${BASE_URL}/${TABLES.weekly.id}/record?fieldKeyType=id&take=1&filter=${encodeURIComponent(filter)}`;
+  const res = await fetch(url, { headers: { Accept: 'application/json' } });
+  if (!res.ok) throw new Error(`Weekly status check failed: ${res.status}`);
+  const data = (await res.json()) as { records?: unknown[] };
+  return { week, exists: (data.records?.length ?? 0) > 0 };
+}
+
 // Fetches a single frog record by its Teable record ID
 export async function fetchFrogById<T extends Record<string, unknown>>(
   recordId: string,

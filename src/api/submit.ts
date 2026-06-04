@@ -21,7 +21,7 @@ export interface ComboSubmission {
 export interface WeeklySetSubmission {
   setName: string;
   reward:  number;
-  frogs:   string[]; // 4–8 resolved frog full names
+  frogs:   string[]; // 4–8 Teable record IDs from the frogs table
 }
 
 export async function submitWeeklySet(data: WeeklySetSubmission): Promise<void> {

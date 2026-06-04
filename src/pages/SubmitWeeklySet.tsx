@@ -6,6 +6,7 @@ import { breedOptionsFrom } from '../utils/breeds';
 import { useBreedSort } from '../hooks/useBreedSort';
 import { useColorSort } from '../hooks/useColorSort';
 import { colorOptionsFrom } from '../utils/colors';
+import { checkWeeklyStatus } from '../api/teable';
 import { submitWeeklySet } from '../api/submit';
 
 interface BreedFields extends Record<string, unknown> { Breed?: string }
@@ -63,6 +64,13 @@ export default function SubmitWeeklySet() {
   );
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult]         = useState<{ ok: boolean; message: string } | null>(null);
+  const [resetKey, setResetKey]     = useState(0);
+
+  const { data: weeklyStatus, isLoading: statusLoading } = useQuery({
+    queryKey: ['weekly-status'],
+    queryFn: checkWeeklyStatus,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { data: breeds } = useQuery({ queryKey: ['table', 'breeds'], queryFn: () => fetchTable<BreedFields>('breeds') });
   const { data: bases  } = useQuery({ queryKey: ['table', 'bases'],  queryFn: () => fetchTable<BaseFields>('bases')  });
@@ -75,35 +83,35 @@ export default function SubmitWeeklySet() {
   const baseOpts  = useMemo<ComboOption[]>(() => colorOptionsFrom(bases, 'BaseColors', colorSort), [bases, colorSort]);
   const secOpts   = useMemo<ComboOption[]>(() => colorOptionsFrom(secs,  'Sec_Color',  colorSort), [secs,  colorSort]);
 
-  const frogNameSet = useMemo<Set<string>>(() => {
-    const s = new Set<string>();
-    for (const f of frogs ?? []) if (f.fields.fullname) s.add(f.fields.fullname);
-    return s;
+  // Maps each frog's display name → its Teable record ID so we can submit IDs
+  // directly to the link fields on the weekly table instead of plain strings.
+  const frogRecordId = useMemo<Map<string, string>>(() => {
+    const m = new Map<string, string>();
+    for (const f of frogs ?? []) if (f.fields.fullname) m.set(f.fields.fullname, f.id);
+    return m;
   }, [frogs]);
 
-  const resolvedNames = useMemo(
+  const resolvedIds = useMemo(
     () => slots.map(s => {
       if (!filled(s)) return null;
       const name = fullName(s)!;
-      return frogNameSet.size === 0 ? name : frogNameSet.has(name) ? name : 'UNKNOWN';
+      const id = frogRecordId.get(name);
+      return id ?? 'UNKNOWN';
     }),
-    [slots, frogNameSet],
+    [slots, frogRecordId],
   );
 
   const rewardNum   = parseInt(reward, 10);
   const rewardValid = reward !== '' && Number.isInteger(rewardNum) && rewardNum > 0;
   const setNameTrim = setName.trim();
 
-  const filledSlots   = resolvedNames.filter(n => n !== null);
-  const unknownFrogs  = resolvedNames.some(n => n === 'UNKNOWN');
-  const enoughFrogs   = filledSlots.length >= MIN_FROGS && !unknownFrogs;
-  const validFrogNames = resolvedNames.filter((n): n is string => n !== null && n !== 'UNKNOWN');
-
-  // Warn if two slots resolved to the same frog name
-  const hasDuplicates = validFrogNames.length !== new Set(validFrogNames).size;
+  const filledSlots  = resolvedIds.filter(n => n !== null);
+  const unknownFrogs = resolvedIds.some(n => n === 'UNKNOWN');
+  const enoughFrogs  = filledSlots.length >= MIN_FROGS && !unknownFrogs;
+  const validFrogIds = resolvedIds.filter((n): n is string => n !== null && n !== 'UNKNOWN');
 
   const canSubmit =
-    setNameTrim !== '' && rewardValid && enoughFrogs && !hasDuplicates && !submitting &&
+    setNameTrim !== '' && rewardValid && enoughFrogs && !submitting &&
     frogs !== undefined; // wait for frog list to load before allowing submit
 
   function handleSlotChange(i: number, s: SlotSel) {
@@ -123,17 +131,39 @@ export default function SubmitWeeklySet() {
     setSubmitting(true);
     setResult(null);
     try {
-      await submitWeeklySet({ setName: setNameTrim, reward: rewardNum, frogs: validFrogNames });
+      await submitWeeklySet({ setName: setNameTrim, reward: rewardNum, frogs: validFrogIds });
       setResult({ ok: true, message: 'Thanks! Your submission was received and is pending review.' });
       setTimeout(() => setResult(null), 4000);
       setSetName('');
       setReward('');
       setSlots(Array.from({ length: MIN_FROGS }, () => ({ ...EMPTY_SLOT })));
+      setResetKey(k => k + 1);
     } catch (e) {
       setResult({ ok: false, message: e instanceof Error ? e.message : 'Something went wrong.' });
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (statusLoading) {
+    return (
+      <div>
+        <h1>Weekly Set Submission</h1>
+        <p className="search-hint" style={{ marginTop: 0 }}>Checking availability…</p>
+      </div>
+    );
+  }
+
+  if (weeklyStatus?.exists) {
+    return (
+      <div>
+        <h1>Weekly Set Submission</h1>
+        <p className="search-hint" style={{ marginTop: 0 }}>
+          A weekly set for <strong>{weeklyStatus.week}</strong> has already been submitted.
+          Check back next week!
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -157,7 +187,7 @@ export default function SubmitWeeklySet() {
           />
         </div>
         <div className="combobox-field">
-          <label className="combobox-label" htmlFor="ws-reward">Reward (stamps)</label>
+          <label className="combobox-label" htmlFor="ws-reward">Reward (stamps/potions)</label>
           <input
             id="ws-reward"
             className="search-input"
@@ -172,7 +202,7 @@ export default function SubmitWeeklySet() {
         </div>
       </div>
 
-      <div className="breeding-parents weekly-frog-slots">
+      <div key={resetKey} className="breeding-parents weekly-frog-slots">
         {slots.map((slot, i) => (
           <FrogSlot
             key={i}
@@ -199,9 +229,7 @@ export default function SubmitWeeklySet() {
       {unknownFrogs && (
         <p className="search-error">One or more selected combinations isn't a known frog.</p>
       )}
-      {hasDuplicates && (
-        <p className="search-error">Each frog in the set must be unique.</p>
-      )}
+
       {!rewardValid && reward !== '' && (
         <p className="search-error">Reward must be a positive whole number.</p>
       )}

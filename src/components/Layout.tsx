@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink, Outlet, useLocation } from 'react-router';
 import { useTheme } from '../hooks/useTheme';
 import { useBreedSort, selectBreedSort } from '../hooks/useBreedSort';
@@ -94,7 +95,7 @@ function SubmitDropdown() {
       >
         Submit ▾
       </button>
-      {open && (
+      {open && createPortal(
         <div
           ref={panelRef}
           className="submit-nav-panel"
@@ -106,7 +107,8 @@ function SubmitDropdown() {
           <NavLink to="/submit/weekly" className="submit-nav-link" onClick={() => setOpen(false)}>
             Weekly Set
           </NavLink>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
