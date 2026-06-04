@@ -53,7 +53,7 @@ export default function Downloads() {
   async function handleRefresh() {
     setRefreshing(true);
     try {
-      const fresh: TableMeta[] | null = await fetch(`${EXPORT_API}/api/export`, { cache: 'no-store' })
+      const fresh: TableMeta[] | null = await fetch(`${EXPORT_API}/api/export/refresh`, { method: 'POST', cache: 'no-store' })
         .then(r => r.ok ? r.json() : null).catch(() => null);
       if (fresh) setTables(fresh);
     } finally {
