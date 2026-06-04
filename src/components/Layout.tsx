@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router';
 import { useTheme, type ThemeMode } from '../hooks/useTheme';
 import { useBreedSort, selectBreedSort } from '../hooks/useBreedSort';
+import { useColorSort, selectColorSort } from '../hooks/useColorSort';
 import '../App.css';
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
@@ -32,6 +33,16 @@ function IconMoon() {
   );
 }
 
+function IconRainbow() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M22 17a10 10 0 0 0-20 0"/>
+      <path d="M18 17a6 6 0 0 0-12 0"/>
+      <path d="M14 17a2 2 0 0 0-4 0"/>
+    </svg>
+  );
+}
+
 function IconMonitor() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -44,15 +55,11 @@ function IconMonitor() {
 
 // ── Settings dropdown ─────────────────────────────────────────────────────────
 
-const THEME_OPTIONS: { mode: ThemeMode; icon: React.ReactNode; label: string }[] = [
-  { mode: null,    icon: <IconMonitor />, label: 'System' },
-  { mode: 'light', icon: <IconSun />,     label: 'Light'  },
-  { mode: 'dark',  icon: <IconMoon />,    label: 'Dark'   },
-];
 
 function SettingsDropdown() {
   const { theme, choose } = useTheme();
   const breedSort = useBreedSort();
+  const colorSort = useColorSort();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -79,41 +86,97 @@ function SettingsDropdown() {
 
       {open && (
         <div className="settings-panel">
-          <div className="settings-row">
-            {THEME_OPTIONS.map(({ mode, icon, label }) => (
-              <button
-                key={label}
-                className={`settings-theme-opt${theme === mode ? ' active' : ''}`}
-                onClick={() => choose(mode)}
-                aria-label={label}
-                title={label}
-              >
-                {icon}
-              </button>
-            ))}
-          </div>
+          {/* Row 1: Theme — System (left), Light (center), Dark (right) */}
+          <button className={`settings-theme-opt${theme === null ? ' active' : ''}`} onClick={() => choose(null)} aria-label="System" title="System">
+            <IconMonitor />
+          </button>
+          <button className={`settings-theme-opt${theme === 'light' ? ' active' : ''}`} onClick={() => choose('light')} aria-label="Light" title="Light">
+            <IconSun />
+          </button>
+          <button className={`settings-theme-opt${theme === 'dark' ? ' active' : ''}`} onClick={() => choose('dark')} aria-label="Dark" title="Dark">
+            <IconMoon />
+          </button>
 
-          <div className="settings-row">
-            <span className="settings-row-label" title="Breed sort order">Breed:</span>
-            <button
-              className={`settings-theme-opt${breedSort.key === 'alpha' ? ' active' : ''}`}
-              onClick={() => selectBreedSort('alpha')}
-              aria-label="Sort breeds alphabetically"
-              title="Alphabetical Sort"
-            >
-              A{breedSort.key === 'alpha' && (breedSort.dir === 'asc' ? ' ↑' : ' ↓')}
-            </button>
-            <button
-              className={`settings-theme-opt${breedSort.key === 'level' ? ' active' : ''}`}
-              onClick={() => selectBreedSort('level')}
-              aria-label="Sort breeds by level"
-              title="Level Sort"
-            >
-              #{breedSort.key === 'level' && (breedSort.dir === 'asc' ? ' ↑' : ' ↓')}
-            </button>
-          </div>
+          {/* Row 2: Breed sort — label (left), level (center), alpha (right) */}
+          <span className="settings-row-label" title="Breed sort order">Breed:</span>
+          <button className={`settings-theme-opt${breedSort.key === 'level' ? ' active' : ''}`} onClick={() => selectBreedSort('level')} aria-label="Sort breeds by level" title="Level Sort">
+            #{breedSort.key === 'level' && (breedSort.dir === 'asc' ? ' ↑' : ' ↓')}
+          </button>
+          <button className={`settings-theme-opt${breedSort.key === 'alpha' ? ' active' : ''}`} onClick={() => selectBreedSort('alpha')} aria-label="Sort breeds alphabetically" title="Alphabetical Sort">
+            A{breedSort.key === 'alpha' && (breedSort.dir === 'asc' ? ' ↑' : ' ↓')}
+          </button>
+
+          {/* Row 3: Color sort — label (left), rainbow (center), alpha (right) */}
+          <span className="settings-row-label" title="Color sort order">Color:</span>
+          <button className={`settings-theme-opt${colorSort.key === 'rainbow' ? ' active' : ''}`} onClick={() => selectColorSort('rainbow')} aria-label="Sort colors by rainbow order" title="Rainbow Order">
+            <IconRainbow />{colorSort.key === 'rainbow' && (colorSort.dir === 'asc' ? ' ↑' : ' ↓')}
+          </button>
+          <button className={`settings-theme-opt${colorSort.key === 'alpha' ? ' active' : ''}`} onClick={() => selectColorSort('alpha')} aria-label="Sort colors alphabetically" title="Alphabetical Sort">
+            A{colorSort.key === 'alpha' && (colorSort.dir === 'asc' ? ' ↑' : ' ↓')}
+          </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Scrollable nav bar ────────────────────────────────────────────────────────
+
+function NavBar() {
+  const navRef = useRef<HTMLElement>(null);
+  const [showLeft, setShowLeft] = useState(false);
+  const [showRight, setShowRight] = useState(false);
+
+  function updateArrows() {
+    const el = navRef.current;
+    if (!el) return;
+    setShowLeft(el.scrollLeft > 0);
+    setShowRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  }
+
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+    updateArrows();
+    el.addEventListener('scroll', updateArrows, { passive: true });
+    const ro = new ResizeObserver(updateArrows);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', updateArrows);
+      ro.disconnect();
+    };
+  }, []);
+
+  function scrollNav(dir: 'left' | 'right') {
+    navRef.current?.scrollBy({ left: dir === 'right' ? 160 : -160, behavior: 'smooth' });
+  }
+
+  return (
+    <div className="nav-scroll-wrap">
+      <button
+        className="nav-arrow"
+        style={{ visibility: showLeft ? 'visible' : 'hidden' }}
+        onClick={() => scrollNav('left')}
+        tabIndex={showLeft ? 0 : -1}
+        aria-label="Scroll navigation left"
+      >‹</button>
+      <nav className={`nav-links${showLeft ? ' has-left-overflow' : ''}`} ref={navRef}>
+        <NavLink to="/" className="nav-brand" end>Home</NavLink>
+        <NavLink to="/frogs">Frog Lookup</NavLink>
+        <NavLink to="/frog">Frog Detail</NavLink>
+        <NavLink to="/weekly">Weekly Sets</NavLink>
+        <NavLink to="/breeds">Breed Overview</NavLink>
+        <NavLink to="/breeding">Breeding Pairs</NavLink>
+        <NavLink to="/submit">Submit</NavLink>
+        <NavLink to="/downloads">Downloads</NavLink>
+      </nav>
+      <button
+        className="nav-arrow"
+        style={{ visibility: showRight ? 'visible' : 'hidden' }}
+        onClick={() => scrollNav('right')}
+        tabIndex={showRight ? 0 : -1}
+        aria-label="Scroll navigation right"
+      >›</button>
     </div>
   );
 }
@@ -124,16 +187,7 @@ export default function Layout() {
   return (
     <>
       <header className="site-header">
-        <nav className="nav-links">
-          <NavLink to="/" className="nav-brand" end>Home</NavLink>
-          <NavLink to="/frogs">Frog Lookup</NavLink>
-          <NavLink to="/frog">Frog Detail</NavLink>
-          <NavLink to="/weekly">Weekly Sets</NavLink>
-          <NavLink to="/breeds">Breed Overview</NavLink>
-          <NavLink to="/breeding">Breeding Pairs</NavLink>
-          <NavLink to="/submit">Submit</NavLink>
-          <NavLink to="/downloads">Downloads</NavLink>
-        </nav>
+        <NavBar />
         <div className="header-right">
           <SettingsDropdown />
         </div>

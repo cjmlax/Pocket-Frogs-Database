@@ -16,6 +16,8 @@ import ComboBox, { type ComboOption } from '../components/ComboBox';
 import { formatNum } from '../utils/format';
 import { breedOptionsFrom } from '../utils/breeds';
 import { useBreedSort } from '../hooks/useBreedSort';
+import { useColorSort } from '../hooks/useColorSort';
+import { colorOptionsFrom } from '../utils/colors';
 
 interface BreedFields  extends Record<string, unknown> { Breed?:      string }
 interface BaseFields   extends Record<string, unknown> { BaseColors?: string }
@@ -118,9 +120,10 @@ export default function FrogList() {
   const { data: secs   } = useQuery({ queryKey: ['table', 'secs'],   queryFn: () => fetchTable<SecFields>('secs')    });
 
   const breedSort = useBreedSort();
+  const colorSort = useColorSort();
   const breedOptions = useMemo<ComboOption[]>(() => breedOptionsFrom(breeds, breedSort), [breeds, breedSort]);
-  const baseOptions  = useMemo<ComboOption[]>(() => bases?.map( r => ({ id: r.id, label: r.fields.BaseColors  ?? r.id })) ?? [], [bases]);
-  const secOptions   = useMemo<ComboOption[]>(() => secs?.map(  r => ({ id: r.id, label: r.fields.Sec_Color   ?? r.id })) ?? [], [secs]);
+  const baseOptions  = useMemo<ComboOption[]>(() => colorOptionsFrom(bases, 'BaseColors', colorSort), [bases, colorSort]);
+  const secOptions   = useMemo<ComboOption[]>(() => colorOptionsFrom(secs,  'Sec_Color',  colorSort), [secs,  colorSort]);
 
   // ── Search query ─────────────────────────────────────────────────────────
   const frogFilter: FrogFilter = {
@@ -169,12 +172,14 @@ export default function FrogList() {
         <ComboBox
           label="Base Color"
           options={baseOptions}
+          presorted
           initialSelection={selection.base ?? null}
           onSelect={opt => setSelection(s => ({ ...s, base: opt ?? undefined }))}
         />
         <ComboBox
           label="Secondary Color"
           options={secOptions}
+          presorted
           initialSelection={selection.secondary ?? null}
           onSelect={opt => setSelection(s => ({ ...s, secondary: opt ?? undefined }))}
         />

@@ -1,37 +1,37 @@
 import { useSyncExternalStore } from 'react';
 
-export type BreedSortKey = 'alpha' | 'level';
+export type ColorSortKey = 'rainbow' | 'alpha';
 export type SortDir = 'asc' | 'desc';
-export interface BreedSort { key: BreedSortKey; dir: SortDir }
+export interface ColorSort { key: ColorSortKey; dir: SortDir }
 
-const KEY = 'breedSort';
-const DEFAULT: BreedSort = { key: 'level', dir: 'asc' };
+const KEY = 'colorSort';
+const DEFAULT: ColorSort = { key: 'rainbow', dir: 'asc' };
 
-function load(): BreedSort {
+function load(): ColorSort {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const p = JSON.parse(raw);
-      if ((p.key === 'alpha' || p.key === 'level') && (p.dir === 'asc' || p.dir === 'desc')) return p;
+      if ((p.key === 'rainbow' || p.key === 'alpha') && (p.dir === 'asc' || p.dir === 'desc')) return p;
     }
   } catch { /* ignore malformed value */ }
   return DEFAULT;
 }
 
-// Module-level store so the settings menu and every page that renders a Breed
+// Module-level store so the settings menu and every page that renders a color
 // ComboBox share one reactive value and re-render together when it changes.
-let current: BreedSort = load();
+let current: ColorSort = load();
 const listeners = new Set<() => void>();
 
-function commit(next: BreedSort) {
+function commit(next: ColorSort) {
   current = next;
   localStorage.setItem(KEY, JSON.stringify(next));
   listeners.forEach(l => l());
 }
 
-// Clicking a key toggles its direction if it's already active; otherwise it
-// switches to that key, defaulting to ascending (A→Z / 1→N).
-export function selectBreedSort(key: BreedSortKey) {
+// Clicking the active key toggles its direction; clicking a different key
+// switches to it and resets to ascending.
+export function selectColorSort(key: ColorSortKey) {
   if (current.key === key) {
     commit({ key, dir: current.dir === 'asc' ? 'desc' : 'asc' });
   } else {
@@ -39,7 +39,7 @@ export function selectBreedSort(key: BreedSortKey) {
   }
 }
 
-export function useBreedSort(): BreedSort {
+export function useColorSort(): ColorSort {
   return useSyncExternalStore(
     cb => { listeners.add(cb); return () => listeners.delete(cb); },
     () => current,

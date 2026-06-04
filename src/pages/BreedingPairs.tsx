@@ -6,6 +6,8 @@ import { formatNum } from '../utils/format';
 import { breedOptionsFrom } from '../utils/breeds';
 import { attachmentUrl } from '../utils/attachments';
 import { useBreedSort } from '../hooks/useBreedSort';
+import { useColorSort } from '../hooks/useColorSort';
+import { colorOptionsFrom } from '../utils/colors';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
@@ -106,12 +108,14 @@ function ParentInputs({
       <ComboBox
         label="Base Color"
         options={baseOpts}
+        presorted
         initialSelection={sel.base}
         onSelect={o => onChange({ ...sel, base: o })}
       />
       <ComboBox
         label="Secondary Color"
         options={secOpts}
+        presorted
         initialSelection={sel.sec}
         onSelect={o => onChange({ ...sel, sec: o })}
       />
@@ -140,9 +144,10 @@ export default function BreedingPairs() {
   const { data: secs   } = useQuery({ queryKey: ['table', 'secs'],   queryFn: () => fetchTable<SecFields>('secs')    });
 
   const breedSort = useBreedSort();
+  const colorSort = useColorSort();
   const breedOpts = useMemo<ComboOption[]>(() => breedOptionsFrom(breeds, breedSort), [breeds, breedSort]);
-  const baseOpts  = useMemo<ComboOption[]>(() => bases?.map( r => ({ id: r.id, label: r.fields.BaseColors ?? r.id })) ?? [], [bases]);
-  const secOpts   = useMemo<ComboOption[]>(() => secs?.map(  r => ({ id: r.id, label: r.fields.Sec_Color  ?? r.id })) ?? [], [secs]);
+  const baseOpts  = useMemo<ComboOption[]>(() => colorOptionsFrom(bases, 'BaseColors', colorSort), [bases, colorSort]);
+  const secOpts   = useMemo<ComboOption[]>(() => colorOptionsFrom(secs,  'Sec_Color',  colorSort), [secs,  colorSort]);
 
   // Offspring only ever use the two parents' breeds, so fetching those two breed
   // sets covers every combination. If both breeds match, TanStack dedupes the query.

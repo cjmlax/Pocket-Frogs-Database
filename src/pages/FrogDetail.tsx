@@ -10,6 +10,8 @@ import ComboBox, { type ComboOption } from '../components/ComboBox';
 import WeeklyTable, { type WeeklyFields, WEEKLY_FROG_FIELDS } from '../components/WeeklyTable';
 import { breedOptionsFrom } from '../utils/breeds';
 import { useBreedSort } from '../hooks/useBreedSort';
+import { useColorSort } from '../hooks/useColorSort';
+import { colorOptionsFrom } from '../utils/colors';
 import { attachmentUrl } from '../utils/attachments';
 import { formatNum } from '../utils/format';
 
@@ -111,9 +113,10 @@ export default function FrogDetail() {
   const { data: glassCombos  } = useQuery({ queryKey: ['table', 'glass'],  queryFn: () => fetchCombos<ComboFields>('glass')  });
 
   const breedSort = useBreedSort();
+  const colorSort = useColorSort();
   const breedOptions = useMemo<ComboOption[]>(() => breedOptionsFrom(breeds, breedSort), [breeds, breedSort]);
-  const baseOptions  = useMemo<ComboOption[]>(() => bases?.map(r => ({ id: r.id, label: r.fields.BaseColors ?? r.id })) ?? [], [bases]);
-  const secOptions   = useMemo<ComboOption[]>(() => secs?.map( r => ({ id: r.id, label: r.fields.Sec_Color  ?? r.id })) ?? [], [secs]);
+  const baseOptions  = useMemo<ComboOption[]>(() => colorOptionsFrom(bases, 'BaseColors', colorSort), [bases, colorSort]);
+  const secOptions   = useMemo<ComboOption[]>(() => colorOptionsFrom(secs,  'Sec_Color',  colorSort), [secs,  colorSort]);
 
   // The loaded frog's traits, used to prefill the pickers.
   const frogBase  = useMemo(() => optionFromLink(frog?.fields.Primary),   [frog]);
@@ -228,12 +231,14 @@ export default function FrogDetail() {
         <ComboBox
           label="Base Color"
           options={baseOptions}
+          presorted
           initialSelection={frogBase}
           onSelect={opt => setSel(s => ({ ...s, base: opt }))}
         />
         <ComboBox
           label="Secondary Color"
           options={secOptions}
+          presorted
           initialSelection={frogSec}
           onSelect={opt => setSel(s => ({ ...s, sec: opt }))}
         />

@@ -4,6 +4,8 @@ import { fetchTable, fetchBreedFrogs, fetchCombos, type TeableRecord } from '../
 import ComboBox, { type ComboOption } from '../components/ComboBox';
 import { breedOptionsFrom } from '../utils/breeds';
 import { useBreedSort } from '../hooks/useBreedSort';
+import { useColorSort } from '../hooks/useColorSort';
+import { colorOptionsFrom } from '../utils/colors';
 import { submitCombo } from '../api/submit';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
@@ -61,8 +63,8 @@ function FrogInputs({
         <h2 className="parent-title">{title}{hint && <span className="submit-optional"> {hint}</span>}</h2>
         {control}
       </div>
-      <ComboBox label="Base Color"      options={baseOpts}  initialSelection={sel.base}  onSelect={o => onChange({ ...sel, base: o })} />
-      <ComboBox label="Secondary Color" options={secOpts}   initialSelection={sel.sec}   onSelect={o => onChange({ ...sel, sec: o })} />
+      <ComboBox label="Base Color"      options={baseOpts}  presorted initialSelection={sel.base}  onSelect={o => onChange({ ...sel, base: o })} />
+      <ComboBox label="Secondary Color" options={secOpts}   presorted initialSelection={sel.sec}   onSelect={o => onChange({ ...sel, sec: o })} />
       <ComboBox label="Breed"           options={breedOpts} presorted initialSelection={sel.breed} onSelect={o => onChange({ ...sel, breed: o })} />
     </div>
   );
@@ -90,9 +92,10 @@ export default function SubmitCombo() {
   const { data: secs   } = useQuery({ queryKey: ['table', 'secs'],   queryFn: () => fetchTable<SecFields>('secs')    });
 
   const breedSort = useBreedSort();
+  const colorSort = useColorSort();
   const breedOpts = useMemo<ComboOption[]>(() => breedOptionsFrom(breeds, breedSort), [breeds, breedSort]);
-  const baseOpts  = useMemo<ComboOption[]>(() => bases?.map(r => ({ id: r.id, label: r.fields.BaseColors ?? r.id })) ?? [], [bases]);
-  const secOpts   = useMemo<ComboOption[]>(() => secs?.map( r => ({ id: r.id, label: r.fields.Sec_Color  ?? r.id })) ?? [], [secs]);
+  const baseOpts  = useMemo<ComboOption[]>(() => colorOptionsFrom(bases, 'BaseColors', colorSort), [bases, colorSort]);
+  const secOpts   = useMemo<ComboOption[]>(() => colorOptionsFrom(secs,  'Sec_Color',  colorSort), [secs,  colorSort]);
 
   // The single valid choice for each variant's required color on the result frog.
   // Glass requires Base Color = "Glass"; Chroma requires Secondary Color = "Chroma".

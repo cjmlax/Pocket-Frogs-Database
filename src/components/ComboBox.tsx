@@ -31,7 +31,9 @@ export default function ComboBox({
   const [inputValue, setInputValue] = useState(initialSelection?.label ?? '');
   const [isOpen, setIsOpen] = useState(false);
   const [selected, setSelected] = useState<ComboOption | null>(initialSelection);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -42,6 +44,14 @@ export default function ComboBox({
     document.addEventListener('mousedown', onClickOutside);
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, []);
+
+  // Scroll active item into view when navigating with arrow keys.
+  useEffect(() => {
+    if (activeIndex >= 0 && listRef.current) {
+      const item = listRef.current.children[activeIndex] as HTMLElement;
+      item?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [activeIndex]);
 
   // Sort alphabetically by default; callers that pre-sort (e.g. breeds by level)
   // pass presorted to keep their order.
@@ -58,6 +68,7 @@ export default function ComboBox({
   function handleInput(value: string) {
     setInputValue(value);
     setIsOpen(true);
+    setActiveIndex(-1);
     if (selected) {
       setSelected(null);
       onSelect(null);
@@ -68,6 +79,7 @@ export default function ComboBox({
     setSelected(option);
     setInputValue(option.label);
     setIsOpen(false);
+    setActiveIndex(-1);
     onSelect(option);
   }
 
@@ -75,7 +87,27 @@ export default function ComboBox({
     setSelected(null);
     setInputValue('');
     setIsOpen(false);
+    setActiveIndex(-1);
     onSelect(null);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!isOpen) setIsOpen(true);
+      setActiveIndex(i => Math.min(i + 1, suggestions.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex(i => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter') {
+      if (activeIndex >= 0 && suggestions[activeIndex]) {
+        e.preventDefault();
+        handlePick(suggestions[activeIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+      setActiveIndex(-1);
+    }
   }
 
   return (
@@ -91,6 +123,7 @@ export default function ComboBox({
           autoComplete="off"
           onChange={e => handleInput(e.target.value)}
           onFocus={() => { if (!selected) setIsOpen(true); }}
+          onKeyDown={handleKeyDown}
         />
         {inputValue && (
           <button className="combobox-clear" type="button" onClick={handleClear} aria-label="Clear">
@@ -98,12 +131,13 @@ export default function ComboBox({
           </button>
         )}
         {isOpen && suggestions.length > 0 && (
-          <ul className="combobox-suggestions" role="listbox">
-            {suggestions.map(opt => (
+          <ul className="combobox-suggestions" role="listbox" ref={listRef}>
+            {suggestions.map((opt, i) => (
               <li
                 key={opt.id}
-                className="combobox-option"
+                className={`combobox-option${i === activeIndex ? ' combobox-option--active' : ''}`}
                 role="option"
+                aria-selected={i === activeIndex}
                 onMouseDown={e => { e.preventDefault(); handlePick(opt); }}
               >
                 <span className="combobox-option-label">{opt.label}</span>
