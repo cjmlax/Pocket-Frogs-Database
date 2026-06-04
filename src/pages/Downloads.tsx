@@ -37,7 +37,7 @@ export default function Downloads() {
     try {
       const res = await fetch(`${EXPORT_API}/api/export/${slug}`);
       if (res.status === 429) {
-        setDlErrors(e => ({ ...e, [slug]: 'Too many downloads — please wait a few minutes and try again.' }));
+        setDlErrors(e => ({ ...e, [slug]: 'Rate limit reached — please try again later.' }));
         return;
       }
       if (!res.ok) {
@@ -70,7 +70,7 @@ export default function Downloads() {
     <div>
       <h1>Database Exports</h1>
       <p className="search-hint" style={{ marginTop: 0 }}>
-        Download raw data from any table below. Each export is pulled directly from the database and is current at the time of download.
+        Data is available for export as it's stored in the database. Note that this is stored as I coded it, and I don't currently have a guide to decipher it. The exports are direct from the database and the fingerprints are updated every 24 hrs. If your filename has the same hash as below, you do not need to re-export the data.
       </p>
 
       {loadError ? (
@@ -86,7 +86,7 @@ export default function Downloads() {
                 <span className="export-table-meta submit-optional">
                   {hash
                     ? <>Fingerprint: <code>{hash}</code> · {exportedAt ? timeAgo(exportedAt) : ''}</>
-                    : 'Not yet exported'}
+                    : 'Export hash not yet generated'}
                 </span>
               </div>
               <div className="export-table-action">

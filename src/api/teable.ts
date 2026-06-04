@@ -21,8 +21,8 @@ export const TABLES = {
   secs:   { id: 'tbl5bLdOraLU5UDwNX2', take: 30 },
   frogs:  { id: 'tblgaaUnZGx1i61RCOZ', take: 1000 },
   weekly: { id: 'tblOuIZRVGlTPLAfM56', take: 300 },
-  chroma: { id: 'tbluqJI6VaHK0fWiPo6', take: 1000 },
-  glass:  { id: 'tblaToM9WCudYNtRjaV', take: 1000 },
+  chroma: { id: 'tbluqJI6VaHK0fWiPo6', take: 200 },
+  glass:  { id: 'tblaToM9WCudYNtRjaV', take: 200 },
   levels: { id: 'tblD0zbgzX4vYjMPws2', take: 50 },
 } as const;
 
