@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { fetchTableMeta, TABLES } from '../api/teable';
 
 const EXPORT_API = (import.meta.env.VITE_SUBMIT_API ?? 'https://pfdb-api.cjmlax.com').replace(/\/$/, '');
 
@@ -8,6 +9,18 @@ interface TableMeta {
   hash: string | null;
   exportedAt: string | null;
 }
+
+// Maps export slugs to their corresponding Teable table IDs
+const SLUG_TO_TABLE_ID: Record<string, string> = {
+  breeds: TABLES.breeds.id,
+  bases:  TABLES.bases.id,
+  secs:   TABLES.secs.id,
+  frogs:  TABLES.frogs.id,
+  weekly: TABLES.weekly.id,
+  chroma: TABLES.chroma.id,
+  glass:  TABLES.glass.id,
+  levels: TABLES.levels.id,
+};
 
 function timeAgo(iso: string): string {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -23,12 +36,17 @@ export default function Downloads() {
   const [loadError, setLoadError] = useState(false);
   const [downloading, setDownloading] = useState<Record<string, boolean>>({});
   const [dlErrors, setDlErrors] = useState<Record<string, string>>({});
+  const [tsMeta, setTsMeta] = useState<Map<string, string> | null>(null);
 
   useEffect(() => {
     fetch(`${EXPORT_API}/api/export`)
       .then(r => (r.ok ? r.json() : Promise.reject()))
       .then((data: TableMeta[]) => setTables(data))
       .catch(() => setLoadError(true));
+
+    fetchTableMeta()
+      .then(setTsMeta)
+      .catch(() => {}); // non-critical — page works fine without it
   }, []);
 
   async function handleDownload(slug: string) {
@@ -48,8 +66,6 @@ export default function Downloads() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      // Filename comes from Content-Disposition on the server (includes hash).
-      // The fallback here is overridden by the browser honouring that header.
       a.download = `${slug}.csv`;
       document.body.appendChild(a);
       a.click();
@@ -79,31 +95,36 @@ export default function Downloads() {
         <p className="search-hint">Loading…</p>
       ) : (
         <div className="export-table-list">
-          {tables.map(({ slug, label, hash, exportedAt }) => (
-            <div key={slug} className="export-table-row">
-              <div className="export-table-info">
-                <span className="export-table-name">{label}</span>
-                <span className="export-table-meta submit-optional">
-                  {hash
-                    ? <>Fingerprint: <code>{hash}</code> · {exportedAt ? timeAgo(exportedAt) : ''}</>
-                    : 'Export hash not yet generated'}
-                </span>
+          {tables.map(({ slug, label, hash, exportedAt }) => {
+            const tableId   = SLUG_TO_TABLE_ID[slug];
+            const sourceTs  = tableId ? tsMeta?.get(tableId) : undefined;
+            return (
+              <div key={slug} className="export-table-row">
+                <div className="export-table-info">
+                  <span className="export-table-name">{label}</span>
+                  <span className="export-table-meta submit-optional">
+                    {hash
+                      ? <>Fingerprint: <code>{hash}</code> · export checked {exportedAt ? timeAgo(exportedAt) : '—'}</>
+                      : 'Export hash not yet generated'}
+                    {sourceTs && <> · source updated {timeAgo(sourceTs)}</>}
+                  </span>
+                </div>
+                <div className="export-table-action">
+                  {dlErrors[slug] && (
+                    <span className="search-error" style={{ fontSize: '0.85em' }}>{dlErrors[slug]}</span>
+                  )}
+                  <button
+                    className="csv-btn"
+                    type="button"
+                    disabled={downloading[slug]}
+                    onClick={() => handleDownload(slug)}
+                  >
+                    {downloading[slug] ? 'Downloading…' : 'Download CSV'}
+                  </button>
+                </div>
               </div>
-              <div className="export-table-action">
-                {dlErrors[slug] && (
-                  <span className="search-error" style={{ fontSize: '0.85em' }}>{dlErrors[slug]}</span>
-                )}
-                <button
-                  className="csv-btn"
-                  type="button"
-                  disabled={downloading[slug]}
-                  onClick={() => handleDownload(slug)}
-                >
-                  {downloading[slug] ? 'Downloading…' : 'Download CSV'}
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

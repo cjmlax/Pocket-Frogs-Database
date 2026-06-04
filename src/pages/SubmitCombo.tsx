@@ -80,6 +80,7 @@ export default function SubmitCombo() {
   const [pLost, setPLost] = useState<ParentSel>(EMPTY);
   const [sourceLink, setSourceLink] = useState('');
   const [screenshot, setScreenshot] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
   // Parents are verified first, then locked; the rest of the form is gated on this.
@@ -211,7 +212,7 @@ export default function SubmitCombo() {
       setResult({ ok: true, message: 'Thanks! Your submission was received and is pending review.' });
       setTimeout(() => setResult(null), 3000);
       setP1(EMPTY); setP2(EMPTY); setPResult(EMPTY); setPLost(EMPTY);
-      setSourceLink(''); setScreenshot(null); setChecked(false);
+      setSourceLink(''); setScreenshot(null); setFileError(null); setChecked(false);
       if (fileRef.current) fileRef.current.value = '';
     } catch (e) {
       setResult({ ok: false, message: e instanceof Error ? e.message : 'Something went wrong.' });
@@ -315,8 +316,20 @@ export default function SubmitCombo() {
                 className="submit-file"
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/gif"
-                onChange={e => setScreenshot(e.target.files?.[0] ?? null)}
+                onChange={e => {
+                  const file = e.target.files?.[0] ?? null;
+                  const allowed = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
+                  if (file && !allowed.has(file.type)) {
+                    e.target.value = '';
+                    setScreenshot(null);
+                    setFileError('Only PNG, JPEG, WebP, or GIF images are allowed.');
+                  } else {
+                    setScreenshot(file);
+                    setFileError(null);
+                  }
+                }}
               />
+              {fileError && <p className="search-error" style={{ marginTop: 4 }}>{fileError}</p>}
             </div>
             <div className="combobox-field">
               <label className="combobox-label" htmlFor="combo-source">Attribution link <span className="submit-optional">(optional)</span></label>

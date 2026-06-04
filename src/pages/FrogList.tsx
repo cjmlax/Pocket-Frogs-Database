@@ -1,11 +1,10 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  getFilteredRowModel,
   getPaginationRowModel,
   createColumnHelper,
   flexRender,
@@ -14,7 +13,7 @@ import {
 import { fetchTable, searchFrogs, type TeableRecord, type FrogFilter } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
 import { formatNum } from '../utils/format';
-import { breedOptionsFrom } from '../utils/breeds';
+import { breedOptionsFrom, breedLevel } from '../utils/breeds';
 import { useBreedSort } from '../hooks/useBreedSort';
 import { useColorSort } from '../hooks/useColorSort';
 import { colorOptionsFrom } from '../utils/colors';
@@ -55,6 +54,15 @@ function stateFromParams(p: URLSearchParams): SearchState {
   return s;
 }
 
+function IconPin() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="17" x2="12" y2="22"/>
+      <path d="M9 10.76a2 2 0 0 1-1.11 1.79L5.5 13.5A2 2 0 0 0 4.5 15.5V17h15v-1.5a2 2 0 0 0-1-1.74l-2.39-.95A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76z"/>
+    </svg>
+  );
+}
+
 function cell(val: unknown): string {
   if (val === null || val === undefined) return '—';
   if (Array.isArray(val)) {
@@ -70,19 +78,6 @@ function cell(val: unknown): string {
 
 const col = createColumnHelper<TeableRecord<FrogFields>>();
 
-const columns = [
-  col.accessor(r => r.fields.fullname ?? '—',  {
-    id: 'name',
-    header: 'Frog Name',
-    cell: i => <Link to={`/frog/${i.row.original.id}`} className="plain-link">{i.getValue()}</Link>,
-  }),
-  col.accessor(r => cell(r.fields.Breed),       { id: 'breed',   header: 'Breed' }),
-  col.accessor(r => cell(r.fields.Primary),     { id: 'base',    header: 'Base Color' }),
-  col.accessor(r => cell(r.fields.Secondary),   { id: 'sec',     header: 'Secondary' }),
-  col.accessor(r => r.fields.Value   ?? 0, { id: 'value',   header: 'Value',   cell: i => formatNum(i.getValue()) }),
-  col.accessor(r => r.fields.Speed   ?? 0, { id: 'speed',   header: 'Speed',   cell: i => formatNum(i.getValue()) }),
-  col.accessor(r => r.fields.Stamina ?? 0, { id: 'stamina', header: 'Stamina', cell: i => formatNum(i.getValue()) }),
-];
 
 export default function FrogList() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -100,19 +95,16 @@ export default function FrogList() {
     const s = searchParams.get('sort'), d = searchParams.get('dir');
     return s ? [{ id: s, desc: d !== 'asc' }] : [];
   });
-  const [globalFilter, setGlobalFilter] = useState(() => searchParams.get('q') ?? '');
-
-  // Sync URL whenever committed state or result sort/filter changes.
-  // Uses replace:true so every keystroke doesn't create a browser history entry.
+  // Sync URL whenever committed state or result sort changes.
+  // Uses replace:true so every change doesn't create a browser history entry.
   useEffect(() => {
     const params: Record<string, string> = {};
     if (submitted?.breed)     { params.breedId = submitted.breed.id; params.breedLabel = submitted.breed.label; }
     if (submitted?.base)      { params.baseId  = submitted.base.id;  params.baseLabel  = submitted.base.label;  }
     if (submitted?.secondary) { params.secId   = submitted.secondary.id; params.secLabel = submitted.secondary.label; }
     if (submitted && sorting.length) { params.sort = sorting[0].id; params.dir = sorting[0].desc ? 'desc' : 'asc'; }
-    if (submitted && globalFilter)   params.q = globalFilter;
     setSearchParams(params, { replace: true });
-  }, [submitted, sorting, globalFilter, setSearchParams]);
+  }, [submitted, sorting, setSearchParams]);
 
   // ── Lookup tables (small, ETag-cached) ──────────────────────────────────
   const { data: breeds } = useQuery({ queryKey: ['table', 'breeds'], queryFn: () => fetchTable<BreedFields>('breeds') });
@@ -124,6 +116,32 @@ export default function FrogList() {
   const breedOptions = useMemo<ComboOption[]>(() => breedOptionsFrom(breeds, breedSort), [breeds, breedSort]);
   const baseOptions  = useMemo<ComboOption[]>(() => colorOptionsFrom(bases, 'BaseColors', colorSort), [bases, colorSort]);
   const secOptions   = useMemo<ComboOption[]>(() => colorOptionsFrom(secs,  'Sec_Color',  colorSort), [secs,  colorSort]);
+
+  // breed name → level number (Infinity for promotional/un-leveled breeds)
+  const breedLevelMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const r of breeds ?? []) {
+      const name = (r.fields.Breed as string) ?? '';
+      if (name) map.set(name, breedLevel(r));
+    }
+    return map;
+  }, [breeds]);
+
+  const columns = useMemo(() => [
+    col.accessor(r => cell(r.fields.Breed),     { id: 'breed',   header: 'Breed' }),
+    col.accessor(r => cell(r.fields.Primary),   { id: 'base',    header: 'Base Color' }),
+    col.accessor(r => cell(r.fields.Secondary), { id: 'sec',     header: 'Secondary' }),
+    col.accessor(r => r.fields.Value   ?? 0, { id: 'value',   header: 'Value',   cell: i => formatNum(i.getValue()) }),
+    col.accessor(r => r.fields.Speed   ?? 0, { id: 'speed',   header: 'Speed',   cell: i => formatNum(i.getValue()) }),
+    col.accessor(r => r.fields.Stamina ?? 0, { id: 'stamina', header: 'Stamina', cell: i => formatNum(i.getValue()) }),
+    col.accessor(r => (r.fields.Speed ?? 0) + (r.fields.Stamina ?? 0), {
+      id: 'spd_stm', header: 'Spd+Stm', cell: i => formatNum(i.getValue()),
+    }),
+    col.accessor(r => breedLevelMap.get(cell(r.fields.Breed)) ?? Infinity, {
+      id: 'level', header: 'Level',
+      cell: i => Number.isFinite(i.getValue()) ? String(i.getValue()) : '—',
+    }),
+  ], [breedLevelMap]);
 
   // ── Search query ─────────────────────────────────────────────────────────
   const frogFilter: FrogFilter = {
@@ -143,26 +161,37 @@ export default function FrogList() {
   const table = useReactTable({
     data,
     columns,
-    state: { sorting, globalFilter },
-    onSortingChange:      setSorting,
-    onGlobalFilterChange: setGlobalFilter,
+    state: { sorting },
+    onSortingChange: setSorting,
     getCoreRowModel:       getCoreRowModel(),
     getSortedRowModel:     getSortedRowModel(),
-    getFilteredRowModel:   getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize: 25 } },
   });
 
-  const hasFilter = !!(selection.breed || selection.base || selection.secondary);
+  const [pinned, setPinned] = useState<TeableRecord<FrogFields>[]>([]);
+  const pinnedIds = useMemo(() => new Set(pinned.map(r => r.id)), [pinned]);
+  const togglePin = useCallback((row: TeableRecord<FrogFields>) => {
+    setPinned(prev =>
+      prev.some(r => r.id === row.id)
+        ? prev.filter(r => r.id !== row.id)
+        : [...prev, row]
+    );
+  }, []);
 
-  function handleSearch() {
-    setSubmitted({ ...selection });
-    setGlobalFilter('');
-    setSorting([]);
-  }
+  // Auto-submit whenever any filter is populated. Skip the initial mount so
+  // URL-restored sort/filter state isn't wiped on first render.
+  const initialized = useRef(false);
+  useEffect(() => {
+    if (!initialized.current) { initialized.current = true; return; }
+    if (selection.breed || selection.base || selection.secondary) {
+      setSubmitted({ ...selection });
+      setSorting([]);
+    }
+  }, [selection]);
 
   const { pageIndex } = table.getState().pagination;
-  const filteredCount  = table.getFilteredRowModel().rows.length;
+  const filteredCount = data.length;
 
   return (
     <div>
@@ -192,35 +221,15 @@ export default function FrogList() {
         />
       </div>
 
-      <div className="search-actions">
-        <button
-          className="search-btn"
-          onClick={handleSearch}
-          disabled={!hasFilter || isFetching}
-        >
-          {isFetching ? 'Searching…' : 'Search'}
-        </button>
-        {error && <span className="search-error">Error: {String(error)}</span>}
-      </div>
+      {error && <p className="search-error">Error: {String(error)}</p>}
 
       {submitted === null ? (
-        <p className="search-hint">Select at least one filter above, then click Search.</p>
+        <p className="search-hint">Select at least one filter above to search.</p>
       ) : isFetching ? (
         <p className="search-hint">Searching…</p>
       ) : (
         <>
-          <div className="table-toolbar">
-            <p className="search-hint" style={{ margin: 0 }}>{filteredCount} frogs found</p>
-            <input
-              className="search-input"
-              type="search"
-              placeholder="Filter results…"
-              value={globalFilter}
-              onChange={e => setGlobalFilter(e.target.value)}
-            />
-          </div>
-
-          <div className="table-wrapper">
+<div className="table-wrapper">
             <table>
               <thead>
                 <tr>
@@ -235,6 +244,7 @@ export default function FrogList() {
                       {header.column.getIsSorted() === 'desc' && ' ↓'}
                     </th>
                   ))}
+                  <th className="pin-cell"></th>
                 </tr>
               </thead>
               <tbody>
@@ -243,6 +253,16 @@ export default function FrogList() {
                     {row.getVisibleCells().map(c => (
                       <td key={c.id}>{flexRender(c.column.columnDef.cell, c.getContext())}</td>
                     ))}
+                    <td className="pin-cell">
+                      <button
+                        className={`pin-btn${pinnedIds.has(row.original.id) ? ' pinned' : ''}`}
+                        onClick={() => togglePin(row.original)}
+                        title={pinnedIds.has(row.original.id) ? 'Remove from comparison' : 'Pin for comparison'}
+                        aria-label={pinnedIds.has(row.original.id) ? 'Remove from comparison' : 'Pin for comparison'}
+                      >
+                        <IconPin />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -256,6 +276,56 @@ export default function FrogList() {
             <span className="pagination-count">{filteredCount} frogs</span>
           </div>
         </>
+      )}
+
+      {pinned.length > 0 && (
+        <div className="pinned-section">
+          <div className="pinned-header">
+            <h2 style={{ margin: 0 }}>Comparison</h2>
+            <button className="csv-btn" onClick={() => setPinned([])}>Clear all</button>
+          </div>
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Breed</th>
+                  <th>Base Color</th>
+                  <th>Secondary</th>
+                  <th>Value</th>
+                  <th>Speed</th>
+                  <th>Stamina</th>
+                  <th>Spd+Stm</th>
+                  <th>Level</th>
+                  <th className="pin-cell"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {pinned.map(r => (
+                  <tr key={r.id}>
+                    <td>{cell(r.fields.Breed)}</td>
+                    <td>{cell(r.fields.Primary)}</td>
+                    <td>{cell(r.fields.Secondary)}</td>
+                    <td>{formatNum(r.fields.Value ?? 0)}</td>
+                    <td>{formatNum(r.fields.Speed ?? 0)}</td>
+                    <td>{formatNum(r.fields.Stamina ?? 0)}</td>
+                    <td>{formatNum((r.fields.Speed ?? 0) + (r.fields.Stamina ?? 0))}</td>
+                    <td>{(() => { const lvl = breedLevelMap.get(cell(r.fields.Breed)) ?? Infinity; return Number.isFinite(lvl) ? String(lvl) : '—'; })()}</td>
+                    <td className="pin-cell">
+                      <button
+                        className="pin-btn pinned"
+                        onClick={() => togglePin(r)}
+                        title="Remove from comparison"
+                        aria-label="Remove from comparison"
+                      >
+                        <IconPin />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );

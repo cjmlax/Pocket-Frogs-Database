@@ -725,6 +725,63 @@ tr:hover td {
   margin-left: auto;
 }
 
+/* ─── Pin / comparison ───────────────────────────────────────────────────── */
+
+.pin-cell {
+  width: 28px;
+  padding: 0 4px !important;
+  text-align: center;
+}
+
+.pin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s, color 0.1s, background 0.1s;
+}
+
+tr:hover .pin-btn,
+.pin-btn.pinned {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.pin-btn:hover {
+  background: var(--code-bg);
+  color: var(--text-h);
+}
+
+.pin-btn.pinned {
+  color: var(--accent);
+}
+
+.pin-btn.pinned svg {
+  fill: var(--accent);
+}
+
+.pinned-section {
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.pinned-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
 /* ─── Nav ─────────────────────────────────────────────────────────────────── */
 
 /* Sticky nav bar */

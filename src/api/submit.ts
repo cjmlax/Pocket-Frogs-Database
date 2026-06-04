@@ -21,6 +21,11 @@ export interface ComboSubmission {
 // Posts a combo submission as multipart/form-data (so an optional screenshot can
 // ride along). Resolves on success, throws with a readable message otherwise.
 export async function submitCombo(data: ComboSubmission, screenshot?: File | null): Promise<void> {
+  const ALLOWED = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
+  if (screenshot && !ALLOWED.has(screenshot.type)) {
+    throw new Error('Only PNG, JPEG, WebP, or GIF images are allowed.');
+  }
+
   const form = new FormData();
   form.append('type', 'combo');
   form.append('payload', JSON.stringify(data));

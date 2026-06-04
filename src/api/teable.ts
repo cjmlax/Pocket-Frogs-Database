@@ -1,6 +1,8 @@
 import { get, set } from 'idb-keyval';
 
-const BASE_URL = 'https://teable.cjmlax.com/api/table';
+const BASE_API = 'https://teable.cjmlax.com/api';
+const BASE_URL = `${BASE_API}/table`;
+const BASE_ID  = 'bseylZk8mJzj9xeoAHy';
 
 export interface TeableRecord<T extends Record<string, unknown> = Record<string, unknown>> {
   id: string;
@@ -9,33 +11,70 @@ export interface TeableRecord<T extends Record<string, unknown> = Record<string,
   lastModifiedTime?: string;
 }
 
-interface CachedResult<T extends Record<string, unknown>> {
-  records: TeableRecord<T>[];
-  notModified: boolean;
-}
-
 // Table definitions — update take values if pagination needs change
 export const TABLES = {
   breeds: { id: 'tbliUWaVe4eKqJkVEv4', take: 150 },
-  bases:  { id: 'tblNB8r3gnEL44kjxcF', take: 30 },
-  secs:   { id: 'tbl5bLdOraLU5UDwNX2', take: 30 },
+  bases:  { id: 'tblNB8r3gnEL44kjxcF', take: 30  },
+  secs:   { id: 'tbl5bLdOraLU5UDwNX2', take: 30  },
   frogs:  { id: 'tblgaaUnZGx1i61RCOZ', take: 1000 },
   weekly: { id: 'tblOuIZRVGlTPLAfM56', take: 300 },
   chroma: { id: 'tbluqJI6VaHK0fWiPo6', take: 200 },
   glass:  { id: 'tblaToM9WCudYNtRjaV', take: 200 },
-  levels: { id: 'tblD0zbgzX4vYjMPws2', take: 50 },
+  levels: { id: 'tblD0zbgzX4vYjMPws2', take: 50  },
 } as const;
 
 export type TableKey = keyof typeof TABLES;
+
+// ── Table metadata cache ───────────────────────────────────────────────────
+// One GET /api/base/{id}/table call returns lastModifiedTime for all tables.
+// metaFlight deduplicates concurrent fetches triggered by parallel TanStack
+// Query hooks on page load; metaCache serves all subsequent calls instantly.
+
+let metaFlight: Promise<Map<string, string>> | null = null;
+let metaCache:  Map<string, string> | null = null;
+
+async function getTableMeta(): Promise<Map<string, string>> {
+  if (metaCache) return metaCache;
+  if (!metaFlight) {
+    metaFlight = (async () => {
+      const res = await fetch(`${BASE_API}/base/${BASE_ID}/table`, {
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) throw new Error(`Table meta fetch failed: ${res.status}`);
+      const tables: { id: string; lastModifiedTime: string }[] = await res.json();
+      metaCache = new Map(tables.map(t => [t.id, t.lastModifiedTime]));
+      return metaCache;
+    })();
+  }
+  return metaFlight;
+}
+
+// Exported so other pages (e.g. Downloads) can display per-table freshness
+// without triggering a separate fetch — the same cached result is shared.
+export const fetchTableMeta = getTableMeta;
+
+// ── Record fetching ────────────────────────────────────────────────────────
+// Validates the IndexedDB cache against the server-side lastModifiedTime.
+// A cache hit costs only the shared meta call; a miss fetches all pages and
+// stores the new records alongside the timestamp for next time.
 
 export async function apiFetch<T extends Record<string, unknown>>(
   tableId: string,
   tableKey: string,
   take: number,
   query = '',
-): Promise<CachedResult<T>> {
-  const etagDict = ((await get('api_etags')) as Record<string, string>) ?? {};
-  const savedETag = etagDict[tableId] ?? '';
+): Promise<TeableRecord<T>[]> {
+  const meta     = await getTableMeta();
+  const serverTs = meta.get(tableId);
+
+  const cached = (await get(tableKey)) as
+    | { records: TeableRecord<T>[]; lastModifiedTime: string }
+    | undefined;
+
+  if (cached && serverTs && cached.lastModifiedTime === serverTs) {
+    console.log(`%c ${tableKey} cache valid`, 'color: #4CAF50');
+    return cached.records;
+  }
 
   let allRecords: TeableRecord<T>[] = [];
   let skip = 0;
@@ -44,44 +83,16 @@ export async function apiFetch<T extends Record<string, unknown>>(
   while (hasMore) {
     const queryString = query ? `${query}&` : '';
     const url = `${BASE_URL}/${tableId}/record?${queryString}take=${take}&skip=${skip}`;
-
-    const response = await fetch(url, {
-      headers: {
-        Accept: 'application/json',
-        'If-None-Match': savedETag,
-      },
-    });
-
-    if (response.status === 304) {
-      console.log(`%c ${tableKey} cache valid (304)`, 'color: #4CAF50');
-      const cached = (await get(tableKey)) as CachedResult<T> | undefined;
-      return { records: cached?.records ?? [], notModified: true };
-    }
-
+    const response = await fetch(url, { headers: { Accept: 'application/json' } });
     if (!response.ok) throw new Error(`API Error ${response.status} for ${tableKey}`);
-
     const data = await response.json();
     allRecords = allRecords.concat(data.records as TeableRecord<T>[]);
-
-    // Only capture the ETag on the first page — it represents the whole collection
-    if (skip === 0) {
-      const newEtag = response.headers.get('Etag');
-      if (newEtag) {
-        etagDict[tableId] = newEtag;
-        await set('api_etags', etagDict);
-      }
-    }
-
-    if ((data.records as unknown[]).length < take) {
-      hasMore = false;
-    } else {
-      skip += take;
-    }
+    if ((data.records as unknown[]).length < take) hasMore = false;
+    else skip += take;
   }
 
-  const result: CachedResult<T> = { records: allRecords, notModified: false };
-  await set(tableKey, result);
-  return result;
+  await set(tableKey, { records: allRecords, lastModifiedTime: serverTs ?? '' });
+  return allRecords;
 }
 
 // Convenience wrapper used by TanStack Query hooks
@@ -89,20 +100,19 @@ export async function fetchTable<T extends Record<string, unknown>>(
   key: TableKey,
 ): Promise<TeableRecord<T>[]> {
   const { id, take } = TABLES[key];
-  const result = await apiFetch<T>(id, key, take, 'fieldKeyType=dbFieldName');
-  return result.records;
+  return apiFetch<T>(id, key, take, 'fieldKeyType=dbFieldName');
 }
 
 // Special-combination tables (Chroma / Glass) use display field names so the
-// "Frog 1" / "Frog 2" link fields are easy to read. ETag-cached like other tables.
+// "Frog 1" / "Frog 2" link fields are easy to read.
 export async function fetchCombos<T extends Record<string, unknown>>(
   key: 'chroma' | 'glass',
 ): Promise<TeableRecord<T>[]> {
   const { id, take } = TABLES[key];
-  const result = await apiFetch<T>(id, key, take, 'fieldKeyType=name');
-  return result.records;
+  return apiFetch<T>(id, key, take, 'fieldKeyType=name');
 }
 
+// ── Frog search ────────────────────────────────────────────────────────────
 // Field IDs used to filter the frogs table (must be field IDs, not dbFieldNames)
 const FROG_FILTER_FIELDS = {
   base:      'fldXRMyJJ6xZQtCB6TY', // Primary (base color link)
@@ -116,7 +126,7 @@ export interface FrogFilter {
   breed?:     string; // record ID from breeds table
 }
 
-// Filtered frog search — no ETag caching since every filter combo is a different query.
+// Filtered frog search — not cached since every filter combo is a different query.
 // TanStack Query handles in-memory deduplication keyed by the filter values.
 export async function searchFrogs<T extends Record<string, unknown>>(
   filters: FrogFilter,
