@@ -131,7 +131,7 @@ export default function Downloads() {
                   <span className="export-table-name">{label}</span>
                   <span className="export-table-meta submit-optional">
                     {hash
-                      ? <>Fingerprint: <code>{hash}</code> · export checked {exportedAt ? timeAgo(exportedAt) : '—'}</>
+                      ? <>Fingerprint: <code>{hash}</code> · export hashed {exportedAt ? timeAgo(exportedAt) : '—'}</>
                       : 'Export hash not yet generated'}
                     {sourceTs && <> · source updated {new Date(sourceTs).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</>}
                   </span>
