@@ -4,6 +4,7 @@ import { NavLink, Outlet, useLocation } from 'react-router';
 import { useTheme } from '../hooks/useTheme';
 import { useBreedSort, selectBreedSort } from '../hooks/useBreedSort';
 import { useColorSort, selectColorSort } from '../hooks/useColorSort';
+import { useSpoilers } from '../hooks/useSpoilers';
 import '../App.css';
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
@@ -102,7 +103,7 @@ function SubmitDropdown() {
           style={{ top: panelPos.top, left: panelPos.left }}
         >
           <NavLink to="/submit" end className="submit-nav-link" onClick={() => setOpen(false)}>
-            Combo
+            Mutations
           </NavLink>
           <NavLink to="/submit/weekly" className="submit-nav-link" onClick={() => setOpen(false)}>
             Weekly Set
@@ -121,6 +122,7 @@ function SettingsDropdown() {
   const { theme, choose } = useTheme();
   const breedSort = useBreedSort();
   const colorSort = useColorSort();
+  const { spoilers, set: setSpoilers } = useSpoilers();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -160,20 +162,29 @@ function SettingsDropdown() {
 
           {/* Row 2: Breed sort — label (left), level (center), alpha (right) */}
           <span className="settings-row-label" title="Breed sort order">Breed:</span>
-          <button className={`settings-theme-opt${breedSort.key === 'level' ? ' active' : ''}`} onClick={() => selectBreedSort('level')} aria-label="Sort breeds by level" title="Level Sort">
+          <button className={`settings-theme-opt${breedSort.key === 'level' ? ' active' : ''}`} onClick={() => selectBreedSort('level')} aria-label="Sort breeds by level" title="Level Order">
             #{breedSort.key === 'level' && (breedSort.dir === 'asc' ? ' ↑' : ' ↓')}
           </button>
-          <button className={`settings-theme-opt${breedSort.key === 'alpha' ? ' active' : ''}`} onClick={() => selectBreedSort('alpha')} aria-label="Sort breeds alphabetically" title="Alphabetical Sort">
+          <button className={`settings-theme-opt${breedSort.key === 'alpha' ? ' active' : ''}`} onClick={() => selectBreedSort('alpha')} aria-label="Sort breeds alphabetically" title="Alphabetical Order">
             A{breedSort.key === 'alpha' && (breedSort.dir === 'asc' ? ' ↑' : ' ↓')}
           </button>
 
           {/* Row 3: Color sort — label (left), rainbow (center), alpha (right) */}
-          <span className="settings-row-label" title="Color sort order">Color:</span>
-          <button className={`settings-theme-opt${colorSort.key === 'rainbow' ? ' active' : ''}`} onClick={() => selectColorSort('rainbow')} aria-label="Sort colors by rainbow order" title="Rainbow Order">
+          <span className="settings-row-label" title="Sort Base and Secondary colors">Color:</span>
+          <button className={`settings-theme-opt${colorSort.key === 'rainbow' ? ' active' : ''}`} onClick={() => selectColorSort('rainbow')} aria-label="Sort colors by rainbow order" title="Froggydex Order">
             <IconRainbow />{colorSort.key === 'rainbow' && (colorSort.dir === 'asc' ? ' ↑' : ' ↓')}
           </button>
-          <button className={`settings-theme-opt${colorSort.key === 'alpha' ? ' active' : ''}`} onClick={() => selectColorSort('alpha')} aria-label="Sort colors alphabetically" title="Alphabetical Sort">
+          <button className={`settings-theme-opt${colorSort.key === 'alpha' ? ' active' : ''}`} onClick={() => selectColorSort('alpha')} aria-label="Sort colors alphabetically" title="Alphabetical Order">
             A{colorSort.key === 'alpha' && (colorSort.dir === 'asc' ? ' ↑' : ' ↓')}
+          </button>
+
+          {/* Row 4: Spoilers — label (left), On (center), Off (right) */}
+          <span className="settings-row-label" title="Will allow or disallow known Glass and Chroma mutations from displaying onsite">Spoilers:</span>
+          <button className={`settings-theme-opt${spoilers ? ' active' : ''}`} onClick={() => setSpoilers(true)} aria-label="Spoilers on" title="Spoilers on">
+            On
+          </button>
+          <button className={`settings-theme-opt${!spoilers ? ' active' : ''}`} onClick={() => setSpoilers(false)} aria-label="Spoilers off" title="Spoilers off">
+            Off
           </button>
         </div>
       )}

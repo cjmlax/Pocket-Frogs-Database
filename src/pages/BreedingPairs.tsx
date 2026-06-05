@@ -7,6 +7,7 @@ import { breedOptionsFrom } from '../utils/breeds';
 import { attachmentUrl } from '../utils/attachments';
 import { useBreedSort } from '../hooks/useBreedSort';
 import { useColorSort } from '../hooks/useColorSort';
+import { useSpoilers } from '../hooks/useSpoilers';
 import { colorOptionsFrom } from '../utils/colors';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
@@ -145,6 +146,7 @@ export default function BreedingPairs() {
 
   const breedSort = useBreedSort();
   const colorSort = useColorSort();
+  const { spoilers } = useSpoilers();
   const breedOpts = useMemo<ComboOption[]>(() => breedOptionsFrom(breeds, breedSort), [breeds, breedSort]);
   const baseOpts  = useMemo<ComboOption[]>(() => colorOptionsFrom(bases, 'BaseColors', colorSort), [bases, colorSort]);
   const secOpts   = useMemo<ComboOption[]>(() => colorOptionsFrom(secs,  'Sec_Color',  colorSort), [secs,  colorSort]);
@@ -319,6 +321,8 @@ export default function BreedingPairs() {
     });
   }, [result, replacementByLostId, resultById]);
 
+  const shownOffspring = spoilers ? displayedOffspring : (result?.offspring ?? []);
+
   // ── Crosshair hover (mirrors the Breed Overview grid) ─────────────────────
   function clearHover() {
     tableRef.current?.querySelectorAll<HTMLElement>('.row-hover,.col-hover,.cell-hover')
@@ -357,7 +361,7 @@ export default function BreedingPairs() {
         <p className="search-hint">Loading frog data…</p>
       ) : result ? (
         <>
-          {specialMatches.map((s, i) => (
+          {spoilers && specialMatches.map((s, i) => (
             <p key={`${s.type}-${i}`} className="breeding-special">
               ✨ This pairing is known to produce a <strong>{s.type}</strong> frog!
               {s.screenshot && (
@@ -387,7 +391,7 @@ export default function BreedingPairs() {
               <tbody>
                 <tr>
                   <th className="breeding-row-label" data-row="frog">Frog</th>
-                  {displayedOffspring.map((o, i) => (
+                  {shownOffspring.map((o, i) => (
                     <th
                       key={i}
                       className={`breeding-frog-name${o.special ? ' breeding-frog-special' : ''}`}
@@ -403,13 +407,13 @@ export default function BreedingPairs() {
                 </tr>
                 <tr>
                   <th className="breeding-row-label" data-row="value">Value</th>
-                  {displayedOffspring.map((o, i) => (
+                  {shownOffspring.map((o, i) => (
                     <td key={i} data-row="value" data-col={i}>{o.value !== null ? formatNum(o.value) : (o.found ? '—' : 'Not Found')}</td>
                   ))}
                 </tr>
                 <tr>
                   <th className="breeding-row-label" data-row="profit">Net Profit</th>
-                  {displayedOffspring.map((o, i) => (
+                  {shownOffspring.map((o, i) => (
                     <td key={i} data-row="profit" data-col={i} className={
                       o.profit === null ? undefined
                         : o.profit > 0 ? 'profit-positive'
@@ -422,19 +426,19 @@ export default function BreedingPairs() {
                 </tr>
                 <tr>
                   <th className="breeding-row-label" data-row="speed">Speed</th>
-                  {displayedOffspring.map((o, i) => (
+                  {shownOffspring.map((o, i) => (
                     <td key={i} data-row="speed" data-col={i}>{o.speed !== null ? formatNum(o.speed) : '—'}</td>
                   ))}
                 </tr>
                 <tr>
                   <th className="breeding-row-label" data-row="stamina">Stamina</th>
-                  {displayedOffspring.map((o, i) => (
+                  {shownOffspring.map((o, i) => (
                     <td key={i} data-row="stamina" data-col={i}>{o.stamina !== null ? formatNum(o.stamina) : '—'}</td>
                   ))}
                 </tr>
                 <tr>
                   <th className="breeding-row-label" data-row="racing">Racing Stat</th>
-                  {displayedOffspring.map((o, i) => (
+                  {shownOffspring.map((o, i) => (
                     <td key={i} data-row="racing" data-col={i}>{o.racing !== null ? formatNum(o.racing) : '—'}</td>
                   ))}
                 </tr>

@@ -1,0 +1,20 @@
+[
+  {
+    "version": "3.19.2",
+    "date": "2026-06-02T00:00:00Z",
+    "platform": "both",
+    "notes": "+ New Level 50 Mythical - Flagro!\n+ Added Field Trips!\n+ Long press Egg buttons to toggle!\n+ Added egg button to Hab Options.\n+ Mythicals in Lost & Found."
+  },
+  {
+    "version": "3.19.1",
+    "date": "2026-05-30T00:00:00Z",
+    "platform": "both",
+    "notes": "+ New Level 50 Mythical - Flagro!\n+ Added Field Trips!\n+ Long press Egg buttons to toggle!\n+ Added egg button to Hab Options.\n+ Mythicals in Lost & Found."
+  },
+  {
+    "version": "3.18.5",
+    "date": "2026-06-02T00:00:00Z",
+    "platform": "both",
+    "notes": "+ Added rare Scenery to the Lost & Found.\n+ See friends' lvl and dex!\n+ Track collected scenery!\n+ Improved scenery selection.\n+ Fixed add friend links.\n+ Ate some bugs."
+  }
+]

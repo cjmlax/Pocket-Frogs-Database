@@ -11,6 +11,7 @@ import WeeklyTable, { type WeeklyFields, WEEKLY_FROG_FIELDS } from '../component
 import { breedOptionsFrom } from '../utils/breeds';
 import { useBreedSort } from '../hooks/useBreedSort';
 import { useColorSort } from '../hooks/useColorSort';
+import { useSpoilers } from '../hooks/useSpoilers';
 import { colorOptionsFrom } from '../utils/colors';
 import { attachmentUrl } from '../utils/attachments';
 import { formatNum } from '../utils/format';
@@ -113,6 +114,7 @@ export default function FrogDetail() {
   const { data: glassCombos  } = useQuery({ queryKey: ['table', 'glass'],  queryFn: () => fetchCombos<ComboFields>('glass')  });
 
   const breedSort = useBreedSort();
+  const { spoilers } = useSpoilers();
   const colorSort = useColorSort();
   const breedOptions = useMemo<ComboOption[]>(() => breedOptionsFrom(breeds, breedSort), [breeds, breedSort]);
   const baseOptions  = useMemo<ComboOption[]>(() => colorOptionsFrom(bases, 'BaseColors', colorSort), [bases, colorSort]);
@@ -313,7 +315,7 @@ export default function FrogDetail() {
             </p>
           )}
 
-          {specials.length > 0 && (
+          {spoilers && specials.length > 0 && (
             <div className="frog-detail-specials">
               {specials.map((s, i) => (
                 <p key={`${s.type}-${i}`} className="breeding-special">

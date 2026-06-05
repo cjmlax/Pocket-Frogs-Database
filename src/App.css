@@ -16,6 +16,8 @@
   flex-direction: column;
   gap: 12px;
   max-width: 680px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
 }
 
 .home-cards {
@@ -105,6 +107,126 @@ a.plain-link:hover {
 
 .weekly-expand-arrow.open {
   transform: rotate(180deg);
+}
+
+/* ─── Update feed panel (home-main inline) ───────────────────────────────── */
+
+.updates-panel {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 18px 0;
+  box-shadow: var(--shadow);
+  max-width: 680px;
+  margin-bottom: 20px;
+}
+
+.updates-panel-label {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--accent);
+}
+
+.updates-feed {
+  display: flex;
+  flex-direction: column;
+  max-height: 220px;
+  overflow-y: auto;
+  margin: 8px -18px 0;
+  scrollbar-width: thin;
+}
+
+.update-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 18px;
+  border-top: 1px solid var(--border);
+}
+
+.update-entry:last-child {
+  border-radius: 0 0 6px 6px;
+}
+
+.update-entry-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.update-version {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.update-meta-sep {
+  font-size: 13px;
+  opacity: 0.35;
+}
+
+.update-date {
+  font-size: 13px;
+  opacity: 0.6;
+}
+
+.update-notes {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.updates-empty {
+  font-size: 13px;
+  padding: 8px 18px;
+  opacity: 0.6;
+}
+
+/* ─── Links card ─────────────────────────────────────────────────────────── */
+
+.links-list {
+  display: flex;
+  flex-direction: column;
+  margin: 4px -18px -16px;
+}
+
+.links-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 18px;
+  color: var(--text);
+  text-decoration: none;
+  border-top: 1px solid var(--border);
+  transition: background 0.12s, color 0.12s;
+}
+
+.links-row:hover {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.links-row:last-child {
+  border-radius: 0 0 6px 6px;
+}
+
+.links-favicon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  border-radius: 3px;
+}
+
+.links-label {
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* ─── Daily Frog card shared styles ─────────────────────────────────────── */

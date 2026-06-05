@@ -63,6 +63,139 @@ function getCurrentISOWeek(): string {
   return `${d.getUTCFullYear()}-${String(weekNo).padStart(2, '0')}`;
 }
 
+// ── Update feed card ──────────────────────────────────────────────────────────
+
+interface ChangelogEntry {
+  version: string;
+  date: string;
+  platform: 'ios' | 'android' | 'both';
+  notes: string;
+}
+
+interface ItunesApiResult {
+  version: string;
+  releaseNotes?: string;
+  currentVersionReleaseDate: string;
+}
+
+const ITUNES_ID = '386644958';
+
+async function fetchLiveEntry(): Promise<ChangelogEntry | null> {
+  const res = await fetch(`https://itunes.apple.com/lookup?id=${ITUNES_ID}`);
+  const data = await res.json();
+  const r: ItunesApiResult | undefined = data.results?.[0];
+  if (!r) return null;
+  return {
+    version: r.version,
+    date: r.currentVersionReleaseDate,
+    platform: 'ios',
+    notes: r.releaseNotes ?? '',
+  };
+}
+
+async function fetchManualEntries(): Promise<ChangelogEntry[]> {
+  const res = await fetch('/changelog.json');
+  return res.json();
+}
+
+function formatUpdateDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function UpdateFeedCard() {
+  const { data: liveEntry } = useQuery({
+    queryKey: ['itunes-changelog'],
+    queryFn: fetchLiveEntry,
+    staleTime: 60 * 60 * 1000,
+  });
+
+  const { data: manualEntries = [] } = useQuery({
+    queryKey: ['manual-changelog'],
+    queryFn: fetchManualEntries,
+    staleTime: 60 * 60 * 1000,
+  });
+
+  const entries = useMemo(() => {
+    const all: ChangelogEntry[] = [];
+    if (liveEntry) all.push(liveEntry);
+    for (const e of manualEntries) {
+      if (!liveEntry || e.version !== liveEntry.version) all.push(e);
+    }
+    return all;
+  }, [liveEntry, manualEntries]);
+
+  return (
+    <div className="updates-panel">
+      <span className="updates-panel-label">App Updates</span>
+      <div className="updates-feed">
+        {entries.length === 0 ? (
+          <p className="updates-empty">Loading…</p>
+        ) : (
+          entries.map((entry, i) => (
+            <div key={`${entry.version}-${i}`} className="update-entry">
+              <div className="update-entry-header">
+                <span className="update-version">v{entry.version}</span>
+                <span className="update-meta-sep">·</span>
+                <span className="update-date">{formatUpdateDate(entry.date)}</span>
+              </div>
+              {entry.notes && <p className="update-notes">{entry.notes}</p>}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Links card ────────────────────────────────────────────────────────────────
+
+interface LinkEntry {
+  label: string;
+  url: string;
+  icon?: string;         // full URL to override the auto-fetched favicon
+  faviconDomain?: string; // override domain used for favicon lookup
+}
+
+const COMMUNITY_LINKS: LinkEntry[] = [
+  { label: 'Android Download',      url: 'https://play.google.com/store/apps/details?id=com.nimblebit.pocketfrogs' },
+  { label: 'iOS Download',          url: 'https://apps.apple.com/us/app/pocket-frogs-tiny-pond-keeper/id386644958' },
+  { label: 'Community Discord',     url: 'https://discord.gg/XZ3eeEp', faviconDomain: 'discord.com' },
+  { label: 'Community Subreddit',   url: 'https://www.reddit.com/r/Pocketfrogs' },
+  { label: 'Community Wiki',        url: 'http://pocketfrogs.fandom.com/wiki/Pocket_Frogs_Wiki' },
+  { label: 'NimbleBit Official Site', url: 'https://nimblebit.com/#about' },
+  { label: 'Previous Spreadsheet',   url: 'https://docs.google.com/spreadsheets/d/1TNTK09vM8tlj6BC8haobuWCQvV4qNyDsRYsf-4hXdCc/' },
+  { label: 'Website GitHub',         url: 'https://github.com/cjmlax/Pocket-Frogs-Database' },
+  { label: 'Site Feedback Form',     url: 'https://teable.cjmlax.com/share/shre9SHevGPtThTpVGz/view', faviconDomain: 'teable.io' },
+];
+
+function faviconSrc(entry: LinkEntry): string {
+  if (entry.icon) return entry.icon;
+  const domain = entry.faviconDomain ?? new URL(entry.url).hostname;
+  return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+}
+
+function LinksCard() {
+  return (
+    <div className="frog-card">
+      <span className="daily-frog-panel-label">Links</span>
+      <div className="links-list">
+        {COMMUNITY_LINKS.map(entry => (
+          <a
+            key={entry.label}
+            href={entry.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="links-row"
+          >
+            <img className="links-favicon" src={faviconSrc(entry)} alt="" width={16} height={16} />
+            <span className="links-label">{entry.label}</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Cards ─────────────────────────────────────────────────────────────────────
 
 function DailyFrogCard() {
@@ -179,6 +312,7 @@ export default function Home() {
     <div className="home">
       <div className="home-main">
         <h1>Pocket Frogs Database</h1>
+        <UpdateFeedCard />
         <div className="home-text">
           <p>An unofficial, searchable database of information for the mobile game Pocket Frogs.</p>
           <p>This website is a continuation of my <a href="https://docs.google.com/spreadsheets/d/1TNTK09vM8tlj6BC8haobuWCQvV4qNyDsRYsf-4hXdCc/" target="_blank">Google Spreadsheet</a>, meant to store the data better, provide a simpler and more responsive feel, and separate it from Google so it can expand past just a spreadshet.</p>
@@ -189,6 +323,7 @@ export default function Home() {
       <div className="home-cards">
         <WeeklySetCard />
         <DailyFrogCard />
+        <LinksCard />
       </div>
     </div>
   );
