@@ -72,27 +72,6 @@ interface ChangelogEntry {
   notes: string;
 }
 
-interface ItunesApiResult {
-  version: string;
-  releaseNotes?: string;
-  currentVersionReleaseDate: string;
-}
-
-const ITUNES_ID = '386644958';
-
-async function fetchLiveEntry(): Promise<ChangelogEntry | null> {
-  const res = await fetch(`https://itunes.apple.com/lookup?id=${ITUNES_ID}`);
-  const data = await res.json();
-  const r: ItunesApiResult | undefined = data.results?.[0];
-  if (!r) return null;
-  return {
-    version: r.version,
-    date: r.currentVersionReleaseDate,
-    platform: 'ios',
-    notes: r.releaseNotes ?? '',
-  };
-}
-
 async function fetchManualEntries(): Promise<ChangelogEntry[]> {
   const res = await fetch('/changelog.json');
   return res.json();
@@ -103,26 +82,11 @@ function formatUpdateDate(iso: string) {
 }
 
 function UpdateFeedCard() {
-  const { data: liveEntry } = useQuery({
-    queryKey: ['itunes-changelog'],
-    queryFn: fetchLiveEntry,
-    staleTime: 60 * 60 * 1000,
-  });
-
-  const { data: manualEntries = [] } = useQuery({
+  const { data: entries = [] } = useQuery({
     queryKey: ['manual-changelog'],
     queryFn: fetchManualEntries,
     staleTime: 60 * 60 * 1000,
   });
-
-  const entries = useMemo(() => {
-    const all: ChangelogEntry[] = [];
-    if (liveEntry) all.push(liveEntry);
-    for (const e of manualEntries) {
-      if (!liveEntry || e.version !== liveEntry.version) all.push(e);
-    }
-    return all;
-  }, [liveEntry, manualEntries]);
 
   return (
     <div className="updates-panel">
@@ -316,8 +280,8 @@ export default function Home() {
         <div className="home-text">
           <p>An unofficial, searchable database of information for the mobile game Pocket Frogs.</p>
           <p>This website is a continuation of my <a href="https://docs.google.com/spreadsheets/d/1TNTK09vM8tlj6BC8haobuWCQvV4qNyDsRYsf-4hXdCc/" target="_blank">Google Spreadsheet</a>, meant to store the data better, provide a simpler and more responsive feel, and separate it from Google so it can expand past just a spreadshet.</p>
-          <p>This website is also two challenging/terrible things combined — a work in progress and vibe-coded. Please be patient while I work out the kinks and improve the experience. If you feel the urge to contribute on the code side, I'm throwing this up on <a href="https://github.com/cjmlax/Pocket-Frogs-Database" target="_blank">GitHub</a> as a repository.</p>
-          <p>Additionally, I'm happy to take any feedback you have about the site in it's current state. <a href="https://teable.cjmlax.com/share/shre9SHevGPtThTpVGz/view" target="_blank">Click here</a> to fill out a quick form so I can capture anything that can be improved on from your perspectives! Keep in mind that feature requests are welcome, though I'll be working towards feature parity with the Google Sheet before making any other major additions.</p>
+          <p>This website is also two challenging/terrible things combined — a work in progress and vibe-coded. Please be patient while I work out the kinks and improve the experience. You may see things change or not work for a while, but the data is hosted separately and won't be affected. It's my first attempt at a project managed by github, so anyone is welcome to take a look and contribute there.</p>
+          <p>Additionally, I'm happy to take any feedback you have about the site at the link in the card. Keep in mind that feature requests are welcome, but I'll be working through my own checklist as well.</p>
         </div>
       </div>
       <div className="home-cards">
