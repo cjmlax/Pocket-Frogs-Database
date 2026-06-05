@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { useDailyFrog } from '../hooks/useDailyFrog';
@@ -81,12 +81,36 @@ function formatUpdateDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
+function isRecent(iso: string) {
+  return Date.now() - new Date(iso).getTime() < 7 * 24 * 60 * 60 * 1000;
+}
+
+function groupByMinor(entries: ChangelogEntry[]): [string, ChangelogEntry[]][] {
+  const groups = new Map<string, ChangelogEntry[]>();
+  for (const entry of entries) {
+    const key = entry.version.split('.').slice(0, 2).join('.');
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(entry);
+  }
+  return [...groups.entries()];
+}
+
 function UpdateFeedCard() {
   const { data: entries = [] } = useQuery({
     queryKey: ['manual-changelog'],
     queryFn: fetchManualEntries,
     staleTime: 60 * 60 * 1000,
   });
+
+  const groups = useMemo(() => groupByMinor(entries), [entries]);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggleGroup = (key: string) =>
+    setExpanded(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
 
   return (
     <div className="updates-panel">
@@ -95,16 +119,44 @@ function UpdateFeedCard() {
         {entries.length === 0 ? (
           <p className="updates-empty">Loading…</p>
         ) : (
-          entries.map((entry, i) => (
-            <div key={`${entry.version}-${i}`} className="update-entry">
-              <div className="update-entry-header">
-                <span className="update-version">v{entry.version}</span>
-                <span className="update-meta-sep">·</span>
-                <span className="update-date">{formatUpdateDate(entry.date)}</span>
+          groups.map(([key, groupEntries], gi) => {
+            if (gi === 0) {
+              return (
+                <Fragment key={key}>
+                  {groupEntries.map((entry, i) => (
+                    <div key={entry.version} className={`update-entry${i === 0 && isRecent(entry.date) ? ' update-entry--new' : ''}`}>
+                      <div className="update-entry-header">
+                        <span className="update-version">v{entry.version}</span>
+                        <span className="update-meta-sep">·</span>
+                        <span className="update-date">{formatUpdateDate(entry.date)}</span>
+                      </div>
+                      {entry.notes && <p className="update-notes">{entry.notes}</p>}
+                    </div>
+                  ))}
+                </Fragment>
+              );
+            }
+            const isOpen = expanded.has(key);
+            return (
+              <div key={key} className="update-group">
+                <button className="update-group-header" onClick={() => toggleGroup(key)} aria-expanded={isOpen}>
+                  <span className="update-group-label">v{key}</span>
+                  <span className="update-group-count">{groupEntries.length} update{groupEntries.length !== 1 ? 's' : ''}</span>
+                  <span className={`weekly-expand-arrow${isOpen ? ' open' : ''}`}>▼</span>
+                </button>
+                {isOpen && groupEntries.map((entry) => (
+                  <div key={entry.version} className="update-entry update-entry--grouped">
+                    <div className="update-entry-header">
+                      <span className="update-version">v{entry.version}</span>
+                      <span className="update-meta-sep">·</span>
+                      <span className="update-date">{formatUpdateDate(entry.date)}</span>
+                    </div>
+                    {entry.notes && <p className="update-notes">{entry.notes}</p>}
+                  </div>
+                ))}
               </div>
-              {entry.notes && <p className="update-notes">{entry.notes}</p>}
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
@@ -280,7 +332,7 @@ export default function Home() {
         <div className="home-text">
           <p>An unofficial, searchable database of information for the mobile game Pocket Frogs.</p>
           <p>This website is a continuation of my <a href="https://docs.google.com/spreadsheets/d/1TNTK09vM8tlj6BC8haobuWCQvV4qNyDsRYsf-4hXdCc/" target="_blank">Google Spreadsheet</a>, meant to store the data better, provide a simpler and more responsive feel, and separate it from Google so it can expand past just a spreadshet.</p>
-          <p>This website is also two challenging/terrible things combined — a work in progress and vibe-coded. Please be patient while I work out the kinks and improve the experience. You may see things change or not work for a while, but the data is hosted separately and won't be affected. It's my first attempt at a project managed by github, so anyone is welcome to take a look and contribute there.</p>
+          <p>This website is also two challenging/terrible things combined — a work in progress and coded with AI assitance. Please be patient while I work out the kinks and improve the experience. You may see things change or not work for a while, but the data is hosted separately and won't be affected. It's my first attempt at a project managed by github, so anyone is welcome to take a look and contribute there.</p>
           <p>Additionally, I'm happy to take any feedback you have about the site at the link in the card. Keep in mind that feature requests are welcome, but I'll be working through my own checklist as well.</p>
         </div>
       </div>

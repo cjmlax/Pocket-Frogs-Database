@@ -132,7 +132,7 @@ a.plain-link:hover {
 .updates-feed {
   display: flex;
   flex-direction: column;
-  max-height: 220px;
+  max-height: 400px;
   overflow-y: auto;
   margin: 8px -18px 0;
   scrollbar-width: thin;
@@ -148,6 +148,44 @@ a.plain-link:hover {
 
 .update-entry:last-child {
   border-radius: 0 0 6px 6px;
+}
+
+.update-entry--new {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.update-entry--grouped {
+  padding-left: 28px;
+}
+
+.update-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 18px;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+}
+
+.update-group-header:hover {
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.update-group-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.update-group-count {
+  flex: 1;
+  font-size: 13px;
+  opacity: 0.5;
 }
 
 .update-entry-header {
