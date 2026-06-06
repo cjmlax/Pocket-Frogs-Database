@@ -39,11 +39,12 @@ interface LevelFields extends Record<string, unknown> {
   Restricted?: boolean;
 }
 
-// Chroma / Glass combination tables — Frog 1 / Frog 2 link to the frogs table.
+// Chroma / Glass combination tables — Frog 1 / Frog 2 / Result Frog link to the frogs table.
 interface ComboFields extends Record<string, unknown> {
-  'Frog 1'?:     unknown;
-  'Frog 2'?:     unknown;
-  'Screenshot'?: unknown;
+  'Frog 1'?:      unknown;
+  'Frog 2'?:      unknown;
+  'Result Frog'?: unknown;
+  'Screenshot'?:  unknown;
 }
 
 // Pulls the linked record's id from a Teable link field ({ id, title } or array).
@@ -203,13 +204,14 @@ export default function FrogDetail() {
         if (id1 !== frog.id && id2 !== frog.id) return [];
         const partnerId    = id1 === frog.id ? id2 : id1;
         const partnerTitle = id1 === frog.id ? linkTitle(rec.fields['Frog 2']) : linkTitle(rec.fields['Frog 1']);
-        return [{ type, partnerId, partnerTitle, screenshot: attachmentUrl(rec.fields['Screenshot']) }];
+        const resultId     = linkId(rec.fields['Result Frog']);
+        return [{ type, partnerId, partnerTitle, resultId, screenshot: attachmentUrl(rec.fields['Screenshot']) }];
       });
     return [...find(chromaCombos, 'Chroma'), ...find(glassCombos, 'Glass')];
   }, [frog, chromaCombos, glassCombos]);
 
-  // Resolve each partner frog's 3-word fullname by id. Shares the ['frog', id]
-  // query key with the main frog query, so partners already viewed are cached.
+  // Resolve partner and result frog fullnames by id. Shares ['frog', id] query
+  // keys with the main query so already-viewed frogs are served from cache.
   const partnerQueries = useQueries({
     queries: specials.map(s => ({
       queryKey:  ['frog', s.partnerId],
@@ -219,7 +221,19 @@ export default function FrogDetail() {
     })),
   });
   const partnerNames = specials.map(
-    (s, i) => partnerQueries[i]?.data?.fields.fullname ?? s.partnerTitle ?? 'another frog',
+    (s, i) => partnerQueries[i]?.data?.fields.fullname ?? s.partnerTitle ?? '—',
+  );
+
+  const resultQueries = useQueries({
+    queries: specials.map(s => ({
+      queryKey:  ['frog', s.resultId],
+      queryFn:   () => fetchFrogById<FrogFields>(s.resultId!),
+      enabled:   !!s.resultId,
+      staleTime: 1000 * 60 * 60 * 24,
+    })),
+  });
+  const resultNames = specials.map(
+    (_s, i) => resultQueries[i]?.data?.fields.fullname ?? '—',
   );
 
   // No frog when there's no id in the URL, or the resolver found nothing.
@@ -315,26 +329,6 @@ export default function FrogDetail() {
             </p>
           )}
 
-          {spoilers && specials.length > 0 && (
-            <div className="frog-detail-specials">
-              {specials.map((s, i) => (
-                <p key={`${s.type}-${i}`} className="breeding-special">
-                  ✨ Pairs with <strong>{partnerNames[i]}</strong> to produce a <strong>{s.type}</strong> frog!
-                  {s.screenshot && (
-                    <button
-                      className="screenshot-btn"
-                      onClick={() => setLightbox(s.screenshot)}
-                      aria-label={`View ${s.type} screenshot`}
-                      title="View screenshot"
-                    >
-                      <IconCamera/>
-                    </button>
-                  )}
-                </p>
-              ))}
-            </div>
-          )}
-
           <div className="breed-weekly">
             <h2 className="breed-weekly-title">
               Weekly Sets featuring {fullname}{' '}
@@ -348,6 +342,69 @@ export default function FrogDetail() {
               highlightNames={highlightNames}
             />
           </div>
+
+          {spoilers && (
+            <div className="frog-detail-specials">
+              {(['Chroma', 'Glass'] as const).map(type => {
+                const rows = specials
+                  .map((s, i) => ({ ...s, partnerName: partnerNames[i], resultName: resultNames[i] }))
+                  .filter(s => s.type === type);
+                return (
+                  <div key={type} className="special-combo-panel">
+                    <h2 className="breed-weekly-title">
+                      {type} Combinations{' '}
+                      <span className="breed-weekly-count">({rows.length})</span>
+                    </h2>
+                    <div className="table-wrapper">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>This Frog</th>
+                            <th>Partner</th>
+                            <th>Result</th>
+                            <th className="pin-cell"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows.length === 0 ? (
+                            <tr><td colSpan={4} className="search-hint">No {type.toLowerCase()} combinations found.</td></tr>
+                          ) : rows.map((row, i) => (
+                            <tr key={i}>
+                              <td>
+                                <a href={`/frog/${frog.id}`} className="plain-link">{fullname}</a>
+                              </td>
+                              <td>
+                                {row.partnerId
+                                  ? <a href={`/frog/${row.partnerId}`} className="plain-link">{row.partnerName}</a>
+                                  : row.partnerName}
+                              </td>
+                              <td>
+                                {row.resultId
+                                  ? <a href={`/frog/${row.resultId}`} className="plain-link">{row.resultName}</a>
+                                  : row.resultName}
+                              </td>
+                              <td className="pin-cell">
+                                {row.screenshot && (
+                                  <button
+                                    className="screenshot-btn"
+                                    onClick={() => setLightbox(row.screenshot)}
+                                    aria-label={`View ${type} screenshot`}
+                                    title="View screenshot"
+                                  >
+                                    <IconCamera />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </>
       )}
 

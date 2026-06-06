@@ -105,9 +105,6 @@ function SubmitDropdown() {
           <NavLink to="/submit" end className="submit-nav-link" onClick={() => setOpen(false)}>
             Mutations
           </NavLink>
-          <NavLink to="/submit/weekly" className="submit-nav-link" onClick={() => setOpen(false)}>
-            Weekly Set
-          </NavLink>
         </div>,
         document.body,
       )}

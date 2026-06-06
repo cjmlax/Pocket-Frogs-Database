@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect, useRef, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueries } from '@tanstack/react-query';
 import { type SortingState } from '@tanstack/react-table';
-import { fetchTable, fetchBreedFrogs } from '../api/teable';
+import { fetchTable, fetchBreedFrogs, fetchCombos, fetchFrogById } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
 import WeeklyTable, { type WeeklyFields, WEEKLY_FROG_FIELDS } from '../components/WeeklyTable';
 import { attachmentUrl } from '../utils/attachments';
@@ -10,6 +10,7 @@ import { formatNum } from '../utils/format';
 import { downloadCsv } from '../utils/csv';
 import { breedOptionsFrom } from '../utils/breeds';
 import { useBreedSort } from '../hooks/useBreedSort';
+import { useSpoilers } from '../hooks/useSpoilers';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
@@ -37,11 +38,33 @@ interface LevelFields extends Record<string, unknown> {
   Restricted?: boolean;
 }
 
+interface ComboFields extends Record<string, unknown> {
+  'Frog 1'?:      unknown;
+  'Frog 2'?:      unknown;
+  'Result Frog'?: unknown;
+  'Screenshot'?:  unknown;
+}
+
 // Pulls the linked record's id from a Teable link field ({ id, title } or array).
 function linkId(val: unknown): string | null {
   const first = Array.isArray(val) ? val[0] : val;
   if (first && typeof first === 'object' && 'id' in first) return String((first as { id: unknown }).id);
   return null;
+}
+
+function linkTitle(val: unknown): string | null {
+  const first = Array.isArray(val) ? val[0] : val;
+  if (first && typeof first === 'object' && 'title' in first) return String((first as { title: unknown }).title);
+  return null;
+}
+
+function IconCamera() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+  );
 }
 
 // ── Stat icons ────────────────────────────────────────────────────────────────
@@ -228,6 +251,64 @@ export default function BreedOverview() {
   }, [weekly, breedFrogNames]);
 
   const [weeklySort, setWeeklySort] = useState<SortingState>([{ id: 'date', desc: true }]);
+  const [lightbox, setLightbox] = useState<string | null>(null);
+  const { spoilers } = useSpoilers();
+
+  // ── Chroma / Glass combinations ───────────────────────────────────────────
+  const { data: chromaCombos } = useQuery({ queryKey: ['table', 'chroma'], queryFn: () => fetchCombos<ComboFields>('chroma') });
+  const { data: glassCombos  } = useQuery({ queryKey: ['table', 'glass'],  queryFn: () => fetchCombos<ComboFields>('glass')  });
+
+  const breedFrogIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const frog of frogs ?? []) ids.add(frog.id);
+    return ids;
+  }, [frogs]);
+
+  const specials = useMemo(() => {
+    if (!breedFrogIds.size) return [];
+    const find = (combos: typeof chromaCombos, type: 'Chroma' | 'Glass') =>
+      (combos ?? []).flatMap(rec => {
+        const id1 = linkId(rec.fields['Frog 1']);
+        const id2 = linkId(rec.fields['Frog 2']);
+        const isBreed1 = breedFrogIds.has(id1 ?? '');
+        const isBreed2 = breedFrogIds.has(id2 ?? '');
+        if (!isBreed1 && !isBreed2) return [];
+        const thisId       = isBreed1 ? id1 : id2;
+        const partnerId    = isBreed1 ? id2 : id1;
+        const partnerTitle = isBreed1 ? linkTitle(rec.fields['Frog 2']) : linkTitle(rec.fields['Frog 1']);
+        const resultId     = linkId(rec.fields['Result Frog']);
+        return [{ type, thisId, partnerId, partnerTitle, resultId, screenshot: attachmentUrl(rec.fields['Screenshot']) }];
+      });
+    return [...find(chromaCombos, 'Chroma'), ...find(glassCombos, 'Glass')];
+  }, [breedFrogIds, chromaCombos, glassCombos]);
+
+  const thisFrogNames = specials.map(
+    s => (frogs ?? []).find(f => f.id === s.thisId)?.fields.fullname ?? '—',
+  );
+
+  const partnerQueries = useQueries({
+    queries: specials.map(s => ({
+      queryKey:  ['frog', s.partnerId],
+      queryFn:   () => fetchFrogById<FrogFields>(s.partnerId!),
+      enabled:   !!s.partnerId,
+      staleTime: 1000 * 60 * 60 * 24,
+    })),
+  });
+  const partnerNames = specials.map(
+    (s, i) => partnerQueries[i]?.data?.fields.fullname ?? s.partnerTitle ?? '—',
+  );
+
+  const resultQueries = useQueries({
+    queries: specials.map(s => ({
+      queryKey:  ['frog', s.resultId],
+      queryFn:   () => fetchFrogById<FrogFields>(s.resultId!),
+      enabled:   !!s.resultId,
+      staleTime: 1000 * 60 * 60 * 24,
+    })),
+  });
+  const resultNames = specials.map(
+    (_s, i) => resultQueries[i]?.data?.fields.fullname ?? '—',
+  );
 
   function cellClass(val: number | null): string {
     if (val === null || globalMin === globalMax) return '';
@@ -506,6 +587,83 @@ export default function BreedOverview() {
             onSortingChange={setWeeklySort}
             paginate={false}
             highlightNames={breedFrogNames}
+          />
+        </div>
+      )}
+
+      {breed !== null && spoilers && (
+        <div className="frog-detail-specials">
+          {(['Chroma', 'Glass'] as const).map(type => {
+            const rows = specials
+              .map((s, i) => ({ ...s, thisFrogName: thisFrogNames[i], partnerName: partnerNames[i], resultName: resultNames[i] }))
+              .filter(s => s.type === type);
+            return (
+              <div key={type} className="special-combo-panel">
+                <h2 className="breed-weekly-title">
+                  {type} Combinations{' '}
+                  <span className="breed-weekly-count">({rows.length})</span>
+                </h2>
+                <div className="table-wrapper">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Breed Frog</th>
+                        <th>Partner</th>
+                        <th>Result</th>
+                        <th className="pin-cell"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.length === 0 ? (
+                        <tr><td colSpan={4} className="search-hint">No {type.toLowerCase()} combinations found.</td></tr>
+                      ) : rows.map((row, i) => (
+                        <tr key={i}>
+                          <td>
+                            {row.thisId
+                              ? <a href={`/frog/${row.thisId}`} className="plain-link">{row.thisFrogName}</a>
+                              : row.thisFrogName}
+                          </td>
+                          <td>
+                            {row.partnerId
+                              ? <a href={`/frog/${row.partnerId}`} className="plain-link">{row.partnerName}</a>
+                              : row.partnerName}
+                          </td>
+                          <td>
+                            {row.resultId
+                              ? <a href={`/frog/${row.resultId}`} className="plain-link">{row.resultName}</a>
+                              : row.resultName}
+                          </td>
+                          <td className="pin-cell">
+                            {row.screenshot && (
+                              <button
+                                className="screenshot-btn"
+                                onClick={() => setLightbox(row.screenshot)}
+                                aria-label={`View ${type} screenshot`}
+                                title="View screenshot"
+                              >
+                                <IconCamera />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {lightbox && (
+        <div className="lightbox-overlay" onClick={() => setLightbox(null)}>
+          <button className="lightbox-close" aria-label="Close" onClick={() => setLightbox(null)}>×</button>
+          <img
+            className="lightbox-image"
+            src={lightbox}
+            alt="Combination screenshot"
+            onClick={e => e.stopPropagation()}
           />
         </div>
       )}

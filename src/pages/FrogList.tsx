@@ -171,6 +171,16 @@ export default function FrogList() {
 
   const [pinned, setPinned] = useState<TeableRecord<FrogFields>[]>([]);
   const pinnedIds = useMemo(() => new Set(pinned.map(r => r.id)), [pinned]);
+  const [pinnedSorting, setPinnedSorting] = useState<SortingState>([]);
+
+  const pinnedTable = useReactTable({
+    data: pinned,
+    columns,
+    state: { sorting: pinnedSorting },
+    onSortingChange: setPinnedSorting,
+    getCoreRowModel:   getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
   const togglePin = useCallback((row: TeableRecord<FrogFields>) => {
     setPinned(prev =>
       prev.some(r => r.id === row.id)
@@ -288,32 +298,30 @@ export default function FrogList() {
             <table>
               <thead>
                 <tr>
-                  <th>Breed</th>
-                  <th>Base Color</th>
-                  <th>Secondary</th>
-                  <th>Value</th>
-                  <th>Speed</th>
-                  <th>Stamina</th>
-                  <th>Spd+Stm</th>
-                  <th>Level</th>
+                  {pinnedTable.getFlatHeaders().map(header => (
+                    <th
+                      key={header.id}
+                      className={header.column.getCanSort() ? 'sortable' : undefined}
+                      onClick={header.column.getToggleSortingHandler()}
+                    >
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                      {header.column.getIsSorted() === 'asc'  && ' ↑'}
+                      {header.column.getIsSorted() === 'desc' && ' ↓'}
+                    </th>
+                  ))}
                   <th className="pin-cell"></th>
                 </tr>
               </thead>
               <tbody>
-                {pinned.map(r => (
-                  <tr key={r.id}>
-                    <td>{cell(r.fields.Breed)}</td>
-                    <td>{cell(r.fields.Primary)}</td>
-                    <td>{cell(r.fields.Secondary)}</td>
-                    <td>{formatNum(r.fields.Value ?? 0)}</td>
-                    <td>{formatNum(r.fields.Speed ?? 0)}</td>
-                    <td>{formatNum(r.fields.Stamina ?? 0)}</td>
-                    <td>{formatNum((r.fields.Speed ?? 0) + (r.fields.Stamina ?? 0))}</td>
-                    <td>{(() => { const lvl = breedLevelMap.get(cell(r.fields.Breed)) ?? Infinity; return Number.isFinite(lvl) ? String(lvl) : '—'; })()}</td>
+                {pinnedTable.getRowModel().rows.map(row => (
+                  <tr key={row.id}>
+                    {row.getVisibleCells().map(c => (
+                      <td key={c.id}>{flexRender(c.column.columnDef.cell, c.getContext())}</td>
+                    ))}
                     <td className="pin-cell">
                       <button
                         className="pin-btn pinned"
-                        onClick={() => togglePin(r)}
+                        onClick={() => togglePin(row.original)}
                         title="Remove from comparison"
                         aria-label="Remove from comparison"
                       >

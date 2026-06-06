@@ -1079,24 +1079,6 @@ tr:hover .pin-btn,
 .submit-nav-link:hover { color: var(--text-h); background: var(--code-bg); }
 .submit-nav-link.active { color: var(--accent); }
 
-/* ─── Weekly set submit page ─────────────────────────────────────────────── */
-
-.weekly-submit-fields {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
-  max-width: 480px;
-}
-
-.weekly-submit-fields .combobox-field {
-  flex: 1;
-  min-width: 180px;
-}
-
-.weekly-frog-slots {
-  flex-wrap: wrap;
-}
 
 .settings-wrap {
   position: relative;
@@ -1251,7 +1233,7 @@ main {
 }
 
 .breed-info-note {
-  margin: 12px 0 0;
+  margin: 16px 0;
   font-size: 13px;
   color: var(--accent);
 }
@@ -1263,7 +1245,7 @@ main {
 
 /* Weekly Sets box at the bottom of the Breed Overview page */
 .breed-weekly {
-  margin-top: 28px;
+  margin-top: 40px;
 }
 
 .breed-weekly-title {
@@ -1383,16 +1365,24 @@ main {
 /* Frog Detail page */
 .frog-detail-name {
   font-size: 22px;
-  margin: 20px 0 4px;
+  margin: 20px 0 8px;
 }
 
 .frog-detail-stats {
-  margin: 12px 0 20px;
+  margin: 12px 0 24px;
 }
 
 /* Special-combination callouts on the Frog Detail page */
 .frog-detail-specials {
-  margin: 16px 0;
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 40px;
+}
+
+.special-combo-panel {
+  flex: 1;
+  min-width: 280px;
 }
 
 /* Potion / Stamp reward column header */
