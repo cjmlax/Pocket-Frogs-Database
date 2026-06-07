@@ -1394,15 +1394,37 @@ main {
   color: var(--accent);
 }
 
-/* Temporary auth claims inspector on the Account page */
-.auth-claims-dump {
-  background: var(--code-bg);
+/* Account page — badges + flair */
+.badge-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.badge-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 12px 14px;
-  font-size: 12px;
-  overflow-x: auto;
-  white-space: pre;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.badge-chip-icon {
+  font-size: 14px;
+}
+
+.flair-editor {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  max-width: 480px;
+}
+
+.flair-editor .search-input {
+  flex: 1;
 }
 
 /* ─── Downloads page ─────────────────────────────────────────────────────── */
