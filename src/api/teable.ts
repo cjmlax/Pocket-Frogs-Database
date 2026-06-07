@@ -187,3 +187,49 @@ export async function fetchFrogById<T extends Record<string, unknown>>(
   if (!response.ok) throw new Error(`API Error ${response.status}`);
   return response.json() as Promise<TeableRecord<T>>;
 }
+
+// ── Frog summary stats ─────────────────────────────────────────────────────
+// The frogs table is far too large (40k+ rows) to fetch in full just to count
+// it and find the highest Value, so the home summary uses two lightweight calls:
+// a row-count aggregation, and a single record sorted by Value descending. The
+// sorted record yields both the max value and the record id to link to — and if
+// several frogs share the max, it resolves to whichever the DB orders first.
+// Value field ID: fldsFCJTusSBpi0mYH3.
+const FROG_VALUE_FIELD = 'fldsFCJTusSBpi0mYH3';
+
+export interface FrogStats {
+  count: number;
+  maxValue: number | null;
+  topFrogs: { id: string; fullname: string }[]; // every frog tied at maxValue
+}
+
+// How many top-sorted records to scan for ties at the max value. The highest
+// value is realistically held by only a handful of frogs, so this cap is never
+// approached, but it bounds the single request.
+const TOP_TIE_CAP = 50;
+
+export async function fetchFrogStats(): Promise<FrogStats> {
+  const countUrl = `${BASE_URL}/${TABLES.frogs.id}/aggregation/row-count`;
+  const orderBy  = encodeURIComponent(JSON.stringify([{ fieldId: FROG_VALUE_FIELD, order: 'desc' }]));
+  const topUrl   = `${BASE_URL}/${TABLES.frogs.id}/record?fieldKeyType=dbFieldName&take=${TOP_TIE_CAP}&orderBy=${orderBy}`;
+
+  const [countRes, topRes] = await Promise.all([
+    fetch(countUrl, { headers: { Accept: 'application/json' } }),
+    fetch(topUrl,   { headers: { Accept: 'application/json' } }),
+  ]);
+  if (!countRes.ok) throw new Error(`Frog count failed: ${countRes.status}`);
+  if (!topRes.ok)   throw new Error(`Frog top-value fetch failed: ${topRes.status}`);
+
+  const countData = (await countRes.json()) as { rowCount?: number };
+  const topData   = (await topRes.json()) as {
+    records?: { id: string; name?: string; fields: { Value?: number; fullname?: string } }[];
+  };
+
+  const records  = topData.records ?? [];
+  const maxValue = typeof records[0]?.fields.Value === 'number' ? records[0].fields.Value : null;
+  const topFrogs = maxValue == null ? [] : records
+    .filter(r => r.fields.Value === maxValue)
+    .map(r => ({ id: r.id, fullname: String(r.fields.fullname ?? r.name ?? '') }));
+
+  return { count: countData.rowCount ?? 0, maxValue, topFrogs };
+}

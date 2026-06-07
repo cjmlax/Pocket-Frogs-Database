@@ -113,8 +113,9 @@ export default function Downloads() {
         </button>
       </div>
       <p className="search-hint" style={{ marginTop: 0 }}>
-        Data is available for export as it's stored in the database. Note that this is stored as I coded it, and I don't currently have a guide to decipher it. The exports are direct from the database and the fingerprints are checked/updated when anyone pulls a download, or at least every 24 hrs. If your filename has the same hash as below, you do not need to re-export the data.
+        Data is available for export as it's stored in the database. Note that, because it's a database, items can be coded in funny ways and I don't currently have a guide to decipher it. The file is not stored in the browser at all, it is a direct API call to the database for that table. This means you will need an internet connnection to start and complete the download.
       </p>
+      <p className="search-hint"> I've you've already downloaded the data and want to see if it's still accurate, you can check two things. First, check the hash value next to the table name - if it matches the one on your previous file there are no updates. Hash values are validated/updated any time anyone pulls a download, but you can manually refresh the hases with the button above. The second way is to look at the last source update value of the table. This is read directly from the database, so if you know that your old file is from before that date, your data is old. </p>
 
       {loadError ? (
         <p className="search-error">Could not load export options. Please try again later.</p>

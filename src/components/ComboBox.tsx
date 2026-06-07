@@ -123,6 +123,14 @@ export default function ComboBox({
           autoComplete="off"
           onChange={e => handleInput(e.target.value)}
           onFocus={() => { if (!selected) setIsOpen(true); }}
+          onBlur={e => {
+            // Close when focus leaves the combo box entirely (e.g. Tab). Focus
+            // staying inside (e.g. the clear button) keeps the dropdown open.
+            if (!containerRef.current?.contains(e.relatedTarget as Node)) {
+              setIsOpen(false);
+              setActiveIndex(-1);
+            }
+          }}
           onKeyDown={handleKeyDown}
         />
         {inputValue && (

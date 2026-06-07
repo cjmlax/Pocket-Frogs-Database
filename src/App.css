@@ -129,6 +129,99 @@ a.plain-link:hover {
   color: var(--accent);
 }
 
+.summary-panel {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 18px 18px;
+  box-shadow: var(--shadow);
+  max-width: 680px;
+  margin-bottom: 20px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.summary-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.summary-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.summary-stat-link {
+  color: var(--text-h);
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.summary-stat-link:hover {
+  text-decoration: underline;
+}
+
+.summary-stat-link:disabled {
+  color: var(--text-h);
+  cursor: default;
+  text-decoration: none;
+}
+
+.summary-stat-popup-wrap {
+  position: relative;
+}
+
+.summary-popup {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 160px;
+  padding: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+}
+
+.summary-popup-link {
+  font-size: 13px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.summary-popup-link:hover {
+  background: var(--code-bg);
+  color: var(--accent);
+}
+
+.summary-stat-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.6;
+}
+
 .updates-feed {
   display: flex;
   flex-direction: column;
@@ -1293,6 +1386,12 @@ main {
 .csv-btn:disabled {
   opacity: 0.45;
   cursor: default;
+}
+
+/* Star marking the database-wide highest-value frog */
+.max-value-star {
+  margin-left: 4px;
+  color: var(--accent);
 }
 
 /* ─── Downloads page ─────────────────────────────────────────────────────── */

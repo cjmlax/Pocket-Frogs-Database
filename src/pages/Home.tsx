@@ -1,8 +1,8 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { useDailyFrog } from '../hooks/useDailyFrog';
-import { fetchTable, type TeableRecord } from '../api/teable';
+import { fetchTable, fetchCombos, fetchFrogStats, type TeableRecord } from '../api/teable';
 import { formatNum } from '../utils/format';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -61,6 +61,90 @@ function getCurrentISOWeek(): string {
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   return `${d.getUTCFullYear()}-${String(weekNo).padStart(2, '0')}`;
+}
+
+// ── Site summary card ──────────────────────────────────────────────────────────
+
+function SiteSummaryCard() {
+  // Counts come from the full tables already cached in IndexedDB by other pages,
+  // so these add no network requests on a warm cache.
+  const { data: breeds } = useQuery({ queryKey: ['table', 'breeds'], queryFn: () => fetchTable('breeds') });
+  const { data: weekly } = useQuery({ queryKey: ['table', 'weekly'], queryFn: () => fetchTable('weekly') });
+  const { data: chroma } = useQuery({ queryKey: ['table', 'chroma'], queryFn: () => fetchCombos('chroma') });
+  const { data: glass  } = useQuery({ queryKey: ['table', 'glass'],  queryFn: () => fetchCombos('glass')  });
+
+  // The frogs table is too large to fetch in full — two aggregation calls instead.
+  const { data: frogStats } = useQuery({
+    queryKey: ['frog-stats'],
+    queryFn: fetchFrogStats,
+    staleTime: 60 * 60 * 1000,
+  });
+
+  const combos = (chroma?.length ?? 0) + (glass?.length ?? 0);
+  const holders = frogStats?.topFrogs ?? [];
+
+  // Popup listing the frog(s) holding the highest value.
+  const [popupOpen, setPopupOpen] = useState(false);
+  const popupRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!popupOpen) return;
+    function onDocClick(e: MouseEvent) {
+      if (popupRef.current && !popupRef.current.contains(e.target as Node)) setPopupOpen(false);
+    }
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [popupOpen]);
+
+  const stats: { label: string; value: number | null | undefined; isMax?: boolean }[] = [
+    { label: 'Frogs',         value: frogStats?.count },
+    { label: 'Breeds',        value: breeds?.length },
+    { label: 'Weekly Sets',   value: weekly?.length },
+    { label: 'Highest Value', value: frogStats?.maxValue, isMax: true },
+    { label: 'Mutation Combos', value: chroma && glass ? combos : undefined },
+  ];
+
+  return (
+    <div className="summary-panel">
+      <span className="updates-panel-label">Database Summary</span>
+      <div className="summary-grid">
+        {stats.map(s => (
+          <div key={s.label} className="summary-stat">
+            {s.isMax ? (
+              <div className="summary-stat-popup-wrap" ref={popupRef}>
+                <button
+                  className="summary-stat-value summary-stat-link"
+                  onClick={() => setPopupOpen(o => !o)}
+                  disabled={holders.length === 0}
+                  aria-expanded={popupOpen}
+                >
+                  {s.value == null ? '—' : formatNum(s.value)}
+                </button>
+                {popupOpen && holders.length > 0 && (
+                  <div className="summary-popup">
+                    {holders.map(h => (
+                      <Link
+                        key={h.id}
+                        to={`/frog/${h.id}`}
+                        className="summary-popup-link"
+                        onClick={() => setPopupOpen(false)}
+                      >
+                        {h.fullname}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <span className="summary-stat-value">{s.value == null ? '—' : formatNum(s.value)}</span>
+            )}
+            <span className="summary-stat-label">
+              {s.label}{s.isMax && holders.length > 1 ? ` (${holders.length})` : ''}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 // ── Update feed card ──────────────────────────────────────────────────────────
@@ -263,7 +347,7 @@ function WeeklySetCard() {
   return (
     <div className="frog-card">
       <span className="daily-frog-panel-label">
-        Weekly Set{thisWeek?.fields.SetDate ? ` ${thisWeek.fields.SetDate}` : ''}
+        Weekly Set:{thisWeek?.fields.SetDate ? ` ${thisWeek.fields.SetDate}` : ''}
       </span>
       {isLoading ? (
         <p className="daily-frog-loading">Loading…</p>
@@ -328,10 +412,11 @@ export default function Home() {
     <div className="home">
       <div className="home-main">
         <h1>Pocket Frogs Database</h1>
+        <SiteSummaryCard />
         <UpdateFeedCard />
         <div className="home-text">
           <p>An unofficial, searchable database of information for the mobile game Pocket Frogs.</p>
-          <p>This website is a continuation of my <a href="https://docs.google.com/spreadsheets/d/1TNTK09vM8tlj6BC8haobuWCQvV4qNyDsRYsf-4hXdCc/" target="_blank">Google Spreadsheet</a>, meant to store the data better, provide a simpler and more responsive feel, and separate it from Google so it can expand past just a spreadshet.</p>
+          <p>This website is a continuation of my <a href="https://docs.google.com/spreadsheets/d/1TNTK09vM8tlj6BC8haobuWCQvV4qNyDsRYsf-4hXdCc/" target="_blank">Google Spreadsheet</a> meant to store the data better, provide a simpler and more responsive feel, and separate it from Google so it can expand past just a spreadshet.</p>
           <p>This website is also two challenging/terrible things combined — a work in progress and coded with AI assitance. Please be patient while I work out the kinks and improve the experience. You may see things change or not work for a while, but the data is hosted separately and won't be affected. It's my first attempt at a project managed by github, so anyone is welcome to take a look and contribute there.</p>
           <p>Additionally, I'm happy to take any feedback you have about the site at the link in the card. Keep in mind that feature requests are welcome, but I'll be working through my own checklist as well.</p>
         </div>

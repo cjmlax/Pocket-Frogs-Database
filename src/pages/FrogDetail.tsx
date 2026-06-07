@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router';
 import { useQuery, useQueries, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { type SortingState } from '@tanstack/react-table';
 import {
-  fetchFrogById, fetchTable, fetchCombos, fetchBreedFrogs,
+  fetchFrogById, fetchTable, fetchCombos, fetchBreedFrogs, fetchFrogStats,
   type TeableRecord,
 } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
@@ -169,6 +169,15 @@ export default function FrogDetail() {
   const stamina = typeof frog?.fields.Stamina === 'number' ? frog.fields.Stamina : null;
   const racing  = speed === null && stamina === null ? null : (speed ?? 0) + (stamina ?? 0);
 
+  // Flag the frog if it holds the database-wide highest value. Shares the
+  // 'frog-stats' cache key with the home summary, so it's usually already loaded.
+  const { data: frogStats } = useQuery({
+    queryKey: ['frog-stats'],
+    queryFn: fetchFrogStats,
+    staleTime: 60 * 60 * 1000,
+  });
+  const isMaxValue = value !== null && frogStats?.maxValue === value;
+
   // The frog's breed record — used for level resolution and the Promotional flag.
   const breedRec = useMemo(
     () => (frog && breeds ? breeds.find(b => b.id === linkId(frog.fields.Breed)) ?? null : null),
@@ -281,7 +290,9 @@ export default function FrogDetail() {
 
           <div className="breed-info-stats frog-detail-stats">
             <div className="breed-info-stat">
-              <span className="breed-info-stat-label">Value</span>
+              <span className="breed-info-stat-label">
+                Value{isMaxValue && <span className="max-value-star" title="Highest value in the database">★</span>}
+              </span>
               <span className="breed-info-stat-value">{formatNum(value)}</span>
             </div>
             <div className="breed-info-stat">
