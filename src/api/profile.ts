@@ -1,7 +1,7 @@
 // Client for the worker's per-user profile endpoints. The signed-in user's OIDC
 // id_token is sent as a Bearer token; the worker verifies it and keys everything
-// on the Authentik subject. Override the base URL with VITE_SUBMIT_API.
-const API = (import.meta.env.VITE_SUBMIT_API ?? 'https://pfdb-api.cjmlax.com').replace(/\/$/, '');
+// on the Authentik subject.
+import { API_BASE } from './base';
 
 export interface Badge {
   id: string;
@@ -21,7 +21,7 @@ export interface Profile {
 }
 
 export async function fetchMe(idToken: string): Promise<Profile> {
-  const res = await fetch(`${API}/api/me`, {
+  const res = await fetch(`${API_BASE}/api/me`, {
     headers: { Authorization: `Bearer ${idToken}` },
   });
   if (!res.ok) throw new Error(`Profile fetch failed (${res.status})`);
@@ -29,7 +29,7 @@ export async function fetchMe(idToken: string): Promise<Profile> {
 }
 
 export async function updateFlair(idToken: string, flair: string): Promise<Profile> {
-  const res = await fetch(`${API}/api/me`, {
+  const res = await fetch(`${API_BASE}/api/me`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ flair }),

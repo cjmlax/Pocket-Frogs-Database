@@ -1,9 +1,7 @@
 // Client for the self-hosted submission worker (pfdb-submissions). The worker
 // holds submissions for review and pushes approved ones into Teable with a
 // privileged token — so nothing here writes to the database directly.
-//
-// Override the base URL at build time with VITE_SUBMIT_API.
-const SUBMIT_API = (import.meta.env.VITE_SUBMIT_API ?? 'https://pfdb-api.cjmlax.com').replace(/\/$/, '');
+import { API_BASE } from './base';
 
 export interface ComboSubmission {
   variant:        'chroma' | 'glass';
@@ -34,7 +32,7 @@ export async function submitCombo(data: ComboSubmission, screenshot?: File | nul
 
   let res: Response;
   try {
-    res = await fetch(`${SUBMIT_API}/api/submit`, { method: 'POST', body: form });
+    res = await fetch(`${API_BASE}/api/submit`, { method: 'POST', body: form });
   } catch {
     throw new Error('Could not reach the submission service. Please try again later.');
   }

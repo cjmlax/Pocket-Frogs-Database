@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchTableMeta, TABLES } from '../api/teable';
-
-const EXPORT_API = (import.meta.env.VITE_SUBMIT_API ?? 'https://pfdb-api.cjmlax.com').replace(/\/$/, '');
+import { API_BASE } from '../api/base';
 
 interface TableMeta {
   slug: string;
@@ -40,7 +39,7 @@ export default function Downloads() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    fetch(`${EXPORT_API}/api/export`)
+    fetch(`${API_BASE}/api/export`)
       .then(r => (r.ok ? r.json() : Promise.reject()))
       .then((data: TableMeta[]) => setTables(data))
       .catch(() => setLoadError(true));
@@ -53,7 +52,7 @@ export default function Downloads() {
   async function handleRefresh() {
     setRefreshing(true);
     try {
-      const fresh: TableMeta[] | null = await fetch(`${EXPORT_API}/api/export/refresh`, { method: 'POST', cache: 'no-store' })
+      const fresh: TableMeta[] | null = await fetch(`${API_BASE}/api/export/refresh`, { method: 'POST', cache: 'no-store' })
         .then(r => r.ok ? r.json() : null).catch(() => null);
       if (fresh) setTables(fresh);
     } finally {
@@ -65,7 +64,7 @@ export default function Downloads() {
     setDownloading(d => ({ ...d, [slug]: true }));
     setDlErrors(e => ({ ...e, [slug]: '' }));
     try {
-      const res = await fetch(`${EXPORT_API}/api/export/${slug}`);
+      const res = await fetch(`${API_BASE}/api/export/${slug}`);
       if (res.status === 429) {
         setDlErrors(e => ({ ...e, [slug]: 'Rate limit reached — please try again later.' }));
         return;
@@ -85,7 +84,7 @@ export default function Downloads() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       // Re-fetch meta so the displayed hash updates for everyone, not just the downloader.
-      const fresh: TableMeta[] | null = await fetch(`${EXPORT_API}/api/export`, { cache: 'no-store' })
+      const fresh: TableMeta[] | null = await fetch(`${API_BASE}/api/export`, { cache: 'no-store' })
         .then(r => r.ok ? r.json() : null).catch(() => null);
       if (fresh) setTables(fresh);
     } catch {
