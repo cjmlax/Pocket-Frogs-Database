@@ -74,11 +74,12 @@ export default function Downloads() {
         setDlErrors(e => ({ ...e, [slug]: 'Export failed. Please try again.' }));
         return;
       }
+      const filename = res.url.split('/').pop() ?? `${slug}.csv`;
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${slug}.csv`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
