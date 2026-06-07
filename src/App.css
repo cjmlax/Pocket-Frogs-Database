@@ -1394,6 +1394,17 @@ main {
   color: var(--accent);
 }
 
+/* Temporary auth claims inspector on the Account page */
+.auth-claims-dump {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-size: 12px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
 /* ─── Downloads page ─────────────────────────────────────────────────────── */
 
 .refresh-btn {

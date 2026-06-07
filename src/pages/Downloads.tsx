@@ -116,7 +116,7 @@ export default function Downloads() {
       <p className="search-hint" style={{ marginTop: 0 }}>
         Data is available for export as it's stored in the database. Note that, because it's a database, items can be coded in funny ways and I don't currently have a guide to decipher it. The file is not stored in the browser at all, it is a direct API call to the database for that table. This means you will need an internet connnection to start and complete the download.
       </p>
-      <p className="search-hint"> If you've already downloaded the data and want to see if it's still accurate, you can check two things - the fingerprint and the last update date. The fingerprint is a calculation of the data in the table; changing anything changes the fingerprint, so if it's different han the one on your file it's changed. The lsat update date is from teh table itself, which is another indicator for needing new data.</p>
+      <p className="search-hint"> If you're looking to update your previous download, use the hash value or 'fingerprint'. This is calculated by running the entire block of data through a special function. Even the smallest change to the data will alter the output of the function, changing the fingerprint. This means if you have a file with a diffrerent fingerprint, the data has changed.</p>
 
       {loadError ? (
         <p className="search-error">Could not load export options. Please try again later.</p>
