@@ -114,9 +114,10 @@ export default function Account() {
       {saveFlair.isError && <p className="search-error">Could not save flair.</p>}
 
       {isAdmin && (
-        <p style={{ marginTop: 24 }}>
+        <div className="account-admin-links" style={{ marginTop: 24 }}>
+          <Link to="/admin/submissions" className="plain-link">Review submissions →</Link>
           <Link to="/admin/badges" className="plain-link">Manage badges →</Link>
-        </p>
+        </div>
       )}
 
       <button className="csv-btn" style={{ marginTop: isAdmin ? 8 : 24 }} onClick={() => void auth.signoutRedirect()}>

@@ -134,6 +134,7 @@ export default function AdminBadges() {
                 {b.icon && <span className="badge-chip-icon">{b.icon}</span>}{b.name}
               </span>
               <code className="badge-admin-id">{b.id}</code>
+              <span className="badge-admin-sort-label" title="Sort order">sort {b.sort_order}</span>
               <span className="badge-admin-desc">{b.description}</span>
               <button className="csv-btn" onClick={() => editBadge(b)}>Edit</button>
               <button
