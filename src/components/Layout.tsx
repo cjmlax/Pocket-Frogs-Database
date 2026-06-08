@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { NavLink, Outlet, useLocation } from 'react-router';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
+import { useAuth } from 'react-oidc-context';
 import { useTheme } from '../hooks/useTheme';
 import { useBreedSort, selectBreedSort } from '../hooks/useBreedSort';
 import { useColorSort, selectColorSort } from '../hooks/useColorSort';
@@ -120,6 +121,8 @@ function SettingsDropdown() {
   const breedSort = useBreedSort();
   const colorSort = useColorSort();
   const { spoilers, set: setSpoilers } = useSpoilers();
+  const auth = useAuth();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -183,6 +186,25 @@ function SettingsDropdown() {
           <button className={`settings-theme-opt${!spoilers ? ' active' : ''}`} onClick={() => setSpoilers(false)} aria-label="Spoilers off" title="Spoilers off">
             Off
           </button>
+
+          {/* Account — username (→ account page) when signed in, else "Log In" */}
+          <div className="settings-account-row">
+            {auth.isAuthenticated ? (
+              <button
+                className="settings-account-link"
+                onClick={() => { setOpen(false); navigate('/account'); }}
+              >
+                {String(auth.user?.profile?.preferred_username ?? auth.user?.profile?.name ?? 'Account')}
+              </button>
+            ) : (
+              <button
+                className="settings-account-link"
+                onClick={() => { setOpen(false); void auth.signinRedirect(); }}
+              >
+                Log In
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

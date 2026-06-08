@@ -17,8 +17,10 @@ export const oidcConfig: AuthProviderProps = {
   // Persist the session across reloads/tabs instead of the default sessionStorage.
   userStore: new WebStorageStateStore({ store: window.localStorage }),
   automaticSilentRenew: true,
-  // After a successful login, strip the ?code/&state params and return home.
+  // Strip the ?code/&state params after processing. The actual return-home is
+  // done by AuthCallback via React Router so the SPA route updates (a raw
+  // history change here wouldn't tell the router to navigate).
   onSigninCallback: () => {
-    window.history.replaceState({}, document.title, '/');
+    window.history.replaceState({}, document.title, window.location.pathname);
   },
 };
