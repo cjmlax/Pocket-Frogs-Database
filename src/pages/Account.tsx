@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import { useAuth } from 'react-oidc-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchMe, updateFlair } from '../api/profile';
@@ -43,6 +44,7 @@ export default function Account() {
   const groups = (claims?.pfdb_groups as string[] | undefined) ?? [];
   const connected = (claims?.connected_accounts as Record<string, string> | undefined) ?? {};
   const connectedList = Object.entries(connected);
+  const isAdmin = groups.includes('admins');
 
   return (
     <div>
@@ -111,7 +113,13 @@ export default function Account() {
       </div>
       {saveFlair.isError && <p className="search-error">Could not save flair.</p>}
 
-      <button className="csv-btn" style={{ marginTop: 24 }} onClick={() => void auth.signoutRedirect()}>
+      {isAdmin && (
+        <p style={{ marginTop: 24 }}>
+          <Link to="/admin/badges" className="plain-link">Manage badges →</Link>
+        </p>
+      )}
+
+      <button className="csv-btn" style={{ marginTop: isAdmin ? 8 : 24 }} onClick={() => void auth.signoutRedirect()}>
         Sign out
       </button>
     </div>

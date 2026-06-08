@@ -1427,6 +1427,97 @@ main {
   flex: 1;
 }
 
+/* Badge admin page */
+.badge-admin-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.badge-admin-form .search-input {
+  flex: 1;
+  min-width: 120px;
+}
+
+.badge-admin-icon { flex: 0 0 60px; min-width: 60px; }
+.badge-admin-color { flex: 0 0 48px; min-width: 48px; padding: 2px; }
+.badge-admin-sort { flex: 0 0 70px; min-width: 70px; }
+
+.badge-admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.badge-admin-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+
+.badge-admin-id {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.badge-admin-desc {
+  flex: 1;
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.badge-admin-users {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.badge-admin-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+
+.badge-admin-user-name {
+  font-weight: 600;
+  min-width: 140px;
+}
+
+.badge-admin-user-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+}
+
+.badge-admin-grant {
+  flex: 0 0 auto;
+  max-width: 200px;
+}
+
+.badge-revoke-btn {
+  margin-left: 4px;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.6;
+  padding: 0;
+}
+
+.badge-revoke-btn:hover {
+  opacity: 1;
+}
+
 /* ─── Downloads page ─────────────────────────────────────────────────────── */
 
 .refresh-btn {
