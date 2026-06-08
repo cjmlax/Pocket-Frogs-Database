@@ -4,13 +4,6 @@ import { useAuth } from 'react-oidc-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchMe, updateFlair, fetchMySubmissions } from '../api/profile';
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: 'Pending',
-  pushed: 'Approved',
-  rejected: 'Rejected',
-  error: 'Error',
-};
-
 export default function Account() {
   const auth = useAuth();
   const queryClient = useQueryClient();
@@ -126,25 +119,36 @@ export default function Account() {
       </div>
       {saveFlair.isError && <p className="search-error">Could not save flair.</p>}
 
-      <h2 style={{ marginTop: 24 }}>Your Submissions</h2>
-      {!submissions ? (
-        <p className="search-hint">Loading…</p>
-      ) : submissions.length === 0 ? (
-        <p className="search-hint">You haven't submitted anything yet.</p>
-      ) : (
-        <div className="submission-history">
-          {submissions.map(s => (
-            <div key={s.id} className="submission-history-row">
-              <span className={`submission-status submission-status--${s.status}`}>{STATUS_LABEL[s.status]}</span>
-              <span className="submission-history-summary">{s.summary}</span>
-              <span className="submission-history-date">{new Date(s.createdAt).toLocaleDateString()}</span>
-              {s.status === 'rejected' && s.reviewerNote && (
-                <span className="submission-history-note">— {s.reviewerNote}</span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      {(() => {
+        const approved = submissions?.filter(s => s.status === 'pushed');
+        const pendingCount = submissions?.filter(s => s.status === 'pending').length ?? 0;
+        return (
+          <>
+            <h2 style={{ marginTop: 24 }}>Your Approved Combinations</h2>
+            {!submissions ? (
+              <p className="search-hint">Loading…</p>
+            ) : !approved || approved.length === 0 ? (
+              <p className="search-hint">No approved combinations yet.</p>
+            ) : (
+              <div className="submission-history">
+                {approved.map(s => (
+                  <div key={s.id} className="submission-history-row">
+                    <span className="submission-history-summary">{s.summary}</span>
+                    <span className="submission-history-date">
+                      {new Date(s.reviewedAt ?? s.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {pendingCount > 0 && (
+              <p className="submission-pending-hint">
+                {pendingCount} submission{pendingCount === 1 ? '' : 's'} pending review.
+              </p>
+            )}
+          </>
+        );
+      })()}
 
       {isAdmin && (
         <p style={{ marginTop: 24 }}>
