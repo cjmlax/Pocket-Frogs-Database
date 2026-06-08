@@ -2,7 +2,14 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useAuth } from 'react-oidc-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchMe, updateFlair } from '../api/profile';
+import { fetchMe, updateFlair, fetchMySubmissions } from '../api/profile';
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: 'Pending',
+  pushed: 'Approved',
+  rejected: 'Rejected',
+  error: 'Error',
+};
 
 export default function Account() {
   const auth = useAuth();
@@ -24,6 +31,12 @@ export default function Account() {
   const saveFlair = useMutation({
     mutationFn: () => updateFlair(idToken!, flairDraft),
     onSuccess: updated => queryClient.setQueryData(['me'], updated),
+  });
+
+  const { data: submissions } = useQuery({
+    queryKey: ['my-submissions'],
+    queryFn: () => fetchMySubmissions(idToken!),
+    enabled: auth.isAuthenticated && !!idToken,
   });
 
   if (auth.isLoading) return <p className="search-hint">Loading…</p>;
@@ -112,6 +125,26 @@ export default function Account() {
         </button>
       </div>
       {saveFlair.isError && <p className="search-error">Could not save flair.</p>}
+
+      <h2 style={{ marginTop: 24 }}>Your Submissions</h2>
+      {!submissions ? (
+        <p className="search-hint">Loading…</p>
+      ) : submissions.length === 0 ? (
+        <p className="search-hint">You haven't submitted anything yet.</p>
+      ) : (
+        <div className="submission-history">
+          {submissions.map(s => (
+            <div key={s.id} className="submission-history-row">
+              <span className={`submission-status submission-status--${s.status}`}>{STATUS_LABEL[s.status]}</span>
+              <span className="submission-history-summary">{s.summary}</span>
+              <span className="submission-history-date">{new Date(s.createdAt).toLocaleDateString()}</span>
+              {s.status === 'rejected' && s.reviewerNote && (
+                <span className="submission-history-note">— {s.reviewerNote}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {isAdmin && (
         <div className="account-admin-links" style={{ marginTop: 24 }}>

@@ -91,7 +91,9 @@ function SubmissionCard({ sub, idToken }: { sub: PendingSubmission; idToken: str
       <div className="submission-main">
         <span className="badge-chip submission-type">{sub.type}</span>
         <strong className="submission-summary">{sub.summary}</strong>
-        <span className="submission-when">{new Date(sub.createdAt).toLocaleString()}</span>
+        <span className="submission-when">
+          by {sub.submitter ?? 'anonymous'} · {new Date(sub.createdAt).toLocaleString()}
+        </span>
         {sub.submitterNote && (
           /^https?:\/\//i.test(sub.submitterNote)
             ? <p className="submission-note"><a href={sub.submitterNote} target="_blank" rel="noopener noreferrer">Source ↗</a></p>

@@ -28,6 +28,24 @@ export async function fetchMe(idToken: string): Promise<Profile> {
   return res.json();
 }
 
+export interface MySubmission {
+  id: string;
+  type: string;
+  summary: string;
+  status: 'pending' | 'rejected' | 'pushed' | 'error';
+  reviewerNote: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+}
+
+export async function fetchMySubmissions(idToken: string): Promise<MySubmission[]> {
+  const res = await fetch(`${API_BASE}/api/me/submissions`, {
+    headers: { Authorization: `Bearer ${idToken}` },
+  });
+  if (!res.ok) throw new Error(`Submissions fetch failed (${res.status})`);
+  return res.json();
+}
+
 export async function updateFlair(idToken: string, flair: string): Promise<Profile> {
   const res = await fetch(`${API_BASE}/api/me`, {
     method: 'PATCH',

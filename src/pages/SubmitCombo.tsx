@@ -7,6 +7,7 @@ import { useBreedSort } from '../hooks/useBreedSort';
 import { useColorSort } from '../hooks/useColorSort';
 import { colorOptionsFrom } from '../utils/colors';
 import { submitCombo } from '../api/submit';
+import { useAuth } from 'react-oidc-context';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
@@ -73,6 +74,7 @@ function FrogInputs({
 // ── Page ────────────────────────────────────────────────────────────────────────
 
 export default function SubmitCombo() {
+  const auth = useAuth();
   const [variant, setVariant] = useState<Variant>('glass');
   const [p1, setP1] = useState<ParentSel>(EMPTY);
   const [p2, setP2] = useState<ParentSel>(EMPTY);
@@ -208,6 +210,7 @@ export default function SubmitCombo() {
           sourceLink: sourceTrim || undefined,
         },
         screenshot,
+        auth.user?.id_token,
       );
       setResult({ ok: true, message: 'Thanks! Your submission was received and is pending review.' });
       setTimeout(() => setResult(null), 3000);

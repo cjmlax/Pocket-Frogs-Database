@@ -8,6 +8,7 @@ export interface PendingSubmission {
   payload: string;            // JSON string of the submission's fields
   summary: string;
   submitterNote: string | null;
+  submitter: string | null;   // display name, or null for anonymous
   screenshot: string | null;  // URL path, e.g. /api/admin/uploads/<file>
   createdAt: string;
 }

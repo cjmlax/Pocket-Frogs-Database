@@ -17,8 +17,13 @@ export interface ComboSubmission {
 }
 
 // Posts a combo submission as multipart/form-data (so an optional screenshot can
-// ride along). Resolves on success, throws with a readable message otherwise.
-export async function submitCombo(data: ComboSubmission, screenshot?: File | null): Promise<void> {
+// ride along). Pass the signed-in user's id_token to attribute the submission;
+// omit it to submit anonymously. Resolves on success, throws otherwise.
+export async function submitCombo(
+  data: ComboSubmission,
+  screenshot?: File | null,
+  idToken?: string | null,
+): Promise<void> {
   const ALLOWED = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
   if (screenshot && !ALLOWED.has(screenshot.type)) {
     throw new Error('Only PNG, JPEG, WebP, or GIF images are allowed.');
@@ -32,7 +37,11 @@ export async function submitCombo(data: ComboSubmission, screenshot?: File | nul
 
   let res: Response;
   try {
-    res = await fetch(`${API_BASE}/api/submit`, { method: 'POST', body: form });
+    res = await fetch(`${API_BASE}/api/submit`, {
+      method: 'POST',
+      body: form,
+      headers: idToken ? { Authorization: `Bearer ${idToken}` } : undefined,
+    });
   } catch {
     throw new Error('Could not reach the submission service. Please try again later.');
   }
