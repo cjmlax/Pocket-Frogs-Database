@@ -1524,10 +1524,64 @@ main {
   opacity: 1;
 }
 
-.account-admin-links {
+/* Let an anchor render as a button (e.g. the Account → Admin tools link) */
+a.csv-btn {
+  display: inline-block;
+  text-decoration: none;
+}
+
+/* Admin landing page tool cards */
+.admin-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  max-width: 680px;
+}
+
+.admin-tool-card {
   display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s;
+}
+
+.admin-tool-card:hover {
+  border-color: var(--accent);
+}
+
+.admin-tool-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.admin-tool-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-tool-desc {
+  font-size: 13px;
+  opacity: 0.75;
 }
 
 /* Submission history on the account page */

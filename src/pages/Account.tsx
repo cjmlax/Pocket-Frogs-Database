@@ -147,10 +147,9 @@ export default function Account() {
       )}
 
       {isAdmin && (
-        <div className="account-admin-links" style={{ marginTop: 24 }}>
-          <Link to="/admin/submissions" className="plain-link">Review submissions →</Link>
-          <Link to="/admin/badges" className="plain-link">Manage badges →</Link>
-        </div>
+        <p style={{ marginTop: 24 }}>
+          <Link to="/admin" className="csv-btn">Admin tools →</Link>
+        </p>
       )}
 
       <button className="csv-btn" style={{ marginTop: isAdmin ? 8 : 24 }} onClick={() => void auth.signoutRedirect()}>

@@ -10,6 +10,7 @@ import SubmitCombo from './pages/SubmitCombo';
 import Downloads from './pages/Downloads';
 import Account from './pages/Account';
 import AuthCallback from './pages/AuthCallback';
+import AdminHome from './pages/AdminHome';
 import AdminBadges from './pages/AdminBadges';
 import AdminSubmissions from './pages/AdminSubmissions';
 
@@ -28,6 +29,7 @@ const router = createBrowserRouter([
       { path: 'submit', element: <SubmitCombo /> },
       { path: 'downloads', element: <Downloads /> },
       { path: 'account', element: <Account /> },
+      { path: 'admin', element: <AdminHome /> },
       { path: 'admin/badges', element: <AdminBadges /> },
       { path: 'admin/submissions', element: <AdminSubmissions /> },
       { path: 'auth/callback', element: <AuthCallback /> },
