@@ -304,6 +304,13 @@ a.plain-link:hover {
   opacity: 0.6;
 }
 
+.update-platform {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.75;
+}
+
 .update-notes {
   margin: 0;
   font-size: 13px;
@@ -1524,6 +1531,67 @@ main {
 .badge-admin-user-name {
   font-weight: 600;
   min-width: 140px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge-admin-user-id-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.badge-admin-user-sub {
+  font-weight: 400;
+  font-size: 11px;
+  opacity: 0.5;
+  word-break: break-all;
+}
+
+.badge-user-remove-btn {
+  font-weight: 500;
+  font-size: 12px;
+  padding: 2px 8px;
+  background: none;
+  border: 1px solid var(--border, #444);
+  border-radius: 4px;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.badge-user-remove-btn:hover {
+  opacity: 1;
+  border-color: #c0392b;
+  color: #e74c3c;
+}
+
+.badge-user-remove-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.flair-review {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 4px 0;
+  font-size: 13px;
+}
+
+.flair-review-pending {
+  color: var(--accent);
+}
+
+.flair-review-approved {
+  opacity: 0.7;
+}
+
+.flair-review .csv-btn {
+  padding: 2px 10px;
+  font-size: 12px;
 }
 
 .badge-admin-user-badges {

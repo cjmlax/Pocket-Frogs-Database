@@ -41,6 +41,19 @@ export const adminDeleteBadge = (t: string, id: string) =>
 export const adminListUsers = (t: string) =>
   req<Profile[]>(t, '/api/admin/users');
 
+export const adminDeleteUser = (t: string, sub: string) =>
+  req<{ ok: boolean }>(t, `/api/admin/users/${encodeURIComponent(sub)}`, { method: 'DELETE' });
+
+export const adminApproveFlair = (t: string, sub: string) =>
+  req<{ ok: boolean; profile: Profile }>(
+    t, `/api/admin/users/${encodeURIComponent(sub)}/flair/approve`, { method: 'POST' },
+  );
+
+export const adminRejectFlair = (t: string, sub: string) =>
+  req<{ ok: boolean; profile: Profile }>(
+    t, `/api/admin/users/${encodeURIComponent(sub)}/flair/reject`, { method: 'POST' },
+  );
+
 export const adminGrantBadge = (t: string, sub: string, badgeId: string) =>
   req<{ ok: boolean; badges: Badge[] }>(
     t, `/api/admin/users/${encodeURIComponent(sub)}/badges`,

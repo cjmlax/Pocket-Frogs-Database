@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useAuth } from 'react-oidc-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchMe, updateFlair, fetchMySubmissions } from '../api/profile';
+import { fetchMe, submitFriendCode, fetchMySubmissions } from '../api/profile';
 
 export default function Account() {
   const auth = useAuth();
@@ -16,13 +16,15 @@ export default function Account() {
     enabled: auth.isAuthenticated && !!idToken,
   });
 
+  // Seed the draft from whatever's most current: a pending request if one exists,
+  // otherwise the approved code.
   const [flairDraft, setFlairDraft] = useState('');
   useEffect(() => {
-    if (profile) setFlairDraft(profile.flair ?? '');
+    if (profile) setFlairDraft(profile.flair_pending ?? profile.flair ?? '');
   }, [profile]);
 
-  const saveFlair = useMutation({
-    mutationFn: () => updateFlair(idToken!, flairDraft),
+  const submitFlair = useMutation({
+    mutationFn: () => submitFriendCode(idToken!, flairDraft.trim()),
     onSuccess: updated => queryClient.setQueryData(['me'], updated),
   });
 
@@ -100,24 +102,41 @@ export default function Account() {
         <p className="search-hint">No badges yet.</p>
       )}
 
-      <h2 style={{ marginTop: 24 }}>Flair</h2>
+      <h2 style={{ marginTop: 24 }}>Friend Code</h2>
+      <p className="search-hint" style={{ marginTop: 0 }}>
+        Submit your in-game Friend Code to display it next to your name. Each
+        submission is reviewed and confirmed manually before it goes live.
+      </p>
       <div className="flair-editor">
         <input
           className="search-input"
           maxLength={80}
           value={flairDraft}
-          placeholder="A short tagline shown next to your name"
+          placeholder="Your in-game Friend Code"
           onChange={e => setFlairDraft(e.target.value)}
         />
         <button
           className="csv-btn"
-          disabled={saveFlair.isPending || !profile || (profile.flair ?? '') === flairDraft}
-          onClick={() => saveFlair.mutate()}
+          disabled={
+            submitFlair.isPending || !profile ||
+            (profile.flair_pending ?? profile.flair ?? '') === flairDraft.trim()
+          }
+          onClick={() => submitFlair.mutate()}
         >
-          {saveFlair.isPending ? 'Saving…' : 'Save'}
+          {submitFlair.isPending ? 'Submitting…' : 'Submit for review'}
         </button>
       </div>
-      {saveFlair.isError && <p className="search-error">Could not save flair.</p>}
+      {profile?.flair && (
+        <p className="search-hint" style={{ marginTop: 6 }}>
+          Approved Friend Code: <strong>{profile.flair}</strong>
+        </p>
+      )}
+      {profile?.flair_pending && (
+        <p className="submission-pending-hint" style={{ marginTop: 6 }}>
+          Pending review: <strong>{profile.flair_pending}</strong>
+        </p>
+      )}
+      {submitFlair.isError && <p className="search-error">Could not submit your Friend Code.</p>}
 
       {(() => {
         const approved = submissions?.filter(s => s.status === 'pushed');

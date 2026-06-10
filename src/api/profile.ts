@@ -16,7 +16,8 @@ export interface Badge {
 export interface Profile {
   sub: string;
   username: string | null;
-  flair: string | null;
+  flair: string | null;         // approved friend code (displayed)
+  flair_pending: string | null; // friend code awaiting admin approval
   badges: Badge[];
 }
 
@@ -46,12 +47,14 @@ export async function fetchMySubmissions(idToken: string): Promise<MySubmission[
   return res.json();
 }
 
-export async function updateFlair(idToken: string, flair: string): Promise<Profile> {
+// Submits a friend code for admin approval (held as flair_pending server-side).
+// Pass an empty string to withdraw a pending request.
+export async function submitFriendCode(idToken: string, flair: string): Promise<Profile> {
   const res = await fetch(`${API_BASE}/api/me`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ flair }),
   });
-  if (!res.ok) throw new Error(`Flair update failed (${res.status})`);
+  if (!res.ok) throw new Error(`Friend code submission failed (${res.status})`);
   return res.json();
 }

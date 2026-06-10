@@ -100,7 +100,7 @@ function SiteSummaryCard() {
     { label: 'Breeds',        value: breeds?.length },
     { label: 'Weekly Sets',   value: weekly?.length },
     { label: 'Highest Value', value: frogStats?.maxValue, isMax: true },
-    { label: 'Mutation Combos', value: chroma && glass ? combos : undefined },
+    { label: 'Combos', value: chroma && glass ? combos : undefined },
   ];
 
   return (
@@ -166,7 +166,15 @@ function formatUpdateDate(iso: string) {
 }
 
 function isRecent(iso: string) {
-  return Date.now() - new Date(iso).getTime() < 7 * 24 * 60 * 60 * 1000;
+  return Date.now() - new Date(iso).getTime() < 3 * 24 * 60 * 60 * 1000;
+}
+
+// Per-OS designation: show "iOS"/"Android" for platform-specific updates, but
+// stay hidden for "both" (the common case) so it doesn't clutter every entry.
+function platformLabel(platform: ChangelogEntry['platform']): string | null {
+  if (platform === 'ios') return 'iOS';
+  if (platform === 'android') return 'Android';
+  return null;
 }
 
 function groupByMinor(entries: ChangelogEntry[]): [string, ChangelogEntry[]][] {
@@ -213,6 +221,12 @@ function UpdateFeedCard() {
                         <span className="update-version">v{entry.version}</span>
                         <span className="update-meta-sep">·</span>
                         <span className="update-date">{formatUpdateDate(entry.date)}</span>
+                        {platformLabel(entry.platform) && (
+                          <>
+                            <span className="update-meta-sep">·</span>
+                            <span className="update-platform">{platformLabel(entry.platform)}</span>
+                          </>
+                        )}
                       </div>
                       {entry.notes && <p className="update-notes">{entry.notes}</p>}
                     </div>
@@ -234,6 +248,12 @@ function UpdateFeedCard() {
                       <span className="update-version">v{entry.version}</span>
                       <span className="update-meta-sep">·</span>
                       <span className="update-date">{formatUpdateDate(entry.date)}</span>
+                      {platformLabel(entry.platform) && (
+                        <>
+                          <span className="update-meta-sep">·</span>
+                          <span className="update-platform">{platformLabel(entry.platform)}</span>
+                        </>
+                      )}
                     </div>
                     {entry.notes && <p className="update-notes">{entry.notes}</p>}
                   </div>

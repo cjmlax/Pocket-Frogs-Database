@@ -3,7 +3,8 @@ import { useAuth } from 'react-oidc-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   adminListBadges, adminSaveBadge, adminDeleteBadge,
-  adminListUsers, adminGrantBadge, adminRevokeBadge, type BadgeInput,
+  adminListUsers, adminDeleteUser, adminGrantBadge, adminRevokeBadge,
+  adminApproveFlair, adminRejectFlair, type BadgeInput,
 } from '../api/adminBadges';
 import type { Badge } from '../api/profile';
 
@@ -44,6 +45,18 @@ export default function AdminBadges() {
   });
   const revoke = useMutation({
     mutationFn: (v: { sub: string; badgeId: string }) => adminRevokeBadge(idToken!, v.sub, v.badgeId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
+  });
+  const removeUser = useMutation({
+    mutationFn: (sub: string) => adminDeleteUser(idToken!, sub),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
+  });
+  const approveFlair = useMutation({
+    mutationFn: (sub: string) => adminApproveFlair(idToken!, sub),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
+  });
+  const rejectFlair = useMutation({
+    mutationFn: (sub: string) => adminRejectFlair(idToken!, sub),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
   });
 
@@ -161,7 +174,49 @@ export default function AdminBadges() {
             const grantable = badges.filter(b => !held.has(b.id));
             return (
               <div key={u.sub} className="badge-admin-user">
-                <div className="badge-admin-user-name">{u.username ?? u.sub}</div>
+                <div className="badge-admin-user-name">
+                  <span className="badge-admin-user-id-wrap">
+                    {u.username ?? '(no username)'}
+                    <code className="badge-admin-user-sub" title="Authentik ID (sub)">{u.sub}</code>
+                  </span>
+                  <button
+                    className="badge-user-remove-btn"
+                    disabled={removeUser.isPending}
+                    title="Remove this user from the database"
+                    onClick={() => {
+                      if (confirm(`Remove "${u.username ?? u.sub}" from the database? This deletes their profile, flair, and badges. Do this only after removing them in Authentik — an active user is recreated on next sign-in.`)) {
+                        removeUser.mutate(u.sub);
+                      }
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+                {u.flair_pending ? (
+                  <div className="flair-review">
+                    <span className="flair-review-pending">
+                      Friend code requested: <strong>{u.flair_pending}</strong>
+                    </span>
+                    <button
+                      className="csv-btn"
+                      disabled={approveFlair.isPending}
+                      onClick={() => approveFlair.mutate(u.sub)}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      className="csv-btn"
+                      disabled={rejectFlair.isPending}
+                      onClick={() => rejectFlair.mutate(u.sub)}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                ) : u.flair ? (
+                  <div className="flair-review">
+                    <span className="flair-review-approved">Friend code: <strong>{u.flair}</strong></span>
+                  </div>
+                ) : null}
                 <div className="badge-admin-user-badges">
                   {u.badges.length === 0 && <span className="search-hint">no badges</span>}
                   {u.badges.map(b => (
