@@ -55,3 +55,9 @@ export const adminRevokeBadge = (t: string, sub: string, badgeId: string) =>
     t, `/api/admin/users/${encodeURIComponent(sub)}/badges/${encodeURIComponent(badgeId)}`,
     { method: 'DELETE' },
   );
+
+export const adminSetFlair = (t: string, sub: string, flair: string | null) =>
+  req<Profile>(
+    t, `/api/admin/users/${encodeURIComponent(sub)}/flair`,
+    { method: 'PUT', body: JSON.stringify({ flair }) },
+  );

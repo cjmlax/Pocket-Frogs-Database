@@ -6,6 +6,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useBreedSort, selectBreedSort } from '../hooks/useBreedSort';
 import { useColorSort, selectColorSort } from '../hooks/useColorSort';
 import { useSpoilers } from '../hooks/useSpoilers';
+import { useDisplayName } from '../hooks/useDisplayName';
 import '../App.css';
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
@@ -122,6 +123,7 @@ function SettingsDropdown() {
   const colorSort = useColorSort();
   const { spoilers, set: setSpoilers } = useSpoilers();
   const auth = useAuth();
+  const { displayName } = useDisplayName();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -194,7 +196,7 @@ function SettingsDropdown() {
                 className="settings-account-link"
                 onClick={() => { setOpen(false); navigate('/account'); }}
               >
-                {String(auth.user?.profile?.preferred_username ?? auth.user?.profile?.name ?? 'Account')}
+                {displayName}
               </button>
             ) : (
               <button

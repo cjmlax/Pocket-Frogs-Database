@@ -3,11 +3,13 @@ import { Link } from 'react-router';
 import { useAuth } from 'react-oidc-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchMe, submitFriendCode, cancelFriendCode, confirmFriendCode, fetchMySubmissions } from '../api/profile';
+import { useDisplayName } from '../hooks/useDisplayName';
 
 export default function Account() {
   const auth = useAuth();
   const queryClient = useQueryClient();
   const idToken = auth.user?.id_token;
+  const { displayName, source, setSource, options } = useDisplayName();
 
   // The worker-owned profile (badges + flair), keyed on the Authentik subject.
   const { data: profile, isLoading: profileLoading, isError: profileError } = useQuery({
@@ -22,9 +24,7 @@ export default function Account() {
   const [passDraft, setPassDraft] = useState('');
   const [confirmError, setConfirmError] = useState<string | null>(null);
   useEffect(() => {
-    // Seed the code box with any approved code so editing feels natural; clear it
-    // while a request is in flight (the input is read-only/greyed then anyway).
-    if (profile) setCodeDraft(profile.flair_status ? '' : (profile.flair ?? ''));
+    if (profile) setCodeDraft('');
   }, [profile]);
 
   const submitFlair = useMutation({
@@ -78,7 +78,7 @@ export default function Account() {
       <div className="breed-info-stats" style={{ marginBottom: 16 }}>
         <div className="breed-info-stat">
           <span className="breed-info-stat-label">Name</span>
-          <span className="breed-info-stat-value">{String(claims?.name ?? claims?.preferred_username ?? '—')}</span>
+          <span className="breed-info-stat-value">{displayName}</span>
         </div>
         <div className="breed-info-stat">
           <span className="breed-info-stat-label">Email</span>
@@ -96,7 +96,28 @@ export default function Account() {
         </div>
       </div>
 
-      <h2>Badges</h2>
+      {options.length > 1 && (
+        <>
+          <h2 style={{ marginTop: 24 }}>Display Name</h2>
+          <p className="search-hint" style={{ marginTop: 0 }}>
+            Choose which account name is shown throughout the site.
+          </p>
+          <div className="display-name-picker">
+            {options.map(opt => (
+              <button
+                key={opt.key}
+                className={`display-name-opt${opt.key === source ? ' active' : ''}`}
+                onClick={() => setSource(opt.key)}
+              >
+                <span className="display-name-opt-platform">{opt.label}</span>
+                <span className="display-name-opt-name">{opt.name}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      <h2 style={{ marginTop: 24 }}>Badges</h2>
       {profileLoading ? (
         <p className="search-hint">Loading profile…</p>
       ) : profileError ? (
@@ -120,82 +141,86 @@ export default function Account() {
       )}
 
       <h2 style={{ marginTop: 24 }}>Friend Code</h2>
-      <p className="search-hint" style={{ marginTop: 0 }}>
-        Submit your in-game Friend Code to display it next to your name. We'll send
-        you an in-game friend request, then ask you to enter a confirmation code to
-        verify it's really you before it goes live.
-      </p>
-
-      {profile?.flair_status === 'pending' ? (
-        // ── Submitted, waiting on the admin to send the in-game friend request ──
-        <div className="flair-state">
-          <div className="flair-editor">
-            <input className="search-input" value={profile.flair_pending ?? ''} readOnly disabled />
-            <button className="csv-btn" disabled={cancelFlair.isPending} onClick={() => cancelFlair.mutate()}>
-              {cancelFlair.isPending ? 'Cancelling…' : 'Cancel'}
-            </button>
-          </div>
-          <p className="submission-pending-hint" style={{ marginTop: 6 }}>
-            Submission pending — we'll send your in-game friend request shortly.
-          </p>
-        </div>
-      ) : profile?.flair_status === 'sent' ? (
-        // ── Admin sent it; user enters the passphrase to confirm and publish ──
-        <div className="flair-state">
-          <p className="search-hint" style={{ marginTop: 0 }}>
-            We've sent your in-game friend request for <strong>{profile.flair_pending}</strong>.
-            Enter the confirmation code from that request to verify and publish it.
-          </p>
-          <div className="flair-editor">
-            <input
-              className="search-input"
-              maxLength={80}
-              value={passDraft}
-              placeholder="Confirmation code"
-              onChange={e => { setPassDraft(e.target.value); setConfirmError(null); }}
-              onKeyDown={e => { if (e.key === 'Enter' && passDraft.trim() && !confirmFlair.isPending) confirmFlair.mutate(); }}
-            />
-            <button
-              className="csv-btn"
-              disabled={confirmFlair.isPending || !passDraft.trim()}
-              onClick={() => confirmFlair.mutate()}
-            >
-              {confirmFlair.isPending ? 'Confirming…' : 'Confirm'}
-            </button>
-            <button className="csv-btn" disabled={cancelFlair.isPending} onClick={() => cancelFlair.mutate()}>
-              Cancel
-            </button>
-          </div>
-          {confirmError && <p className="search-error" style={{ marginTop: 6 }}>{confirmError}</p>}
-        </div>
+      {profile?.flair && !profile?.flair_status ? (
+        // ── Approved and live — show read-only; hide the submission dialogue ──
+        <p className="search-hint" style={{ marginTop: 0 }}>
+          Your Friend Code: <strong>{profile.flair}</strong>
+        </p>
       ) : (
-        // ── Idle: no active request (may have an approved code) ──
-        <div className="flair-state">
-          <div className="flair-editor">
-            <input
-              className="search-input"
-              maxLength={80}
-              value={codeDraft}
-              placeholder="Your in-game Friend Code"
-              onChange={e => setCodeDraft(e.target.value)}
-            />
-            <button
-              className="csv-btn"
-              disabled={submitFlair.isPending || !codeDraft.trim() || codeDraft.trim() === (profile?.flair ?? '')}
-              onClick={() => submitFlair.mutate()}
-            >
-              {submitFlair.isPending ? 'Submitting…' : 'Submit for review'}
-            </button>
-          </div>
-          {profile?.flair && (
-            <p className="search-hint" style={{ marginTop: 6 }}>
-              Approved Friend Code: <strong>{profile.flair}</strong>
-            </p>
+        <>
+          <p className="search-hint" style={{ marginTop: 0 }}>
+            Submit your in-game Friend Code to display it next to your name. We'll send
+            you an in-game friend request, then ask you to enter a confirmation code to
+            verify it's really you before it goes live.
+          </p>
+
+          {profile?.flair_status === 'pending' ? (
+            // ── Submitted, waiting on the admin to send the in-game friend request ──
+            <div className="flair-state">
+              <div className="flair-editor">
+                <input className="search-input" value={profile.flair_pending ?? ''} readOnly disabled />
+                <button className="csv-btn" disabled={cancelFlair.isPending} onClick={() => cancelFlair.mutate()}>
+                  {cancelFlair.isPending ? 'Cancelling…' : 'Cancel'}
+                </button>
+              </div>
+              <p className="submission-pending-hint" style={{ marginTop: 6 }}>
+                Submission pending — we'll send your in-game friend request shortly.
+              </p>
+            </div>
+          ) : profile?.flair_status === 'sent' ? (
+            // ── Admin sent it; user enters the passphrase to confirm and publish ──
+            <div className="flair-state">
+              <p className="search-hint" style={{ marginTop: 0 }}>
+                We've sent your in-game friend request for <strong>{profile.flair_pending}</strong>.
+                Enter the confirmation code from that request to verify and publish it.
+              </p>
+              <div className="flair-editor">
+                <input
+                  className="search-input"
+                  maxLength={80}
+                  value={passDraft}
+                  placeholder="Confirmation code"
+                  onChange={e => { setPassDraft(e.target.value); setConfirmError(null); }}
+                  onKeyDown={e => { if (e.key === 'Enter' && passDraft.trim() && !confirmFlair.isPending) confirmFlair.mutate(); }}
+                />
+                <button
+                  className="csv-btn"
+                  disabled={confirmFlair.isPending || !passDraft.trim()}
+                  onClick={() => confirmFlair.mutate()}
+                >
+                  {confirmFlair.isPending ? 'Confirming…' : 'Confirm'}
+                </button>
+                <button className="csv-btn" disabled={cancelFlair.isPending} onClick={() => cancelFlair.mutate()}>
+                  Cancel
+                </button>
+              </div>
+              {confirmError && <p className="search-error" style={{ marginTop: 6 }}>{confirmError}</p>}
+            </div>
+          ) : (
+            // ── Idle: no approved code yet ──
+            <div className="flair-state">
+              <div className="flair-editor">
+                <input
+                  className="search-input"
+                  maxLength={80}
+                  value={codeDraft}
+                  placeholder="Your in-game Friend Code"
+                  onChange={e => setCodeDraft(e.target.value)}
+                />
+                <button
+                  className="csv-btn"
+                  disabled={submitFlair.isPending || !codeDraft.trim()}
+                  onClick={() => submitFlair.mutate()}
+                >
+                  {submitFlair.isPending ? 'Submitting…' : 'Submit for review'}
+                </button>
+              </div>
+              {submitFlair.isError && (
+                <p className="search-error" style={{ marginTop: 6 }}>{(submitFlair.error as Error).message}</p>
+              )}
+            </div>
           )}
-          {submitFlair.isError && (
-            <p className="search-error" style={{ marginTop: 6 }}>{(submitFlair.error as Error).message}</p>
-          )}
-        </div>
+        </>
       )}
 
       {(() => {

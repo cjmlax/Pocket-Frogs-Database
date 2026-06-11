@@ -2053,3 +2053,53 @@ a.csv-btn {
   outline: 1px solid var(--accent-border);
   outline-offset: -1px;
 }
+
+/* ── Display name picker (Account page) ──────────────────────────────────── */
+
+.display-name-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+.display-name-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0.38;
+  transition: opacity 0.15s, border-color 0.15s, background 0.15s;
+  text-align: left;
+}
+
+.display-name-opt:hover {
+  opacity: 0.65;
+  border-color: var(--accent-border);
+}
+
+.display-name-opt.active {
+  opacity: 1;
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.display-name-opt-platform {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--accent);
+}
+
+.display-name-opt-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-h);
+  margin-top: 3px;
+}

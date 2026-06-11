@@ -437,7 +437,7 @@ export default function Home() {
         <div className="home-text">
           <p>An unofficial, searchable database of information for the mobile game Pocket Frogs.</p>
           <p>This website is a continuation of my <a href="https://docs.google.com/spreadsheets/d/1TNTK09vM8tlj6BC8haobuWCQvV4qNyDsRYsf-4hXdCc/" target="_blank">Google Spreadsheet</a> meant to store the data better, provide a simpler and more responsive feel, and separate it from Google so it can expand past just a spreadshet.</p>
-          <p>This website is also two challenging/terrible things combined — a work in progress and coded with AI assitance. Please be patient while I work out the kinks and improve the experience. You may see things change or not work for a while, but the data is hosted separately and won't be affected. It's my first attempt at a project managed by github, so anyone is welcome to take a look and contribute there.</p>
+          <p>This website is also two challenging/terrible things combined — a work in progress and coded with AI assistance. Please be patient while I work out the kinks and improve the experience. You may see things change or not work for a while, but the data is hosted separately and won't be affected. It's my first attempt at a project managed by github, so anyone is welcome to take a look and contribute there.</p>
           <p>Additionally, I'm happy to take any feedback you have about the site at the link in the card. Keep in mind that feature requests are welcome, but I'll be working through my own checklist as well.</p>
         </div>
       </div>

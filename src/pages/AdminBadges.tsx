@@ -3,7 +3,7 @@ import { useAuth } from 'react-oidc-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   adminListBadges, adminSaveBadge, adminDeleteBadge,
-  adminListUsers, adminDeleteUser, adminGrantBadge, adminRevokeBadge, type BadgeInput,
+  adminListUsers, adminDeleteUser, adminGrantBadge, adminRevokeBadge, adminSetFlair, type BadgeInput,
 } from '../api/adminBadges';
 import type { Badge } from '../api/profile';
 
@@ -24,6 +24,8 @@ export default function AdminBadges() {
 
   const [form, setForm] = useState<BadgeInput>(EMPTY_FORM);
   const [editing, setEditing] = useState(false);
+
+  const [flairEdit, setFlairEdit] = useState<{ sub: string; value: string } | null>(null);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['admin-badges'] });
@@ -49,6 +51,10 @@ export default function AdminBadges() {
   const removeUser = useMutation({
     mutationFn: (sub: string) => adminDeleteUser(idToken!, sub),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
+  });
+  const setFlair = useMutation({
+    mutationFn: (v: { sub: string; flair: string | null }) => adminSetFlair(idToken!, v.sub, v.flair),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-users'] }); setFlairEdit(null); },
   });
 
   if (auth.isLoading) return <p className="search-hint">Loading…</p>;
@@ -183,9 +189,46 @@ export default function AdminBadges() {
                     Remove
                   </button>
                 </div>
-                {u.flair && (
+                {flairEdit?.sub === u.sub ? (
+                  <div className="flair-editor" style={{ marginBottom: 6 }}>
+                    <input
+                      className="search-input"
+                      maxLength={80}
+                      placeholder="Friend Code"
+                      value={flairEdit.value}
+                      onChange={e => setFlairEdit(f => f && { ...f, value: e.target.value })}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && !setFlair.isPending)
+                          setFlair.mutate({ sub: u.sub, flair: flairEdit.value.trim() || null });
+                        if (e.key === 'Escape') setFlairEdit(null);
+                      }}
+                    />
+                    <button
+                      className="csv-btn"
+                      disabled={setFlair.isPending}
+                      onClick={() => setFlair.mutate({ sub: u.sub, flair: flairEdit.value.trim() || null })}
+                    >
+                      {setFlair.isPending ? 'Saving…' : 'Save'}
+                    </button>
+                    {u.flair && (
+                      <button
+                        className="csv-btn"
+                        disabled={setFlair.isPending}
+                        onClick={() => { if (confirm(`Clear friend code for "${u.username ?? u.sub}"?`)) setFlair.mutate({ sub: u.sub, flair: null }); }}
+                      >
+                        Clear
+                      </button>
+                    )}
+                    <button className="csv-btn" onClick={() => setFlairEdit(null)}>Cancel</button>
+                  </div>
+                ) : (
                   <div className="flair-review">
-                    <span className="flair-review-approved">Friend code: <strong>{u.flair}</strong></span>
+                    <span className="flair-review-approved">
+                      Friend code: <strong>{u.flair ?? '—'}</strong>
+                    </span>
+                    <button className="csv-btn" style={{ marginLeft: 8 }} onClick={() => setFlairEdit({ sub: u.sub, value: u.flair ?? '' })}>
+                      Edit
+                    </button>
                   </div>
                 )}
                 <div className="badge-admin-user-badges">
