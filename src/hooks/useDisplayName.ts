@@ -3,6 +3,30 @@ import { useAuth } from 'react-oidc-context';
 
 const STORAGE_KEY = 'pfdb_display_name_source';
 
+// Known platform key → domain for favicon lookup. Falls back to `${key}.com`.
+const PLATFORM_DOMAINS: Record<string, string> = {
+  discord:   'discord.com',
+  google:    'google.com',
+  github:    'github.com',
+  gitlab:    'gitlab.com',
+  twitter:   'x.com',
+  x:         'x.com',
+  reddit:    'reddit.com',
+  twitch:    'twitch.tv',
+  steam:     'steamcommunity.com',
+  microsoft: 'microsoft.com',
+  apple:     'apple.com',
+  facebook:  'facebook.com',
+  instagram: 'instagram.com',
+};
+
+// Returns a 32 px favicon URL for the platform, or null for the PFDB base account.
+export function platformIcon(key: string): string | null {
+  if (key === 'pfdb') return null;
+  const domain = PLATFORM_DOMAINS[key] ?? `${key}.com`;
+  return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+}
+
 function subscribe(cb: () => void) {
   window.addEventListener('storage', cb);
   return () => window.removeEventListener('storage', cb);
@@ -16,6 +40,7 @@ export interface DisplayNameOption {
   key: string;
   label: string;
   name: string;
+  icon: string | null;
 }
 
 export function useDisplayName() {
@@ -32,11 +57,12 @@ export function useDisplayName() {
   }, []);
 
   const options: DisplayNameOption[] = [
-    { key: 'pfdb', label: 'PFDB', name: String(claims?.preferred_username ?? '') },
+    { key: 'pfdb', label: 'PFDB', name: String(claims?.preferred_username ?? ''), icon: null },
     ...Object.entries(connected).map(([platform, name]) => ({
       key: platform,
       label: platform.charAt(0).toUpperCase() + platform.slice(1),
       name: String(name),
+      icon: platformIcon(platform),
     })),
   ].filter(o => o.name);
 

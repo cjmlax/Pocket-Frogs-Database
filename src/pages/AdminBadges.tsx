@@ -174,7 +174,7 @@ export default function AdminBadges() {
                 <div className="badge-admin-user-name">
                   <span className="badge-admin-user-id-wrap">
                     {u.username ?? '(no username)'}
-                    <code className="badge-admin-user-sub" title="Authentik ID (sub)">{u.sub}</code>
+                    <span className="sub-id-badge" data-sub={u.sub}>ID</span>
                   </span>
                   <button
                     className="badge-user-remove-btn"

@@ -109,7 +109,13 @@ export default function Account() {
                 className={`display-name-opt${opt.key === source ? ' active' : ''}`}
                 onClick={() => setSource(opt.key)}
               >
-                <span className="display-name-opt-platform">{opt.label}</span>
+                <span className="display-name-opt-header">
+                  {opt.icon
+                    ? <img src={opt.icon} width={16} height={16} style={{ borderRadius: 3 }} alt="" />
+                    : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  }
+                  <span className="display-name-opt-platform">{opt.label}</span>
+                </span>
                 <span className="display-name-opt-name">{opt.name}</span>
               </button>
             ))}

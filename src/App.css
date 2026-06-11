@@ -1286,14 +1286,21 @@ tr:hover .pin-btn,
   border: none;
   border-radius: 4px;
   font-family: var(--sans);
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 13px;
   font-weight: 600;
   text-align: left;
   color: var(--text);
   cursor: pointer;
+}
+
+.settings-account-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .settings-account-link:hover {
@@ -1555,15 +1562,57 @@ main {
 
 .badge-admin-user-id-wrap {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  align-items: center;
+  gap: 6px;
 }
 
-.badge-admin-user-sub {
-  font-weight: 400;
+.sub-id-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  opacity: 0.45;
+  cursor: default;
+  user-select: none;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.sub-id-badge:hover {
+  opacity: 0.85;
+}
+
+.sub-id-badge::after {
+  content: attr(data-sub);
+  position: absolute;
+  left: 0;
+  top: calc(100% + 5px);
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 5px 9px;
   font-size: 11px;
-  opacity: 0.5;
-  word-break: break-all;
+  font-family: monospace;
+  font-weight: 400;
+  letter-spacing: 0;
+  white-space: nowrap;
+  color: var(--text-h);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+  z-index: 50;
+}
+
+.sub-id-badge:hover::after {
+  opacity: 1;
 }
 
 .badge-user-remove-btn {
@@ -2087,6 +2136,12 @@ a.csv-btn {
   opacity: 1;
   border-color: var(--accent-border);
   background: var(--accent-bg);
+}
+
+.display-name-opt-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .display-name-opt-platform {

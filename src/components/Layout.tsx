@@ -123,7 +123,7 @@ function SettingsDropdown() {
   const colorSort = useColorSort();
   const { spoilers, set: setSpoilers } = useSpoilers();
   const auth = useAuth();
-  const { displayName } = useDisplayName();
+  const { displayName, current } = useDisplayName();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -196,7 +196,11 @@ function SettingsDropdown() {
                 className="settings-account-link"
                 onClick={() => { setOpen(false); navigate('/account'); }}
               >
-                {displayName}
+                {current?.icon
+                  ? <img src={current.icon} width={14} height={14} style={{ borderRadius: 2, flexShrink: 0 }} alt="" />
+                  : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                }
+                <span className="settings-account-name">{displayName}</span>
               </button>
             ) : (
               <button
