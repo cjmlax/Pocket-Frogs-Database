@@ -13,11 +13,14 @@ export interface Badge {
   created_at: string;
 }
 
+export type FlairStatus = 'pending' | 'sent' | null;
+
 export interface Profile {
   sub: string;
   username: string | null;
-  flair: string | null;         // approved friend code (displayed)
-  flair_pending: string | null; // friend code awaiting admin approval
+  flair: string | null;          // approved friend code (displayed)
+  flair_pending: string | null;  // requested friend code while a request is active
+  flair_status: FlairStatus;     // null | 'pending' (awaiting admin) | 'sent' (awaiting user confirm)
   badges: Badge[];
 }
 
@@ -47,14 +50,45 @@ export async function fetchMySubmissions(idToken: string): Promise<MySubmission[
   return res.json();
 }
 
-// Submits a friend code for admin approval (held as flair_pending server-side).
-// Pass an empty string to withdraw a pending request.
-export async function submitFriendCode(idToken: string, flair: string): Promise<Profile> {
-  const res = await fetch(`${API_BASE}/api/me`, {
-    method: 'PATCH',
+// Submits a friend code, opening a 'pending' request for admin review.
+export async function submitFriendCode(idToken: string, code: string): Promise<Profile> {
+  const res = await fetch(`${API_BASE}/api/me/flair`, {
+    method: 'POST',
     headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ flair }),
+    body: JSON.stringify({ code }),
   });
-  if (!res.ok) throw new Error(`Friend code submission failed (${res.status})`);
+  if (!res.ok) {
+    let detail = `Friend code submission failed (${res.status})`;
+    try { const b = await res.json(); if (b?.error) detail = b.error; } catch { /* keep default */ }
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
+// Cancels/withdraws an active friend-code request at any stage.
+export async function cancelFriendCode(idToken: string): Promise<Profile> {
+  const res = await fetch(`${API_BASE}/api/me/flair`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${idToken}` },
+  });
+  if (!res.ok) throw new Error(`Could not cancel request (${res.status})`);
+  return res.json();
+}
+
+// Confirms a 'sent' request with the passphrase the admin provided out-of-band.
+// Returns { ok } — ok:false means the code didn't match (not an HTTP error).
+export async function confirmFriendCode(
+  idToken: string, passphrase: string,
+): Promise<{ ok: boolean; profile: Profile }> {
+  const res = await fetch(`${API_BASE}/api/me/flair/confirm`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ passphrase }),
+  });
+  if (!res.ok) {
+    let detail = `Confirmation failed (${res.status})`;
+    try { const b = await res.json(); if (b?.error) detail = b.error; } catch { /* keep default */ }
+    throw new Error(detail);
+  }
   return res.json();
 }

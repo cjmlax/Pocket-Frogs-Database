@@ -1464,6 +1464,23 @@ main {
   flex: 1;
 }
 
+.flair-state {
+  margin-top: 8px;
+}
+
+/* Friend-code request row in the admin submissions queue */
+.flair-sent-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.flair-sent-row .search-input {
+  flex: 1;
+  min-width: 180px;
+}
+
 /* Badge admin page */
 .badge-admin-form {
   display: flex;

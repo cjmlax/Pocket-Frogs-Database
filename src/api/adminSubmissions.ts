@@ -33,6 +33,39 @@ export async function listPending(idToken: string): Promise<PendingSubmission[]>
   return asJson(await authed(idToken, '/api/admin/pending'));
 }
 
+// ── Friend-code (flair) requests ─────────────────────────────────────────────
+
+export interface FlairRequest {
+  sub: string;
+  username: string | null;
+  code: string | null;          // the requested in-game friend code
+  status: 'pending' | 'sent';
+  passphrase: string | null;    // admin-set confirmation code (null until Sent)
+  requestedAt: string | null;
+}
+
+export async function listFlairRequests(idToken: string): Promise<FlairRequest[]> {
+  return asJson(await authed(idToken, '/api/admin/flair-requests'));
+}
+
+// Mark the in-game friend request as Sent and set the confirmation passphrase.
+export async function markFlairSent(idToken: string, sub: string, passphrase: string) {
+  return asJson<{ ok: boolean }>(
+    await authed(idToken, `/api/admin/flair-requests/${encodeURIComponent(sub)}/sent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ passphrase }),
+    }),
+  );
+}
+
+// Deny (clear) a friend-code request at any stage.
+export async function denyFlairRequest(idToken: string, sub: string) {
+  return asJson<{ ok: boolean }>(
+    await authed(idToken, `/api/admin/flair-requests/${encodeURIComponent(sub)}/deny`, { method: 'POST' }),
+  );
+}
+
 export async function approveSubmission(idToken: string, id: string) {
   return asJson<{ ok: boolean; pushed_ref: string | null }>(
     await authed(idToken, `/api/admin/${id}/approve`, { method: 'POST' }),

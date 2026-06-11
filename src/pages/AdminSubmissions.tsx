@@ -3,7 +3,8 @@ import { useAuth } from 'react-oidc-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   listPending, approveSubmission, rejectSubmission, editSubmission,
-  type PendingSubmission,
+  listFlairRequests, markFlairSent, denyFlairRequest,
+  type PendingSubmission, type FlairRequest,
 } from '../api/adminSubmissions';
 import AuthedImage from '../components/AuthedImage';
 import CropDialog from '../components/CropDialog';
@@ -22,6 +23,13 @@ export default function AdminSubmissions() {
     queryFn: () => listPending(idToken!),
     enabled: auth.isAuthenticated && isAdmin && !!idToken,
     refetchInterval: 15_000, // poll for new submissions
+  });
+
+  const { data: flairRequests } = useQuery({
+    queryKey: ['admin-flair-requests'],
+    queryFn: () => listFlairRequests(idToken!),
+    enabled: auth.isAuthenticated && isAdmin && !!idToken,
+    refetchInterval: 15_000,
   });
 
   if (auth.isLoading) return <p className="search-hint">Loading…</p>;
@@ -44,10 +52,22 @@ export default function AdminSubmissions() {
   }
 
   const rows = pending ?? [];
+  const flairRows = flairRequests ?? [];
 
   return (
     <div>
-      <h1>Pending Submissions <span className="breed-weekly-count">({rows.length})</span></h1>
+      {flairRows.length > 0 && (
+        <>
+          <h1>Friend Code Requests <span className="breed-weekly-count">({flairRows.length})</span></h1>
+          <div className="submission-list">
+            {flairRows.map(fr => <FlairRequestCard key={fr.sub} req={fr} idToken={idToken!} />)}
+          </div>
+        </>
+      )}
+
+      <h1 style={{ marginTop: flairRows.length > 0 ? 28 : 0 }}>
+        Pending Submissions <span className="breed-weekly-count">({rows.length})</span>
+      </h1>
       {isLoading ? (
         <p className="search-hint">Loading…</p>
       ) : rows.length === 0 ? (
@@ -57,6 +77,74 @@ export default function AdminSubmissions() {
           {rows.map(sub => <SubmissionCard key={sub.id} sub={sub} idToken={idToken!} />)}
         </div>
       )}
+    </div>
+  );
+}
+
+function FlairRequestCard({ req, idToken }: { req: FlairRequest; idToken: string }) {
+  const queryClient = useQueryClient();
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ['admin-flair-requests'] });
+
+  const [passphrase, setPassphrase] = useState('');
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const sent = useMutation({
+    mutationFn: () => markFlairSent(idToken, req.sub, passphrase.trim()),
+    onSuccess: () => { setResult({ ok: true, text: 'Marked as sent ✓' }); setTimeout(refresh, 800); },
+    onError: (e) => setResult({ ok: false, text: (e as Error).message }),
+  });
+  const deny = useMutation({
+    mutationFn: () => denyFlairRequest(idToken, req.sub),
+    onSuccess: () => { setResult({ ok: true, text: 'Denied ✓' }); setTimeout(refresh, 800); },
+    onError: (e) => setResult({ ok: false, text: (e as Error).message }),
+  });
+
+  const busy = sent.isPending || deny.isPending;
+
+  return (
+    <div className="submission-card">
+      <div className="submission-main">
+        <span className="badge-chip submission-type">friend code</span>
+        <strong className="submission-summary">{req.code}</strong>
+        <span className="submission-when">
+          by {req.username ?? req.sub}
+          {req.requestedAt ? ` · ${new Date(req.requestedAt).toLocaleString()}` : ''}
+        </span>
+        <span className="submission-note" style={{ fontSize: 12, opacity: 0.6 }}>{req.sub}</span>
+      </div>
+
+      {req.status === 'pending' ? (
+        <div className="submission-actions flair-sent-row">
+          <input
+            className="search-input"
+            placeholder="Confirmation code to send"
+            value={passphrase}
+            disabled={busy}
+            onChange={e => setPassphrase(e.target.value)}
+          />
+          <button
+            className="csv-btn submission-approve"
+            disabled={busy || !passphrase.trim()}
+            onClick={() => sent.mutate()}
+          >
+            {sent.isPending ? 'Saving…' : 'Sent'}
+          </button>
+          <button className="csv-btn submission-reject" disabled={busy} onClick={() => deny.mutate()}>
+            {deny.isPending ? 'Denying…' : 'Denied'}
+          </button>
+        </div>
+      ) : (
+        <div className="submission-actions flair-sent-row">
+          <span className="search-hint">
+            Sent — awaiting user confirmation{req.passphrase ? ` (code: ${req.passphrase})` : ''}.
+          </span>
+          <button className="csv-btn submission-reject" disabled={busy} onClick={() => deny.mutate()}>
+            {deny.isPending ? 'Denying…' : 'Denied'}
+          </button>
+        </div>
+      )}
+
+      {result && <p className={`submission-result ${result.ok ? 'ok' : 'err'}`}>{result.text}</p>}
     </div>
   );
 }

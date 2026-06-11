@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useAuth } from 'react-oidc-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchMe, submitFriendCode, fetchMySubmissions } from '../api/profile';
+import { fetchMe, submitFriendCode, cancelFriendCode, confirmFriendCode, fetchMySubmissions } from '../api/profile';
 
 export default function Account() {
   const auth = useAuth();
@@ -16,16 +16,33 @@ export default function Account() {
     enabled: auth.isAuthenticated && !!idToken,
   });
 
-  // Seed the draft from whatever's most current: a pending request if one exists,
-  // otherwise the approved code.
-  const [flairDraft, setFlairDraft] = useState('');
+  // Friend-code workflow drafts: the code to submit (idle), and the passphrase to
+  // confirm (after the admin marks it Sent).
+  const [codeDraft, setCodeDraft] = useState('');
+  const [passDraft, setPassDraft] = useState('');
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   useEffect(() => {
-    if (profile) setFlairDraft(profile.flair_pending ?? profile.flair ?? '');
+    // Seed the code box with any approved code so editing feels natural; clear it
+    // while a request is in flight (the input is read-only/greyed then anyway).
+    if (profile) setCodeDraft(profile.flair_status ? '' : (profile.flair ?? ''));
   }, [profile]);
 
   const submitFlair = useMutation({
-    mutationFn: () => submitFriendCode(idToken!, flairDraft.trim()),
+    mutationFn: () => submitFriendCode(idToken!, codeDraft.trim()),
     onSuccess: updated => queryClient.setQueryData(['me'], updated),
+  });
+  const cancelFlair = useMutation({
+    mutationFn: () => cancelFriendCode(idToken!),
+    onSuccess: updated => { queryClient.setQueryData(['me'], updated); setPassDraft(''); setConfirmError(null); },
+  });
+  const confirmFlair = useMutation({
+    mutationFn: () => confirmFriendCode(idToken!, passDraft),
+    onSuccess: res => {
+      queryClient.setQueryData(['me'], res.profile);
+      if (res.ok) { setPassDraft(''); setConfirmError(null); }
+      else setConfirmError('That confirmation code did not match. Please try again.');
+    },
+    onError: e => setConfirmError((e as Error).message),
   });
 
   const { data: submissions } = useQuery({
@@ -104,39 +121,82 @@ export default function Account() {
 
       <h2 style={{ marginTop: 24 }}>Friend Code</h2>
       <p className="search-hint" style={{ marginTop: 0 }}>
-        Submit your in-game Friend Code to display it next to your name. Each
-        submission is reviewed and confirmed manually before it goes live.
+        Submit your in-game Friend Code to display it next to your name. We'll send
+        you an in-game friend request, then ask you to enter a confirmation code to
+        verify it's really you before it goes live.
       </p>
-      <div className="flair-editor">
-        <input
-          className="search-input"
-          maxLength={80}
-          value={flairDraft}
-          placeholder="Your in-game Friend Code"
-          onChange={e => setFlairDraft(e.target.value)}
-        />
-        <button
-          className="csv-btn"
-          disabled={
-            submitFlair.isPending || !profile ||
-            (profile.flair_pending ?? profile.flair ?? '') === flairDraft.trim()
-          }
-          onClick={() => submitFlair.mutate()}
-        >
-          {submitFlair.isPending ? 'Submitting…' : 'Submit for review'}
-        </button>
-      </div>
-      {profile?.flair && (
-        <p className="search-hint" style={{ marginTop: 6 }}>
-          Approved Friend Code: <strong>{profile.flair}</strong>
-        </p>
+
+      {profile?.flair_status === 'pending' ? (
+        // ── Submitted, waiting on the admin to send the in-game friend request ──
+        <div className="flair-state">
+          <div className="flair-editor">
+            <input className="search-input" value={profile.flair_pending ?? ''} readOnly disabled />
+            <button className="csv-btn" disabled={cancelFlair.isPending} onClick={() => cancelFlair.mutate()}>
+              {cancelFlair.isPending ? 'Cancelling…' : 'Cancel'}
+            </button>
+          </div>
+          <p className="submission-pending-hint" style={{ marginTop: 6 }}>
+            Submission pending — we'll send your in-game friend request shortly.
+          </p>
+        </div>
+      ) : profile?.flair_status === 'sent' ? (
+        // ── Admin sent it; user enters the passphrase to confirm and publish ──
+        <div className="flair-state">
+          <p className="search-hint" style={{ marginTop: 0 }}>
+            We've sent your in-game friend request for <strong>{profile.flair_pending}</strong>.
+            Enter the confirmation code from that request to verify and publish it.
+          </p>
+          <div className="flair-editor">
+            <input
+              className="search-input"
+              maxLength={80}
+              value={passDraft}
+              placeholder="Confirmation code"
+              onChange={e => { setPassDraft(e.target.value); setConfirmError(null); }}
+              onKeyDown={e => { if (e.key === 'Enter' && passDraft.trim() && !confirmFlair.isPending) confirmFlair.mutate(); }}
+            />
+            <button
+              className="csv-btn"
+              disabled={confirmFlair.isPending || !passDraft.trim()}
+              onClick={() => confirmFlair.mutate()}
+            >
+              {confirmFlair.isPending ? 'Confirming…' : 'Confirm'}
+            </button>
+            <button className="csv-btn" disabled={cancelFlair.isPending} onClick={() => cancelFlair.mutate()}>
+              Cancel
+            </button>
+          </div>
+          {confirmError && <p className="search-error" style={{ marginTop: 6 }}>{confirmError}</p>}
+        </div>
+      ) : (
+        // ── Idle: no active request (may have an approved code) ──
+        <div className="flair-state">
+          <div className="flair-editor">
+            <input
+              className="search-input"
+              maxLength={80}
+              value={codeDraft}
+              placeholder="Your in-game Friend Code"
+              onChange={e => setCodeDraft(e.target.value)}
+            />
+            <button
+              className="csv-btn"
+              disabled={submitFlair.isPending || !codeDraft.trim() || codeDraft.trim() === (profile?.flair ?? '')}
+              onClick={() => submitFlair.mutate()}
+            >
+              {submitFlair.isPending ? 'Submitting…' : 'Submit for review'}
+            </button>
+          </div>
+          {profile?.flair && (
+            <p className="search-hint" style={{ marginTop: 6 }}>
+              Approved Friend Code: <strong>{profile.flair}</strong>
+            </p>
+          )}
+          {submitFlair.isError && (
+            <p className="search-error" style={{ marginTop: 6 }}>{(submitFlair.error as Error).message}</p>
+          )}
+        </div>
       )}
-      {profile?.flair_pending && (
-        <p className="submission-pending-hint" style={{ marginTop: 6 }}>
-          Pending review: <strong>{profile.flair_pending}</strong>
-        </p>
-      )}
-      {submitFlair.isError && <p className="search-error">Could not submit your Friend Code.</p>}
 
       {(() => {
         const approved = submissions?.filter(s => s.status === 'pushed');

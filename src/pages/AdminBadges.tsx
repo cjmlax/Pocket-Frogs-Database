@@ -3,8 +3,7 @@ import { useAuth } from 'react-oidc-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   adminListBadges, adminSaveBadge, adminDeleteBadge,
-  adminListUsers, adminDeleteUser, adminGrantBadge, adminRevokeBadge,
-  adminApproveFlair, adminRejectFlair, type BadgeInput,
+  adminListUsers, adminDeleteUser, adminGrantBadge, adminRevokeBadge, type BadgeInput,
 } from '../api/adminBadges';
 import type { Badge } from '../api/profile';
 
@@ -49,14 +48,6 @@ export default function AdminBadges() {
   });
   const removeUser = useMutation({
     mutationFn: (sub: string) => adminDeleteUser(idToken!, sub),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
-  });
-  const approveFlair = useMutation({
-    mutationFn: (sub: string) => adminApproveFlair(idToken!, sub),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
-  });
-  const rejectFlair = useMutation({
-    mutationFn: (sub: string) => adminRejectFlair(idToken!, sub),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
   });
 
@@ -192,31 +183,11 @@ export default function AdminBadges() {
                     Remove
                   </button>
                 </div>
-                {u.flair_pending ? (
-                  <div className="flair-review">
-                    <span className="flair-review-pending">
-                      Friend code requested: <strong>{u.flair_pending}</strong>
-                    </span>
-                    <button
-                      className="csv-btn"
-                      disabled={approveFlair.isPending}
-                      onClick={() => approveFlair.mutate(u.sub)}
-                    >
-                      Approve
-                    </button>
-                    <button
-                      className="csv-btn"
-                      disabled={rejectFlair.isPending}
-                      onClick={() => rejectFlair.mutate(u.sub)}
-                    >
-                      Reject
-                    </button>
-                  </div>
-                ) : u.flair ? (
+                {u.flair && (
                   <div className="flair-review">
                     <span className="flair-review-approved">Friend code: <strong>{u.flair}</strong></span>
                   </div>
-                ) : null}
+                )}
                 <div className="badge-admin-user-badges">
                   {u.badges.length === 0 && <span className="search-hint">no badges</span>}
                   {u.badges.map(b => (
