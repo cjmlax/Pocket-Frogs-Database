@@ -1,7 +1,7 @@
 import { useAuth } from 'react-oidc-context';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import { listPending } from '../api/adminSubmissions';
+import { listPending, listFlairRequests } from '../api/adminSubmissions';
 
 // pfdb_groups arrives with the "pfdb-" prefix stripped, so "pfdb-admins" → "admins".
 const ADMIN_GROUP = 'admins';
@@ -13,10 +13,15 @@ export default function AdminHome() {
   const isAdmin = groups.includes(ADMIN_GROUP);
   const enabled = auth.isAuthenticated && isAdmin && !!idToken;
 
-  // Shares the ['admin-pending'] cache with the review page, so it's free there.
+  // Both queries share their cache keys with the review page, so they're free there.
   const { data: pending } = useQuery({
     queryKey: ['admin-pending'],
     queryFn: () => listPending(idToken!),
+    enabled,
+  });
+  const { data: flairRequests } = useQuery({
+    queryKey: ['admin-flair-requests'],
+    queryFn: () => listFlairRequests(idToken!),
     enabled,
   });
 
@@ -44,7 +49,7 @@ export default function AdminHome() {
       to: '/admin/submissions',
       title: 'Review Submissions',
       desc: 'Approve, reject, edit, and crop pending community submissions.',
-      count: pending?.length,
+      count: (pending?.length ?? 0) + (flairRequests?.length ?? 0) || undefined,
     },
     {
       to: '/admin/badges',

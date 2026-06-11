@@ -174,7 +174,7 @@ export default function AdminBadges() {
                 <div className="badge-admin-user-name">
                   <span className="badge-admin-user-id-wrap">
                     {u.username ?? '(no username)'}
-                    <span className="sub-id-badge" data-sub={u.sub}>ID</span>
+                    <span className="sub-id-badge">ID<span className="sub-id-tooltip">{u.sub}</span></span>
                   </span>
                   <button
                     className="badge-user-remove-btn"

@@ -1589,8 +1589,7 @@ main {
   opacity: 0.85;
 }
 
-.sub-id-badge::after {
-  content: attr(data-sub);
+.sub-id-tooltip {
   position: absolute;
   left: 0;
   top: calc(100% + 5px);
@@ -1609,10 +1608,23 @@ main {
   pointer-events: none;
   transition: opacity 0.12s;
   z-index: 50;
+  user-select: text;
+  cursor: text;
 }
 
-.sub-id-badge:hover::after {
+/* Transparent bridge over the gap so hover isn't lost when moving to the tooltip */
+.sub-id-tooltip::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 5px;
+}
+
+.sub-id-badge:hover .sub-id-tooltip {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .badge-user-remove-btn {
