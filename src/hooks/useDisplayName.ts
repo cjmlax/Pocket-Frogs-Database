@@ -1,5 +1,7 @@
 import { useCallback, useSyncExternalStore } from 'react';
 import { useAuth } from 'react-oidc-context';
+import { useQuery } from '@tanstack/react-query';
+import { fetchMe } from '../api/profile';
 
 const STORAGE_KEY = 'pfdb_display_name_source';
 
@@ -46,7 +48,15 @@ export interface DisplayNameOption {
 export function useDisplayName() {
   const auth = useAuth();
   const claims = auth.user?.profile;
+  const idToken = auth.user?.id_token;
   const connected = (claims?.connected_accounts as Record<string, string> | undefined) ?? {};
+
+  // Shares the ['me'] cache with Account.tsx — no extra fetch when already loaded.
+  const { data: profile } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => fetchMe(idToken!),
+    enabled: auth.isAuthenticated && !!idToken,
+  });
 
   const source = useSyncExternalStore(subscribe, getSnapshot, () => 'pfdb');
 
@@ -57,7 +67,7 @@ export function useDisplayName() {
   }, []);
 
   const options: DisplayNameOption[] = [
-    { key: 'pfdb', label: 'PFDB', name: String(claims?.preferred_username ?? ''), icon: null },
+    { key: 'pfdb', label: 'Friend Code', name: profile?.flair ?? '', icon: null },
     ...Object.entries(connected).map(([platform, name]) => ({
       key: platform,
       label: platform.charAt(0).toUpperCase() + platform.slice(1),
