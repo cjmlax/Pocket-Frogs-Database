@@ -4,7 +4,7 @@ import { fetchTable, fetchBreedFrogs, fetchCombos, fetchFrogById, type TeableRec
 import ComboBox, { type ComboOption } from '../components/ComboBox';
 import { formatNum } from '../utils/format';
 import { breedOptionsFrom } from '../utils/breeds';
-import { attachmentUrl } from '../utils/attachments';
+import { hasAttachment, imageProxyUrl } from '../utils/attachments';
 import { useBreedSort } from '../hooks/useBreedSort';
 import { useColorSort } from '../hooks/useColorSort';
 import { useSpoilers } from '../hooks/useSpoilers';
@@ -210,11 +210,13 @@ export default function BreedingPairs() {
       resultId: string | null;
       resultTitle: string | null;
     }[] = [];
-    const scan = (combos: TeableRecord<ComboFields>[] | undefined, type: string) =>
+    const scan = (combos: TeableRecord<ComboFields>[] | undefined, type: 'Chroma' | 'Glass') =>
       (combos ?? []).filter(matches).forEach(rec =>
         out.push({
           type,
-          screenshot: attachmentUrl(rec.fields['Screenshot']),
+          screenshot: hasAttachment(rec.fields['Screenshot'])
+            ? imageProxyUrl(type === 'Chroma' ? 'chroma' : 'glass', rec.id, 'Screenshot')
+            : null,
           lostId: linkId(rec.fields[LOST_FROG_FIELD]),
           resultId: linkId(rec.fields[RESULT_FROG_FIELD]),
           resultTitle: linkTitle(rec.fields[RESULT_FROG_FIELD]),

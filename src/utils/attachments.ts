@@ -1,13 +1,16 @@
-// Origin of the Teable instance, used to absolutize relative attachment paths.
-export const TEABLE_ORIGIN = 'https://teable.cjmlax.com';
+import { API_BASE } from '../api/base';
 
-// Extracts a displayable URL from a Teable attachment field. Falls back to the
-// relative path (prefixed with the Teable origin) when no presigned URL exists.
-export function attachmentUrl(val: unknown): string | null {
-  const first = Array.isArray(val) ? val[0] : val;
-  if (!first || typeof first !== 'object') return null;
-  const o = first as Record<string, unknown>;
-  const url = (o.presignedUrl ?? o.url) as string | undefined;
-  if (!url) return null;
-  return url.startsWith('http') ? url : `${TEABLE_ORIGIN}${url}`;
+// Teable's attachment presignedUrl carries a short-lived signed token (a few
+// minutes) and the SPA's table cache only refreshes on lastModifiedTime change,
+// so a directly-embedded presignedUrl is usually expired by the time it's
+// rendered. Instead, build a stable proxy URL — the pfdb-submissions worker
+// re-resolves a fresh presignedUrl on every hit (see its /api/image route).
+export type AttachmentTable = 'breeds' | 'chroma' | 'glass';
+
+export function hasAttachment(val: unknown): boolean {
+  return Array.isArray(val) && val.length > 0;
+}
+
+export function imageProxyUrl(table: AttachmentTable, recordId: string, field: string): string {
+  return `${API_BASE}/api/image/${table}/${encodeURIComponent(recordId)}/${encodeURIComponent(field)}`;
 }

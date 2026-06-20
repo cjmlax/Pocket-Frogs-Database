@@ -7,6 +7,7 @@ import { useBreedSort, selectBreedSort } from '../hooks/useBreedSort';
 import { useColorSort, selectColorSort } from '../hooks/useColorSort';
 import { useSpoilers } from '../hooks/useSpoilers';
 import { useDisplayName } from '../hooks/useDisplayName';
+import AlertBanner from './AlertBanner';
 import '../App.css';
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
@@ -289,6 +290,7 @@ export default function Layout() {
           <SettingsDropdown />
         </div>
       </header>
+      <AlertBanner />
       <main>
         <Outlet />
       </main>

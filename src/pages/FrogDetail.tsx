@@ -13,7 +13,7 @@ import { useBreedSort } from '../hooks/useBreedSort';
 import { useColorSort } from '../hooks/useColorSort';
 import { useSpoilers } from '../hooks/useSpoilers';
 import { colorOptionsFrom } from '../utils/colors';
-import { attachmentUrl } from '../utils/attachments';
+import { hasAttachment, imageProxyUrl } from '../utils/attachments';
 import { formatNum } from '../utils/format';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
@@ -214,7 +214,10 @@ export default function FrogDetail() {
         const partnerId    = id1 === frog.id ? id2 : id1;
         const partnerTitle = id1 === frog.id ? linkTitle(rec.fields['Frog 2']) : linkTitle(rec.fields['Frog 1']);
         const resultId     = linkId(rec.fields['Result Frog']);
-        return [{ type, partnerId, partnerTitle, resultId, screenshot: attachmentUrl(rec.fields['Screenshot']) }];
+        const screenshot = hasAttachment(rec.fields['Screenshot'])
+          ? imageProxyUrl(type === 'Chroma' ? 'chroma' : 'glass', rec.id, 'Screenshot')
+          : null;
+        return [{ type, partnerId, partnerTitle, resultId, screenshot }];
       });
     return [...find(chromaCombos, 'Chroma'), ...find(glassCombos, 'Glass')];
   }, [frog, chromaCombos, glassCombos]);

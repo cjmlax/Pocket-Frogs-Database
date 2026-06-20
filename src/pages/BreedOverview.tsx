@@ -5,7 +5,7 @@ import { type SortingState } from '@tanstack/react-table';
 import { fetchTable, fetchBreedFrogs, fetchCombos, fetchFrogById } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
 import WeeklyTable, { type WeeklyFields, WEEKLY_FROG_FIELDS } from '../components/WeeklyTable';
-import { attachmentUrl } from '../utils/attachments';
+import { hasAttachment, imageProxyUrl } from '../utils/attachments';
 import { formatNum } from '../utils/format';
 import { downloadCsv } from '../utils/csv';
 import { breedOptionsFrom } from '../utils/breeds';
@@ -197,7 +197,7 @@ export default function BreedOverview() {
     if (!rec) return null;
     const levelId = linkId(rec.fields.Level);
     const level = levels?.find(l => l.id === levelId) ?? null;
-    const image = attachmentUrl(rec.fields.Stock_Image);
+    const image = hasAttachment(rec.fields.Stock_Image) ? imageProxyUrl('breeds', rec.id, 'Stock_Image') : null;
     return { rec, level, image };
   }, [breed, breeds, levels]);
 
@@ -277,7 +277,10 @@ export default function BreedOverview() {
         const partnerId    = isBreed1 ? id2 : id1;
         const partnerTitle = isBreed1 ? linkTitle(rec.fields['Frog 2']) : linkTitle(rec.fields['Frog 1']);
         const resultId     = linkId(rec.fields['Result Frog']);
-        return [{ type, thisId, partnerId, partnerTitle, resultId, screenshot: attachmentUrl(rec.fields['Screenshot']) }];
+        const screenshot = hasAttachment(rec.fields['Screenshot'])
+          ? imageProxyUrl(type === 'Chroma' ? 'chroma' : 'glass', rec.id, 'Screenshot')
+          : null;
+        return [{ type, thisId, partnerId, partnerTitle, resultId, screenshot }];
       });
     return [...find(chromaCombos, 'Chroma'), ...find(glassCombos, 'Glass')];
   }, [breedFrogIds, chromaCombos, glassCombos]);

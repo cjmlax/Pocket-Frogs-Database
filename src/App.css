@@ -1058,6 +1058,57 @@ tr:hover .pin-btn,
   z-index: 10;
 }
 
+/* Dismissable site-wide announcement banners, stacked below the nav */
+.alert-banner-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.alert-banner-message {
+  flex: 1;
+  color: var(--text-h);
+}
+
+.alert-banner-dismiss {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  opacity: 0.7;
+}
+
+.alert-banner-dismiss:hover {
+  opacity: 1;
+}
+
+.alert-banner-info {
+  background: color-mix(in srgb, #3b82f6 12%, transparent);
+  border-bottom-color: color-mix(in srgb, #3b82f6 35%, transparent);
+}
+
+.alert-banner-warning {
+  background: color-mix(in srgb, #f59e0b 14%, transparent);
+  border-bottom-color: color-mix(in srgb, #f59e0b 40%, transparent);
+}
+
+.alert-banner-critical {
+  background: color-mix(in srgb, #ef4444 14%, transparent);
+  border-bottom-color: color-mix(in srgb, #ef4444 40%, transparent);
+}
+
 .nav-scroll-wrap {
   display: flex;
   align-items: center;
@@ -1541,6 +1592,39 @@ main {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* Site Alerts admin page */
+.alert-admin-message { flex: 1; min-width: 240px; }
+
+.alert-admin-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--border);
+  border-left: 3px solid transparent;
+}
+
+.alert-admin-row-info     { border-left-color: #3b82f6; }
+.alert-admin-row-warning  { border-left-color: #f59e0b; }
+.alert-admin-row-critical { border-left-color: #ef4444; }
+
+.alert-admin-row-inactive {
+  opacity: 0.5;
+}
+
+.alert-admin-level {
+  flex-shrink: 0;
+  width: 60px;
+  font-size: 12px;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+.alert-admin-message-text {
+  flex: 1;
+  font-size: 14px;
 }
 
 .badge-admin-user {

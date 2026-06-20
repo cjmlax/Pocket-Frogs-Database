@@ -57,6 +57,12 @@ export default function AdminHome() {
       desc: 'Create badges and award them to users.',
       count: undefined as number | undefined,
     },
+    {
+      to: '/admin/alerts',
+      title: 'Site Alerts',
+      desc: 'Post dismissable banners for maintenance and announcements.',
+      count: undefined as number | undefined,
+    },
   ];
 
   return (

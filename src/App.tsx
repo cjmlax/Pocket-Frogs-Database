@@ -12,6 +12,7 @@ import Account from './pages/Account';
 import AuthCallback from './pages/AuthCallback';
 import AdminHome from './pages/AdminHome';
 import AdminBadges from './pages/AdminBadges';
+import AdminAlerts from './pages/AdminAlerts';
 import AdminSubmissions from './pages/AdminSubmissions';
 
 const router = createBrowserRouter([
@@ -31,6 +32,7 @@ const router = createBrowserRouter([
       { path: 'account', element: <Account /> },
       { path: 'admin', element: <AdminHome /> },
       { path: 'admin/badges', element: <AdminBadges /> },
+      { path: 'admin/alerts', element: <AdminAlerts /> },
       { path: 'admin/submissions', element: <AdminSubmissions /> },
       { path: 'auth/callback', element: <AuthCallback /> },
     ],
