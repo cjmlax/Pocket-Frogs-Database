@@ -279,12 +279,12 @@ interface LinkEntry {
 const COMMUNITY_LINKS: LinkEntry[] = [
   { label: 'Android Download',      url: 'https://play.google.com/store/apps/details?id=com.nimblebit.pocketfrogs' },
   { label: 'iOS Download',          url: 'https://apps.apple.com/us/app/pocket-frogs-tiny-pond-keeper/id386644958' },
+  { label: 'NimbleBit Official Site', url: 'https://nimblebit.com/#about' },
   { label: 'Community Discord',     url: 'https://discord.gg/XZ3eeEp', faviconDomain: 'discord.com' },
   { label: 'Community Subreddit',   url: 'https://www.reddit.com/r/Pocketfrogs' },
   { label: 'Community Wiki',        url: 'http://pocketfrogs.fandom.com/wiki/Pocket_Frogs_Wiki' },
-  { label: 'NimbleBit Official Site', url: 'https://nimblebit.com/#about' },
-  { label: 'Previous Spreadsheet',   url: 'https://docs.google.com/spreadsheets/d/1TNTK09vM8tlj6BC8haobuWCQvV4qNyDsRYsf-4hXdCc/' },
-  { label: 'Website GitHub',         url: 'https://github.com/cjmlax/Pocket-Frogs-Database' },
+  { label: 'My Google Sheet',   url: 'https://docs.google.com/spreadsheets/d/1TNTK09vM8tlj6BC8haobuWCQvV4qNyDsRYsf-4hXdCc/' },
+  { label: 'Thi site\'s GitHub',         url: 'https://github.com/cjmlax/Pocket-Frogs-Database' },
   { label: 'Site Feedback Form',     url: 'https://teable.cjmlax.com/share/shre9SHevGPtThTpVGz/view', faviconDomain: 'teable.io' },
 ];
 
@@ -437,7 +437,7 @@ export default function Home() {
         <div className="home-text">
           <p>An unofficial, searchable database of information for the mobile game Pocket Frogs.</p>
           <p>This website is a continuation of my <a href="https://docs.google.com/spreadsheets/d/1TNTK09vM8tlj6BC8haobuWCQvV4qNyDsRYsf-4hXdCc/" target="_blank">Google Spreadsheet</a> meant to store the data better, provide a simpler and more responsive feel, and separate it from Google so it can expand past just a spreadshet.</p>
-          <p>This website is also two challenging/terrible things combined — a work in progress and coded with AI assistance. Please be patient while I work out the kinks and improve the experience. You may see things change or not work for a while, but the data is hosted separately and won't be affected. It's my first attempt at a project managed by github, so anyone is welcome to take a look and contribute there.</p>
+          <p>This website is also two challenging/terrible things combined — a work in progress and coded with AI assistance. Please be patient while I work out the kinks in an effort to improve the experience. You may see things change or not work for a while, but they should come back eventually. Note that the data is hosted separately and won't be affected, and can be downlaoded at any time from the 'Downloads' tab. It's my first attempt at a project managed by github, so anyone is welcome to take a look and contribute there.</p>
           <p>Additionally, I'm happy to take any feedback you have about the site at the link in the card. Keep in mind that feature requests are welcome, but I'll be working through my own checklist as well.</p>
         </div>
       </div>
