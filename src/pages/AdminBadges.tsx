@@ -9,6 +9,10 @@ import type { Badge } from '../api/profile';
 
 // pfdb_groups arrives with the "pfdb-" prefix stripped, so "pfdb-admins" → "admins".
 const ADMIN_GROUP = 'admins';
+// Matches ADMIN_BADGE_ID in the worker's users.ts — auto-granted/revoked based on
+// live admins-group membership, so a manual revoke here would just reappear on
+// that user's next request. The catalog entry (name/icon/color) is still editable.
+const AUTO_ADMIN_BADGE_ID = 'admin';
 const EMPTY_FORM: BadgeInput = { id: '', name: '', icon: '', color: '', description: '', sort_order: 0 };
 
 export default function AdminBadges() {
@@ -236,11 +240,15 @@ export default function AdminBadges() {
                   {u.badges.map(b => (
                     <span key={b.id} className="badge-chip" style={b.color ? { borderColor: b.color, color: b.color } : undefined}>
                       {b.icon && <span className="badge-chip-icon">{b.icon}</span>}{b.name}
-                      <button
-                        className="badge-revoke-btn"
-                        title="Revoke"
-                        onClick={() => revoke.mutate({ sub: u.sub, badgeId: b.id })}
-                      >×</button>
+                      {b.id === AUTO_ADMIN_BADGE_ID ? (
+                        <span className="badge-chip-auto" title="Auto-managed: synced to admins-group membership">🔒</span>
+                      ) : (
+                        <button
+                          className="badge-revoke-btn"
+                          title="Revoke"
+                          onClick={() => revoke.mutate({ sub: u.sub, badgeId: b.id })}
+                        >×</button>
+                      )}
                     </span>
                   ))}
                 </div>

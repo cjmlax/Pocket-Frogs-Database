@@ -9,7 +9,7 @@ export default function Account() {
   const auth = useAuth();
   const queryClient = useQueryClient();
   const idToken = auth.user?.id_token;
-  const { displayName, source, setSource, options } = useDisplayName();
+  const { source, setSource, options } = useDisplayName();
 
   // The worker-owned profile (badges + flair), keyed on the Authentik subject.
   const { data: profile, isLoading: profileLoading, isError: profileError } = useQuery({
@@ -67,34 +67,11 @@ export default function Account() {
   // Identity claims come straight from the token; badges/flair from the worker.
   const claims = auth.user?.profile;
   const groups = (claims?.pfdb_groups as string[] | undefined) ?? [];
-  const connected = (claims?.connected_accounts as Record<string, string> | undefined) ?? {};
-  const connectedList = Object.entries(connected);
   const isAdmin = groups.includes('admins');
 
   return (
     <div>
       <h1>Account</h1>
-
-      <div className="breed-info-stats" style={{ marginBottom: 16 }}>
-        <div className="breed-info-stat">
-          <span className="breed-info-stat-label">Name</span>
-          <span className="breed-info-stat-value">{displayName}</span>
-        </div>
-        <div className="breed-info-stat">
-          <span className="breed-info-stat-label">Email</span>
-          <span className="breed-info-stat-value">{String(claims?.email ?? '—')}</span>
-        </div>
-        <div className="breed-info-stat">
-          <span className="breed-info-stat-label">PFDB Groups</span>
-          <span className="breed-info-stat-value">{groups.length ? groups.join(', ') : '—'}</span>
-        </div>
-        <div className="breed-info-stat">
-          <span className="breed-info-stat-label">Connected Accounts</span>
-          <span className="breed-info-stat-value">
-            {connectedList.length ? connectedList.map(([p, u]) => `${p}: ${u}`).join(' · ') : '—'}
-          </span>
-        </div>
-      </div>
 
       {options.length > 1 && (
         <>

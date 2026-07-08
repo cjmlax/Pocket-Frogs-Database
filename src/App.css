@@ -1784,6 +1784,13 @@ main {
   opacity: 1;
 }
 
+.badge-chip-auto {
+  margin-left: 4px;
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.6;
+}
+
 /* Let an anchor render as a button (e.g. the Account → Admin tools link) */
 a.csv-btn {
   display: inline-block;
