@@ -257,7 +257,11 @@ export default function SubmitCombo() {
     <div>
       <h1>Glass/Chroma Submissions</h1>
       <p className="search-hint" style={{ marginTop: 0 }}>
-        If you've discovered a Glass or Chroma breeding mutation, submit that combination here. The page will check against the database once both parents are entered. If there isn't an existing match, you can complete the rest of the form to submit. I'll review all submissions manually before pushing them into the database.
+        If you've discovered a Glass or Chroma breeding mutation, submit that combination here.
+        The page will check against the database once both parents are entered.
+        If there isn't an existing match, you can complete the rest of the form to submit.
+        All submissions are reviewed manually before being pushed into the database.
+        If you would like credit for your submisisons, make sure you're logged in under the site settings.
       </p>
 
       {!checked ? (
@@ -365,7 +369,7 @@ export default function SubmitCombo() {
                 : 'The result frog\'s Secondary Color must be Chroma.'}
             </p>
           ) : alreadyExists ? (
-            <p className="breeding-special">This {variant === 'chroma' ? 'Chroma' : 'Glass'} pairing is already in the database — switch the type above.</p>
+            <p className="breeding-special">This {variant === 'chroma' ? 'Chroma' : 'Glass'} pairing is already cataloged — please try another.</p>
           ) : null}
 
           <div className="submit-actions">

@@ -40,7 +40,7 @@ export default function Account() {
     onSuccess: res => {
       queryClient.setQueryData(['me'], res.profile);
       if (res.ok) { setPassDraft(''); setConfirmError(null); }
-      else setConfirmError('That confirmation code did not match. Please try again.');
+      else setConfirmError('That frog was incorrect. Please double check spelling and re-submit.');
     },
     onError: e => setConfirmError((e as Error).message),
   });
@@ -155,9 +155,9 @@ export default function Account() {
       ) : (
         <>
           <p className="search-hint" style={{ marginTop: 0 }}>
-            Submit your in-game Friend Code to display it next to your name. We'll send
-            you an in-game friend request, then ask you to enter a confirmation code to
-            verify it's really you before it goes live.
+            Submit your Friend Code as a display name choice on this site. You'll be sent
+            a frog in-game and then asked to enter that frog here as confirmation. You will know
+            when the frog has been sent when you see the confirmation prompt on this page.
           </p>
 
           {profile?.flair_status === 'pending' ? (
@@ -170,15 +170,15 @@ export default function Account() {
                 </button>
               </div>
               <p className="submission-pending-hint" style={{ marginTop: 6 }}>
-                Submission pending — we'll send your in-game friend request shortly.
+                Submission received — site admins have been notified.
               </p>
             </div>
           ) : profile?.flair_status === 'sent' ? (
             // ── Admin sent it; user enters the passphrase to confirm and publish ──
             <div className="flair-state">
               <p className="search-hint" style={{ marginTop: 0 }}>
-                We've sent your in-game friend request for <strong>{profile.flair_pending}</strong>.
-                Enter the confirmation code from that request to verify and publish it.
+                We've sent a frog to Friend Code <strong>{profile.flair_pending}</strong>.
+                Enter the full name of the frog and confirm to complete the registration.
               </p>
               <div className="flair-editor">
                 <input
@@ -210,7 +210,7 @@ export default function Account() {
                   className="search-input"
                   maxLength={80}
                   value={codeDraft}
-                  placeholder="Your in-game Friend Code"
+                  placeholder="Your Pocket Frogs Friend Code"
                   onChange={e => setCodeDraft(e.target.value)}
                 />
                 <button

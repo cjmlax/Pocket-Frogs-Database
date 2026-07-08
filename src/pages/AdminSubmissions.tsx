@@ -117,7 +117,7 @@ function FlairRequestCard({ req, idToken }: { req: FlairRequest; idToken: string
         <div className="submission-actions flair-sent-row">
           <input
             className="search-input"
-            placeholder="Confirmation code to send"
+            placeholder="Confirmation frog"
             value={passphrase}
             disabled={busy}
             onChange={e => setPassphrase(e.target.value)}
