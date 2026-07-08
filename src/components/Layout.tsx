@@ -153,18 +153,18 @@ function SettingsDropdown() {
       {open && (
         <div className="settings-panel">
           {/* Row 1: Theme — System (left), Light (center), Dark (right) */}
-          <button className={`settings-theme-opt${theme === null ? ' active' : ''}`} onClick={() => choose(null)} aria-label="System" title="System">
+          <button className={`settings-theme-opt${theme === null ? ' active' : ''}`} onClick={() => choose(null)} aria-label="System Theme" title="System">
             <IconMonitor />
           </button>
-          <button className={`settings-theme-opt${theme === 'light' ? ' active' : ''}`} onClick={() => choose('light')} aria-label="Light" title="Light">
+          <button className={`settings-theme-opt${theme === 'light' ? ' active' : ''}`} onClick={() => choose('light')} aria-label="Light Theme" title="Light">
             <IconSun />
           </button>
-          <button className={`settings-theme-opt${theme === 'dark' ? ' active' : ''}`} onClick={() => choose('dark')} aria-label="Dark" title="Dark">
+          <button className={`settings-theme-opt${theme === 'dark' ? ' active' : ''}`} onClick={() => choose('dark')} aria-label="Dark Theme" title="Dark">
             <IconMoon />
           </button>
 
           {/* Row 2: Breed sort — label (left), level (center), alpha (right) */}
-          <span className="settings-row-label" title="Breed sort order">Breed:</span>
+          <span className="settings-row-label" title="Sort order of Breed selectors">Breed:</span>
           <button className={`settings-theme-opt${breedSort.key === 'level' ? ' active' : ''}`} onClick={() => selectBreedSort('level')} aria-label="Sort breeds by level" title="Level Order">
             #{breedSort.key === 'level' && (breedSort.dir === 'asc' ? ' ↑' : ' ↓')}
           </button>
@@ -173,8 +173,8 @@ function SettingsDropdown() {
           </button>
 
           {/* Row 3: Color sort — label (left), rainbow (center), alpha (right) */}
-          <span className="settings-row-label" title="Sort Base and Secondary colors">Color:</span>
-          <button className={`settings-theme-opt${colorSort.key === 'rainbow' ? ' active' : ''}`} onClick={() => selectColorSort('rainbow')} aria-label="Sort colors by rainbow order" title="Froggydex Order">
+          <span className="settings-row-label" title="Sort order of Base and Secondary color selectors">Color:</span>
+          <button className={`settings-theme-opt${colorSort.key === 'rainbow' ? ' active' : ''}`} onClick={() => selectColorSort('rainbow')} aria-label="Sort colors by froggydex order" title="Froggydex Order">
             <IconRainbow />{colorSort.key === 'rainbow' && (colorSort.dir === 'asc' ? ' ↑' : ' ↓')}
           </button>
           <button className={`settings-theme-opt${colorSort.key === 'alpha' ? ' active' : ''}`} onClick={() => selectColorSort('alpha')} aria-label="Sort colors alphabetically" title="Alphabetical Order">
@@ -182,11 +182,11 @@ function SettingsDropdown() {
           </button>
 
           {/* Row 4: Spoilers — label (left), On (center), Off (right) */}
-          <span className="settings-row-label" title="Will allow or disallow known Glass and Chroma mutations from displaying onsite">Spoilers:</span>
-          <button className={`settings-theme-opt${spoilers ? ' active' : ''}`} onClick={() => setSpoilers(true)} aria-label="Spoilers on" title="Spoilers on">
+          <span className="settings-row-label" title="Toggle display of known Glass\Chroma mutations">Spoilers:</span>
+          <button className={`settings-theme-opt${spoilers ? ' active' : ''}`} onClick={() => setSpoilers(true)} aria-label="Spoilers on" title="Reveal Glass/Chroma combinations">
             On
           </button>
-          <button className={`settings-theme-opt${!spoilers ? ' active' : ''}`} onClick={() => setSpoilers(false)} aria-label="Spoilers off" title="Spoilers off">
+          <button className={`settings-theme-opt${!spoilers ? ' active' : ''}`} onClick={() => setSpoilers(false)} aria-label="Spoilers off" title="Hide Glass/Chroma combinations">
             Off
           </button>
 
@@ -208,7 +208,7 @@ function SettingsDropdown() {
                 className="settings-account-link"
                 onClick={() => { setOpen(false); void auth.signinRedirect(); }}
               >
-                Log In
+                Log In\Sign Up
               </button>
             )}
           </div>
