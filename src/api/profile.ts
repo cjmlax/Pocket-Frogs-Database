@@ -65,13 +65,14 @@ export async function submitFriendCode(idToken: string, code: string): Promise<P
   return res.json();
 }
 
-// Cancels/withdraws an active friend-code request at any stage.
+// Cancels/withdraws an active friend-code request at any stage. If there's no
+// active request, this instead clears an already-approved live Friend Code.
 export async function cancelFriendCode(idToken: string): Promise<Profile> {
   const res = await fetch(`${API_BASE}/api/me/flair`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${idToken}` },
   });
-  if (!res.ok) throw new Error(`Could not cancel request (${res.status})`);
+  if (!res.ok) throw new Error(`Could not clear Friend Code (${res.status})`);
   return res.json();
 }
 

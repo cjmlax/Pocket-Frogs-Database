@@ -6,13 +6,15 @@ import {
   adminListUsers, adminDeleteUser, adminGrantBadge, adminRevokeBadge, adminSetFlair, type BadgeInput,
 } from '../api/adminBadges';
 import type { Badge } from '../api/profile';
+import { badgeChipStyle } from '../utils/badgeStyle';
 
 // pfdb_groups arrives with the "pfdb-" prefix stripped, so "pfdb-admins" → "admins".
 const ADMIN_GROUP = 'admins';
-// Matches ADMIN_BADGE_ID in the worker's users.ts — auto-granted/revoked based on
-// live admins-group membership, so a manual revoke here would just reappear on
-// that user's next request. The catalog entry (name/icon/color) is still editable.
-const AUTO_ADMIN_BADGE_ID = 'admin';
+// Matches AUTO_BADGE_IDS in the worker's users.ts — auto-granted/revoked based on
+// live admins-/mods-group membership, so a manual revoke here would just reappear
+// on that user's next request. The catalog entries (name/icon/color) are still
+// editable, but can't be deleted (worker rejects it).
+const AUTO_BADGE_IDS: readonly string[] = ['admin', 'mod'];
 const EMPTY_FORM: BadgeInput = { id: '', name: '', icon: '', color: '', description: '', sort_order: 0 };
 
 export default function AdminBadges() {
@@ -144,19 +146,21 @@ export default function AdminBadges() {
         <div className="badge-admin-list">
           {badges.map(b => (
             <div key={b.id} className="badge-admin-row">
-              <span className="badge-chip" style={b.color ? { borderColor: b.color, color: b.color } : undefined}>
+              <span className="badge-chip" style={badgeChipStyle(b.color)}>
                 {b.icon && <span className="badge-chip-icon">{b.icon}</span>}{b.name}
               </span>
               <code className="badge-admin-id">{b.id}</code>
               <span className="badge-admin-sort-label" title="Sort order">sort {b.sort_order}</span>
               <span className="badge-admin-desc">{b.description}</span>
               <button className="csv-btn" onClick={() => editBadge(b)}>Edit</button>
-              <button
-                className="csv-btn"
-                onClick={() => { if (confirm(`Delete badge "${b.name}"? This removes it from all users.`)) removeBadge.mutate(b.id); }}
-              >
-                Delete
-              </button>
+              {!AUTO_BADGE_IDS.includes(b.id) && (
+                <button
+                  className="csv-btn"
+                  onClick={() => { if (confirm(`Delete badge "${b.name}"? This removes it from all users.`)) removeBadge.mutate(b.id); }}
+                >
+                  Delete
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -238,10 +242,10 @@ export default function AdminBadges() {
                 <div className="badge-admin-user-badges">
                   {u.badges.length === 0 && <span className="search-hint">no badges</span>}
                   {u.badges.map(b => (
-                    <span key={b.id} className="badge-chip" style={b.color ? { borderColor: b.color, color: b.color } : undefined}>
+                    <span key={b.id} className="badge-chip" style={badgeChipStyle(b.color)}>
                       {b.icon && <span className="badge-chip-icon">{b.icon}</span>}{b.name}
-                      {b.id === AUTO_ADMIN_BADGE_ID ? (
-                        <span className="badge-chip-auto" title="Auto-managed: synced to admins-group membership">🔒</span>
+                      {AUTO_BADGE_IDS.includes(b.id) ? (
+                        <span className="badge-chip-auto" title="Auto-managed: synced to group membership">🔒</span>
                       ) : (
                         <button
                           className="badge-revoke-btn"

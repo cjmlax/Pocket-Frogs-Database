@@ -4,6 +4,7 @@ import { useAuth } from 'react-oidc-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchMe, submitFriendCode, cancelFriendCode, confirmFriendCode, fetchMySubmissions } from '../api/profile';
 import { useDisplayName } from '../hooks/useDisplayName';
+import { badgeChipStyle } from '../utils/badgeStyle';
 
 export default function Account() {
   const auth = useAuth();
@@ -23,6 +24,8 @@ export default function Account() {
   const [codeDraft, setCodeDraft] = useState('');
   const [passDraft, setPassDraft] = useState('');
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  // Inline (no-popup) two-step confirmation for clearing an already-approved code.
+  const [confirmingClear, setConfirmingClear] = useState(false);
   useEffect(() => {
     if (profile) setCodeDraft('');
   }, [profile]);
@@ -33,7 +36,12 @@ export default function Account() {
   });
   const cancelFlair = useMutation({
     mutationFn: () => cancelFriendCode(idToken!),
-    onSuccess: updated => { queryClient.setQueryData(['me'], updated); setPassDraft(''); setConfirmError(null); },
+    onSuccess: updated => {
+      queryClient.setQueryData(['me'], updated);
+      setPassDraft('');
+      setConfirmError(null);
+      setConfirmingClear(false);
+    },
   });
   const confirmFlair = useMutation({
     mutationFn: () => confirmFriendCode(idToken!, passDraft),
@@ -111,7 +119,7 @@ export default function Account() {
             <span
               key={b.id}
               className="badge-chip"
-              style={b.color ? { borderColor: b.color, color: b.color } : undefined}
+              style={badgeChipStyle(b.color)}
               title={b.description ?? undefined}
             >
               {b.icon && <span className="badge-chip-icon">{b.icon}</span>}
@@ -126,15 +134,29 @@ export default function Account() {
       <h2 style={{ marginTop: 24 }}>Friend Code</h2>
       {profile?.flair && !profile?.flair_status ? (
         // ── Approved and live — show read-only; hide the submission dialogue ──
-        <p className="search-hint" style={{ marginTop: 0 }}>
-          Your Friend Code: <strong>{profile.flair}</strong>
-        </p>
+        <div className="flair-state">
+          <p className="search-hint" style={{ marginTop: 0 }}>
+            Your Friend Code: <strong>{profile.flair}</strong>
+          </p>
+          {confirmingClear ? (
+            <div className="flair-editor">
+              <span className="search-hint" style={{ marginTop: 0 }}>Clear your Friend Code — are you sure?</span>
+              <button className="csv-btn" disabled={cancelFlair.isPending} onClick={() => cancelFlair.mutate()}>
+                {cancelFlair.isPending ? 'Clearing…' : 'Yes, clear it'}
+              </button>
+              <button className="csv-btn" disabled={cancelFlair.isPending} onClick={() => setConfirmingClear(false)}>
+                Never mind
+              </button>
+            </div>
+          ) : (
+            <button className="csv-btn" onClick={() => setConfirmingClear(true)}>Clear</button>
+          )}
+        </div>
       ) : (
         <>
           <p className="search-hint" style={{ marginTop: 0 }}>
             Submit your Friend Code as a display name choice on this site. You'll be sent
-            a frog in-game and then asked to enter that frog here as confirmation. You will know
-            when the frog has been sent when you see the confirmation prompt on this page.
+            a frog in-game and then asked to enter that frog here as confirmation.
           </p>
 
           {profile?.flair_status === 'pending' ? (
