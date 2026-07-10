@@ -67,11 +67,15 @@ export default function AdminSubmissions() {
   const totalCount = rows.length + flairRows.length;
 
   const FRIEND_CODE_TYPE = 'friend code';
-  const submissionTypes = Array.from(new Set(rows.map(sub => sub.type))).sort();
+  // Types that always belong in the filter, even with nothing currently pending —
+  // union with live data so any new backend-issued type still shows up too.
+  const KNOWN_TYPES = ['combo'];
+  const submissionTypes = Array.from(new Set([...KNOWN_TYPES, ...rows.map(sub => sub.type)])).sort();
 
   const showRegular = typeFilter === 'all' || typeFilter !== FRIEND_CODE_TYPE;
   const showFriendCode = typeFilter === 'all' || typeFilter === FRIEND_CODE_TYPE;
   const filteredRows = typeFilter === 'all' ? rows : rows.filter(sub => sub.type === typeFilter);
+  const allEmpty = !isLoading && totalCount === 0;
 
   return (
     <div>
@@ -90,30 +94,36 @@ export default function AdminSubmissions() {
         </select>
       </div>
 
-      {showRegular && (
-        isLoading ? (
-          <p className="search-hint">Loading…</p>
-        ) : filteredRows.length === 0 ? (
-          <p className="search-hint">
-            {typeFilter === 'all' ? 'No pending submissions. 🎉' : `No pending "${typeFilter}" submissions.`}
-          </p>
-        ) : (
-          <div className="submission-list">
-            {filteredRows.map(sub => <SubmissionCard key={sub.id} sub={sub} idToken={idToken!} />)}
-          </div>
-        )
-      )}
+      {isLoading ? (
+        <p className="search-hint">Loading…</p>
+      ) : allEmpty ? (
+        <p className="search-hint">No pending submissions. 🎉</p>
+      ) : (
+        <>
+          {showRegular && (
+            filteredRows.length === 0 ? (
+              <p className="search-hint">
+                {typeFilter === 'all' ? 'No pending submissions.' : `No pending "${typeFilter}" submissions.`}
+              </p>
+            ) : (
+              <div className="submission-list">
+                {filteredRows.map(sub => <SubmissionCard key={sub.id} sub={sub} idToken={idToken!} />)}
+              </div>
+            )
+          )}
 
-      {showFriendCode && (
-        flairRows.length === 0 ? (
-          <p className="search-hint" style={{ marginTop: showRegular ? 28 : 0 }}>No active Friend Code requests.</p>
-        ) : (
-          <div className="submission-list" style={{ marginTop: showRegular ? 28 : 0 }}>
-            {flairRows.map(fr => (
-              <FlairRequestCard key={fr.sub} req={fr} idToken={idToken!} defaultSenderCode={myProfile?.flair ?? ''} />
-            ))}
-          </div>
-        )
+          {showFriendCode && (
+            flairRows.length === 0 ? (
+              <p className="search-hint" style={{ marginTop: showRegular ? 28 : 0 }}>No active Friend Code requests.</p>
+            ) : (
+              <div className="submission-list" style={{ marginTop: showRegular ? 28 : 0 }}>
+                {flairRows.map(fr => (
+                  <FlairRequestCard key={fr.sub} req={fr} idToken={idToken!} defaultSenderCode={myProfile?.flair ?? ''} />
+                ))}
+              </div>
+            )
+          )}
+        </>
       )}
     </div>
   );
