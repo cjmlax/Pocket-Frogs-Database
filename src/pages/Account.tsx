@@ -71,10 +71,7 @@ export default function Account() {
 
   return (
     <div>
-      <div className="account-header-row">
-        <h1>Account</h1>
-        <button className="csv-btn" onClick={() => void auth.signoutRedirect()}>Sign out</button>
-      </div>
+      <h1>Account</h1>
 
       <h2 style={{ marginTop: 24 }}>Display Name</h2>
       <p className="search-hint" style={{ marginTop: 0 }}>
@@ -138,19 +135,14 @@ export default function Account() {
         <p className="search-hint">No badges yet.</p>
       )}
 
-      <div className="account-header-row" style={{ marginTop: 24 }}>
-        <h2>Friend Code</h2>
-        {profile?.flair && !profile?.flair_status && !confirmingClear && (
-          <button className="csv-btn" onClick={() => setConfirmingClear(true)}>Clear</button>
-        )}
-      </div>
+      <h2 style={{ marginTop: 24 }}>Friend Code</h2>
       {profile?.flair && !profile?.flair_status ? (
         // ── Approved and live — show read-only; hide the submission dialogue ──
         <div className="flair-state">
           <p className="search-hint" style={{ marginTop: 0 }}>
             Your Friend Code: <strong>{profile.flair}</strong>
           </p>
-          {confirmingClear && (
+          {confirmingClear ? (
             <div className="flair-editor">
               <span className="search-hint" style={{ marginTop: 0 }}>Clear your Friend Code — are you sure?</span>
               <button className="csv-btn" disabled={cancelFlair.isPending} onClick={() => cancelFlair.mutate()}>
@@ -160,6 +152,8 @@ export default function Account() {
                 Never mind
               </button>
             </div>
+          ) : (
+            <button className="csv-btn" onClick={() => setConfirmingClear(true)}>Clear</button>
           )}
         </div>
       ) : (

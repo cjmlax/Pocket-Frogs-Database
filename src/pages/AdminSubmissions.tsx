@@ -41,6 +41,8 @@ export default function AdminSubmissions() {
     enabled: auth.isAuthenticated && isAdmin && !!idToken,
   });
 
+  const [typeFilter, setTypeFilter] = useState('all');
+
   if (auth.isLoading) return <p className="search-hint">Loading…</p>;
   if (!auth.isAuthenticated) {
     return (
@@ -62,33 +64,56 @@ export default function AdminSubmissions() {
 
   const rows = pending ?? [];
   const flairRows = flairRequests ?? [];
+  const totalCount = rows.length + flairRows.length;
+
+  const FRIEND_CODE_TYPE = 'friend code';
+  const submissionTypes = Array.from(new Set(rows.map(sub => sub.type))).sort();
+
+  const showRegular = typeFilter === 'all' || typeFilter !== FRIEND_CODE_TYPE;
+  const showFriendCode = typeFilter === 'all' || typeFilter === FRIEND_CODE_TYPE;
+  const filteredRows = typeFilter === 'all' ? rows : rows.filter(sub => sub.type === typeFilter);
 
   return (
     <div>
-      <h1>
-        Pending Submissions <span className="breed-weekly-count">({rows.length})</span>
-      </h1>
-      {isLoading ? (
-        <p className="search-hint">Loading…</p>
-      ) : rows.length === 0 ? (
-        <p className="search-hint">No pending submissions. 🎉</p>
-      ) : (
-        <div className="submission-list">
-          {rows.map(sub => <SubmissionCard key={sub.id} sub={sub} idToken={idToken!} />)}
-        </div>
+      <div className="table-toolbar">
+        <h1>
+          Pending Submissions <span className="breed-weekly-count">({totalCount})</span>
+        </h1>
+        <select
+          className="search-input"
+          value={typeFilter}
+          onChange={e => setTypeFilter(e.target.value)}
+        >
+          <option value="all">All types</option>
+          {submissionTypes.map(t => <option key={t} value={t}>{t}</option>)}
+          <option value={FRIEND_CODE_TYPE}>{FRIEND_CODE_TYPE}</option>
+        </select>
+      </div>
+
+      {showRegular && (
+        isLoading ? (
+          <p className="search-hint">Loading…</p>
+        ) : filteredRows.length === 0 ? (
+          <p className="search-hint">
+            {typeFilter === 'all' ? 'No pending submissions. 🎉' : `No pending "${typeFilter}" submissions.`}
+          </p>
+        ) : (
+          <div className="submission-list">
+            {filteredRows.map(sub => <SubmissionCard key={sub.id} sub={sub} idToken={idToken!} />)}
+          </div>
+        )
       )}
 
-      <h1 style={{ marginTop: 28 }}>
-        Friend Code Requests <span className="breed-weekly-count">({flairRows.length})</span>
-      </h1>
-      {flairRows.length === 0 ? (
-        <p className="search-hint">No active Friend Code requests.</p>
-      ) : (
-        <div className="submission-list">
-          {flairRows.map(fr => (
-            <FlairRequestCard key={fr.sub} req={fr} idToken={idToken!} defaultSenderCode={myProfile?.flair ?? ''} />
-          ))}
-        </div>
+      {showFriendCode && (
+        flairRows.length === 0 ? (
+          <p className="search-hint" style={{ marginTop: showRegular ? 28 : 0 }}>No active Friend Code requests.</p>
+        ) : (
+          <div className="submission-list" style={{ marginTop: showRegular ? 28 : 0 }}>
+            {flairRows.map(fr => (
+              <FlairRequestCard key={fr.sub} req={fr} idToken={idToken!} defaultSenderCode={myProfile?.flair ?? ''} />
+            ))}
+          </div>
+        )
       )}
     </div>
   );
@@ -163,10 +188,10 @@ function FlairRequestCard(
             disabled={busy || !passphrase.trim() || !senderCode.trim()}
             onClick={() => sent.mutate()}
           >
-            {sent.isPending ? 'Saving…' : 'Sent'}
+            {sent.isPending ? 'Saving…' : 'Send'}
           </button>
           <button className="csv-btn submission-reject" disabled={busy} onClick={() => deny.mutate()}>
-            {deny.isPending ? 'Denying…' : 'Denied'}
+            {deny.isPending ? 'Denying…' : 'Deny'}
           </button>
         </div>
       ) : (
@@ -177,7 +202,7 @@ function FlairRequestCard(
             {req.senderCode ? `, from: ${req.senderCode}` : ''}.
           </span>
           <button className="csv-btn submission-reject" disabled={busy} onClick={() => deny.mutate()}>
-            {deny.isPending ? 'Denying…' : 'Denied'}
+            {deny.isPending ? 'Cancelling…' : 'Cancel'}
           </button>
         </div>
       )}
