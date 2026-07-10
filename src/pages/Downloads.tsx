@@ -23,14 +23,14 @@ const SLUG_TO_TABLE_ID: Record<string, string> = {
 
 // Fill these in with a short description of what each exported file contains.
 const TABLE_DESCRIPTIONS: Record<string, string> = {
-  breeds: '',
-  bases:  '',
-  secs:   '',
-  frogs:  '',
-  weekly: '',
-  chroma: '',
-  glass:  '',
-  levels: '',
+  breeds: 'The table of frog breeds in teh game and their corresponding index and values.',
+  bases:  'The table of base colors for frogs in the game and their corresponding index and values.',
+  secs:   'The table of pattern colors for frogs in the game and their corresponding index and values.',
+  frogs:  'The table of each individual frog with in-game values and correlated data accociations.',
+  weekly: 'The table of each weekly set, the frogs associated with it, and other anciallary values.',
+  chroma: 'The table of frog breeding combinations that result in a chroma-based mutation.',
+  glass:  'The table of frog breeding combinations that result in a glass-based mutation.',
+  levels: 'The table of frog levels and the in-game values accosicate with each level.',
 };
 
 function timeAgo(iso: string): string {

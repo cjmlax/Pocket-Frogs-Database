@@ -2073,7 +2073,7 @@ a.csv-btn {
 
 .export-table-grid {
   display: grid;
-  grid-template-columns: auto repeat(3, 1fr);
+  grid-template-columns: minmax(140px, auto) repeat(3, 1fr);
 }
 
 .export-table-grid > * {
@@ -2097,6 +2097,7 @@ a.csv-btn {
 .export-table-download {
   background: none;
   border: none;
+  border-right: 1px solid var(--border);
   color: inherit;
   font: inherit;
   cursor: pointer;
