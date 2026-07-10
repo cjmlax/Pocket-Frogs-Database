@@ -2299,14 +2299,26 @@ a.csv-btn {
   margin-top: 3px;
 }
 
-/* "+" tile — links out to the Authentik source-enrollment flow. Distinct from
-   .display-name-opt (dashed border, no dim/active toggle states) since it's an
-   add action, not a selectable option; stretches to match sibling tile height
-   via the row's default flex align-items: stretch. */
+/* Friend Code tile before one is set — visible like the others but static
+   (no clickable/hover affordance) since there's nothing to select yet. */
+.display-name-opt-empty {
+  cursor: default;
+}
+
+.display-name-opt-empty:hover {
+  opacity: 0.38;
+  border-color: var(--border);
+}
+
+/* Per-source "connect" tile — links out straight to that provider's OIDC
+   login. Distinct from .display-name-opt (dashed border, no dim/active toggle
+   states) since it's an add action, not a selectable option; stretches to
+   match sibling tile height via the row's default flex align-items: stretch. */
 .display-name-add {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   padding: 8px 14px;
   border: 1px dashed var(--border);
   border-radius: 8px;
@@ -2323,4 +2335,9 @@ a.csv-btn {
   border-color: var(--accent-border);
   background: var(--accent-bg);
   color: var(--accent);
+}
+
+.display-name-add-label {
+  font-size: 12px;
+  font-weight: 600;
 }

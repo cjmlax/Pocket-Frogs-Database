@@ -2,9 +2,36 @@ import { useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchMe, submitFriendCode, cancelFriendCode, confirmFriendCode, fetchMySubmissions } from '../api/profile';
-import { useDisplayName } from '../hooks/useDisplayName';
+import { useDisplayName, platformIcon, type DisplayNameOption } from '../hooks/useDisplayName';
 import { badgeChipStyle } from '../utils/badgeStyle';
-import { sourceEnrollmentUrl } from '../auth/authConfig';
+import { sourceLoginOptions } from '../auth/authConfig';
+
+// Fallback avatar shown for options with no platform favicon (currently just Friend Code).
+function IconAvatar() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="7" cy="6.5" r="3" />
+      <circle cx="17" cy="6.5" r="3" />
+      <circle cx="7" cy="6.5" r="0.8" fill="currentColor" stroke="none" />
+      <circle cx="17" cy="6.5" r="0.8" fill="currentColor" stroke="none" />
+      <rect x="3" y="9" width="18" height="10" rx="5" />
+      <path d="M8.5 15.5q3.5 2.5 7 0" />
+    </svg>
+  );
+}
+
+// A connected display-name source — click to make it the name shown site-wide.
+function ConnectedTile({ opt, active, onSelect }: { opt: DisplayNameOption; active: boolean; onSelect: () => void }) {
+  return (
+    <button className={`display-name-opt${active ? ' active' : ''}`} onClick={onSelect}>
+      <span className="display-name-opt-header">
+        {opt.icon ? <img src={opt.icon} width={16} height={16} style={{ borderRadius: 3 }} alt="" /> : <IconAvatar />}
+        <span className="display-name-opt-platform">{opt.label}</span>
+      </span>
+      <span className="display-name-opt-name">{opt.name}</span>
+    </button>
+  );
+}
 
 export default function Account() {
   const auth = useAuth();
@@ -80,36 +107,45 @@ export default function Account() {
           : 'Link another account to set the name shown throughout the site.'}
       </p>
       <div className="display-name-picker">
-        {options.map(opt => (
-          <button
-            key={opt.key}
-            className={`display-name-opt${opt.key === source ? ' active' : ''}`}
-            onClick={() => setSource(opt.key)}
-          >
+        {/* Friend Code — always visible; blank and non-interactive until one is
+            approved via the request flow further down the page. */}
+        {profile?.flair ? (
+          <ConnectedTile
+            opt={{ key: 'pfdb', label: 'Friend Code', name: profile.flair, icon: null }}
+            active={source === 'pfdb'}
+            onSelect={() => setSource('pfdb')}
+          />
+        ) : (
+          <div className="display-name-opt display-name-opt-empty" aria-disabled="true">
             <span className="display-name-opt-header">
-              {opt.icon
-                ? <img src={opt.icon} width={16} height={16} style={{ borderRadius: 3 }} alt="" />
-                : (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <circle cx="7" cy="6.5" r="3" />
-                    <circle cx="17" cy="6.5" r="3" />
-                    <circle cx="7" cy="6.5" r="0.8" fill="currentColor" stroke="none" />
-                    <circle cx="17" cy="6.5" r="0.8" fill="currentColor" stroke="none" />
-                    <rect x="3" y="9" width="18" height="10" rx="5" />
-                    <path d="M8.5 15.5q3.5 2.5 7 0" />
-                  </svg>
-                )
-              }
-              <span className="display-name-opt-platform">{opt.label}</span>
+              <IconAvatar />
+              <span className="display-name-opt-platform">Friend Code</span>
             </span>
-            <span className="display-name-opt-name">{opt.name}</span>
-          </button>
-        ))}
-        <a className="display-name-add" href={sourceEnrollmentUrl} aria-label="Link another account" title="Link another account">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-        </a>
+            <span className="display-name-opt-name">{' '}</span>
+          </div>
+        )}
+
+        {/* Known login sources — always visible; connected ones are selectable,
+            unconnected ones deep-link straight to that provider's OIDC login. */}
+        {sourceLoginOptions.map(s => {
+          const opt = options.find(o => o.key === s.key);
+          if (opt) return <ConnectedTile key={s.key} opt={opt} active={source === opt.key} onSelect={() => setSource(opt.key)} />;
+          const icon = platformIcon(s.key);
+          return (
+            <a key={s.key} className="display-name-add" href={s.loginUrl} aria-label={`Connect ${s.label}`} title={`Connect ${s.label}`}>
+              {icon && <img src={icon} width={16} height={16} style={{ borderRadius: 3 }} alt="" />}
+              <span className="display-name-add-label">{s.label}</span>
+            </a>
+          );
+        })}
+
+        {/* Any other connected source Authentik reports that isn't one of the
+            fixed tiles above (no dedicated login URL for these yet). */}
+        {options
+          .filter(o => o.key !== 'pfdb' && !sourceLoginOptions.some(s => s.key === o.key))
+          .map(opt => (
+            <ConnectedTile key={opt.key} opt={opt} active={source === opt.key} onSelect={() => setSource(opt.key)} />
+          ))}
       </div>
 
       <h2 style={{ marginTop: 24 }}>Badges</h2>

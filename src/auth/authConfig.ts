@@ -25,9 +25,33 @@ export const oidcConfig: AuthProviderProps = {
   },
 };
 
-// Authentik flow for linking an additional login source while already signed
-// in (the "+" tile on Account). Override at build time with
-// VITE_OIDC_SOURCE_ENROLLMENT_URL if the flow slug ever changes.
-export const sourceEnrollmentUrl =
-  import.meta.env.VITE_OIDC_SOURCE_ENROLLMENT_URL
-  ?? 'https://pfdbauth.cjmlax.com/if/flow/pfdb-source-enrollment-/';
+export interface SourceLoginOption {
+  key: string;
+  label: string;
+  loginUrl: string;
+}
+
+// Per-source Authentik login links for the "connect this account" tiles on
+// Account — each deep-links straight to that provider's OIDC login (skipping
+// Authentik's generic source picker) and returns to /account when done.
+// Override at build time with VITE_OIDC_SOURCE_LOGIN_<KEY> if a slug changes.
+export const sourceLoginOptions: SourceLoginOption[] = [
+  {
+    key: 'discord',
+    label: 'Discord',
+    loginUrl: import.meta.env.VITE_OIDC_SOURCE_LOGIN_DISCORD
+      ?? 'https://pfdbauth.cjmlax.com/source/oauth/login/discord/?next=https://pfdb.cjmlax.com/account',
+  },
+  {
+    key: 'twitch',
+    label: 'Twitch',
+    loginUrl: import.meta.env.VITE_OIDC_SOURCE_LOGIN_TWITCH
+      ?? 'https://pfdbauth.cjmlax.com/source/oauth/login/twitch/?next=https://pfdb.cjmlax.com/account',
+  },
+  {
+    key: 'google',
+    label: 'Google',
+    loginUrl: import.meta.env.VITE_OIDC_SOURCE_LOGIN_GOOGLE
+      ?? 'https://pfdbauth.cjmlax.com/source/oauth/login/google/?next=https://pfdb.cjmlax.com/account',
+  },
+];
