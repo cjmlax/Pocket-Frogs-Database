@@ -2060,26 +2060,54 @@ a.csv-btn {
 .export-table-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  max-width: 560px;
+  gap: 16px;
+  max-width: 680px;
 }
 
-.export-table-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
+.export-table-card {
   background: var(--code-bg);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 12px 16px;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-.export-table-info {
+.export-table-grid {
+  display: grid;
+  grid-template-columns: auto repeat(3, 1fr);
+}
+
+.export-table-grid > * {
+  border-right: 1px solid var(--border);
+}
+
+.export-table-grid > *:last-child {
+  border-right: none;
+}
+
+.export-table-cell {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 14px;
+  text-align: center;
+}
+
+.export-table-download {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.export-table-download:hover { background: var(--border); }
+.export-table-download:disabled { opacity: 0.5; cursor: default; background: none; }
+
+.export-table-download-icon {
+  width: 20px;
+  height: 20px;
 }
 
 .export-table-name {
@@ -2088,15 +2116,46 @@ a.csv-btn {
   color: var(--text-h);
 }
 
-.export-table-meta {
+.export-table-cell-label {
+  font-size: 12px;
+  color: var(--text-h);
+}
+
+.export-table-cell-value {
+  font-size: 13px;
+}
+
+.export-table-cell-value code {
+  word-break: break-all;
+}
+
+.export-table-description {
+  border-top: 1px solid var(--border);
+  padding: 8px 14px;
+  font-size: 12px;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.export-table-status {
+  border-top: 1px solid var(--border);
+  padding: 6px 14px;
   font-size: 12px;
 }
 
-.export-table-action {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
+@media (max-width: 640px) {
+  .export-table-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .export-table-grid > * {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .export-table-grid > *:last-child {
+    border-bottom: none;
+  }
 }
 
 /* Frog Detail page */

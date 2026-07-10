@@ -21,6 +21,18 @@ const SLUG_TO_TABLE_ID: Record<string, string> = {
   levels: TABLES.levels.id,
 };
 
+// Fill these in with a short description of what each exported file contains.
+const TABLE_DESCRIPTIONS: Record<string, string> = {
+  breeds: '',
+  bases:  '',
+  secs:   '',
+  frogs:  '',
+  weekly: '',
+  chroma: '',
+  glass:  '',
+  levels: '',
+};
+
 function timeAgo(iso: string): string {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
   if (mins < 1) return 'just now';
@@ -124,32 +136,51 @@ export default function Downloads() {
       ) : (
         <div className="export-table-list">
           {tables.map(({ slug, label, hash, exportedAt }) => {
-            const tableId   = SLUG_TO_TABLE_ID[slug];
-            const sourceTs  = tableId ? tsMeta?.get(tableId) : undefined;
+            const tableId  = SLUG_TO_TABLE_ID[slug];
+            const sourceTs = tableId ? tsMeta?.get(tableId) : undefined;
+            const error    = dlErrors[slug];
             return (
-              <div key={slug} className="export-table-row">
-                <div className="export-table-info">
-                  <span className="export-table-name">{label}</span>
-                  <span className="export-table-meta submit-optional">
-                    {hash
-                      ? <>Fingerprint: <code>{hash}</code> · last hashed {exportedAt ? timeAgo(exportedAt) : '—'}</>
-                      : 'Export hash not yet generated'}
-                    {sourceTs && <> · data last updated {new Date(sourceTs).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</>}
-                  </span>
-                </div>
-                <div className="export-table-action">
-                  {dlErrors[slug] && (
-                    <span className="search-error" style={{ fontSize: '0.85em' }}>{dlErrors[slug]}</span>
-                  )}
+              <div key={slug} className="export-table-card">
+                <div className="export-table-grid">
                   <button
-                    className="csv-btn"
                     type="button"
+                    className="export-table-cell export-table-download"
                     disabled={downloading[slug]}
                     onClick={() => handleDownload(slug)}
+                    title={`Download ${label} CSV`}
                   >
-                    {downloading[slug] ? 'Downloading…' : 'Download CSV'}
+                    <svg className="export-table-download-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 3v12" />
+                      <path d="M7 10l5 5 5-5" />
+                      <path d="M5 20h14" />
+                    </svg>
+                    <span className="export-table-name">{label}</span>
                   </button>
+                  <div className="export-table-cell">
+                    <span className="export-table-cell-label">Last Updated</span>
+                    <span className="export-table-cell-value">
+                      {sourceTs ? new Date(sourceTs).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—'}
+                    </span>
+                  </div>
+                  <div className="export-table-cell">
+                    <span className="export-table-cell-label">Last Hashed</span>
+                    <span className="export-table-cell-value">{exportedAt ? timeAgo(exportedAt) : '—'}</span>
+                  </div>
+                  <div className="export-table-cell">
+                    <span className="export-table-cell-label">Fingerprint</span>
+                    <span className="export-table-cell-value">
+                      {hash ? <code>{hash}</code> : 'Not yet generated'}
+                    </span>
+                  </div>
                 </div>
+                <div className="export-table-description">
+                  {TABLE_DESCRIPTIONS[slug] || 'No description added yet.'}
+                </div>
+                {(downloading[slug] || error) && (
+                  <div className={`export-table-status${error ? ' search-error' : ''}`}>
+                    {error || 'Downloading…'}
+                  </div>
+                )}
               </div>
             );
           })}
