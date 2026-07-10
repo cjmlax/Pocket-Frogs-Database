@@ -41,6 +41,7 @@ export interface FlairRequest {
   code: string | null;          // the requested in-game friend code
   status: 'pending' | 'sent';
   passphrase: string | null;    // admin-set confirmation code (null until Sent)
+  senderCode: string | null;    // sending admin/mod's own Friend Code (null until Sent)
   requestedAt: string | null;
 }
 
@@ -48,13 +49,15 @@ export async function listFlairRequests(idToken: string): Promise<FlairRequest[]
   return asJson(await authed(idToken, '/api/admin/flair-requests'));
 }
 
-// Mark the in-game friend request as Sent and set the confirmation passphrase.
-export async function markFlairSent(idToken: string, sub: string, passphrase: string) {
+// Mark the in-game friend request as Sent, set the confirmation passphrase, and
+// record the sender's own Friend Code (shown to the user so they can verify
+// who the gift is from).
+export async function markFlairSent(idToken: string, sub: string, passphrase: string, senderCode: string) {
   return asJson<{ ok: boolean }>(
     await authed(idToken, `/api/admin/flair-requests/${encodeURIComponent(sub)}/sent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ passphrase }),
+      body: JSON.stringify({ passphrase, senderCode }),
     }),
   );
 }

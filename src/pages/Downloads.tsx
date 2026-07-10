@@ -113,9 +113,9 @@ export default function Downloads() {
         </button>
       </div>
       <p className="search-hint" style={{ marginTop: 0 }}>
-        Data is available for export as it's stored in the database. Note that, because it's a database, items can be coded in funny ways and I don't currently have a guide to decipher it. The file is not stored in the browser at all, it is a direct API call to the database for that table. This means you will need an internet connnection to start and complete the download.
+        Data is available for export as it's stored in the database. The files are a direct API call to the database for that table. This means you will need an internet connnection to start and complete the download.
       </p>
-      <p className="search-hint"> If you're looking to update your previous download, use the hash value or 'fingerprint'. This is calculated by running the entire block of data through a special function. Even the smallest change to the data will alter the output of the function, changing the fingerprint. This means if you have a file with a diffrerent fingerprint, the data has changed.</p>
+      <p className="search-hint"> If you're looking to validate a previous download, use the hash or 'fingerprint' value. This value changes as the data does, so a different value means updated data.</p>
 
       {loadError ? (
         <p className="search-error">Could not load export options. Please try again later.</p>
@@ -132,9 +132,9 @@ export default function Downloads() {
                   <span className="export-table-name">{label}</span>
                   <span className="export-table-meta submit-optional">
                     {hash
-                      ? <>Fingerprint: <code>{hash}</code> · export hashed {exportedAt ? timeAgo(exportedAt) : '—'}</>
+                      ? <>Fingerprint: <code>{hash}</code> · last hashed {exportedAt ? timeAgo(exportedAt) : '—'}</>
                       : 'Export hash not yet generated'}
-                    {sourceTs && <> · source updated {new Date(sourceTs).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</>}
+                    {sourceTs && <> · data last updated {new Date(sourceTs).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</>}
                   </span>
                 </div>
                 <div className="export-table-action">

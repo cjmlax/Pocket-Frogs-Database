@@ -58,6 +58,14 @@ function IconMonitor() {
   );
 }
 
+function IconShield() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z"/>
+    </svg>
+  );
+}
+
 // ── Submit dropdown ───────────────────────────────────────────────────────────
 
 function SubmitDropdown() {
@@ -117,6 +125,8 @@ function SubmitDropdown() {
 
 // ── Settings dropdown ─────────────────────────────────────────────────────────
 
+// pfdb_groups arrives with the "pfdb-" prefix stripped, so "pfdb-admins" → "admins".
+const ADMIN_GROUP = 'admins';
 
 function SettingsDropdown() {
   const { theme, choose } = useTheme();
@@ -128,6 +138,8 @@ function SettingsDropdown() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const groups = (auth.user?.profile?.pfdb_groups as string[] | undefined) ?? [];
+  const isAdmin = groups.includes(ADMIN_GROUP);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -209,6 +221,15 @@ function SettingsDropdown() {
                 onClick={() => { setOpen(false); void auth.signinRedirect(); }}
               >
                 Log In\Sign Up
+              </button>
+            )}
+            {auth.isAuthenticated && isAdmin && (
+              <button
+                className="settings-account-link"
+                onClick={() => { setOpen(false); navigate('/admin'); }}
+              >
+                <IconShield />
+                <span className="settings-account-name">Admin Tools</span>
               </button>
             )}
           </div>

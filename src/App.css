@@ -1322,12 +1322,16 @@ tr:hover .pin-btn,
   color: var(--accent);
 }
 
-/* Account line at the bottom of the settings menu */
+/* Account line(s) at the bottom of the settings menu — Account, and (for
+   admins) Admin Tools stacked directly beneath it. */
 .settings-account-row {
   grid-column: 1 / -1;
   margin-top: 6px;
   padding-top: 8px;
   border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .settings-account-link {
@@ -1487,6 +1491,22 @@ main {
 .max-value-star {
   margin-left: 4px;
   color: var(--accent);
+}
+
+/* Account page — heading + action button in one row (Account/Sign out,
+   Friend Code/Clear); the row owns the vertical spacing so headings inside
+   it don't double up on their own default margins. */
+.account-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.account-header-row h1,
+.account-header-row h2 {
+  margin: 0;
 }
 
 /* Account page — badges + flair */
@@ -2260,4 +2280,30 @@ a.csv-btn {
   font-weight: 500;
   color: var(--text-h);
   margin-top: 3px;
+}
+
+/* "+" tile — links out to the Authentik source-enrollment flow. Distinct from
+   .display-name-opt (dashed border, no dim/active toggle states) since it's an
+   add action, not a selectable option; stretches to match sibling tile height
+   via the row's default flex align-items: stretch. */
+.display-name-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  opacity: 0.55;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.15s, border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.display-name-add:hover {
+  opacity: 1;
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--accent);
 }

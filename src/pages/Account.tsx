@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchMe, submitFriendCode, cancelFriendCode, confirmFriendCode, fetchMySubmissions } from '../api/profile';
 import { useDisplayName } from '../hooks/useDisplayName';
 import { badgeChipStyle } from '../utils/badgeStyle';
+import { sourceEnrollmentUrl } from '../auth/authConfig';
 
 export default function Account() {
   const auth = useAuth();
@@ -26,13 +26,10 @@ export default function Account() {
   const [confirmError, setConfirmError] = useState<string | null>(null);
   // Inline (no-popup) two-step confirmation for clearing an already-approved code.
   const [confirmingClear, setConfirmingClear] = useState(false);
-  useEffect(() => {
-    if (profile) setCodeDraft('');
-  }, [profile]);
 
   const submitFlair = useMutation({
     mutationFn: () => submitFriendCode(idToken!, codeDraft.trim()),
-    onSuccess: updated => queryClient.setQueryData(['me'], updated),
+    onSuccess: updated => { queryClient.setQueryData(['me'], updated); setCodeDraft(''); },
   });
   const cancelFlair = useMutation({
     mutationFn: () => cancelFriendCode(idToken!),
@@ -72,41 +69,51 @@ export default function Account() {
     );
   }
 
-  // Identity claims come straight from the token; badges/flair from the worker.
-  const claims = auth.user?.profile;
-  const groups = (claims?.pfdb_groups as string[] | undefined) ?? [];
-  const isAdmin = groups.includes('admins');
-
   return (
     <div>
-      <h1>Account</h1>
+      <div className="account-header-row">
+        <h1>Account</h1>
+        <button className="csv-btn" onClick={() => void auth.signoutRedirect()}>Sign out</button>
+      </div>
 
-      {options.length > 1 && (
-        <>
-          <h2 style={{ marginTop: 24 }}>Display Name</h2>
-          <p className="search-hint" style={{ marginTop: 0 }}>
-            Choose which account name is shown throughout the site.
-          </p>
-          <div className="display-name-picker">
-            {options.map(opt => (
-              <button
-                key={opt.key}
-                className={`display-name-opt${opt.key === source ? ' active' : ''}`}
-                onClick={() => setSource(opt.key)}
-              >
-                <span className="display-name-opt-header">
-                  {opt.icon
-                    ? <img src={opt.icon} width={16} height={16} style={{ borderRadius: 3 }} alt="" />
-                    : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                  }
-                  <span className="display-name-opt-platform">{opt.label}</span>
-                </span>
-                <span className="display-name-opt-name">{opt.name}</span>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+      <h2 style={{ marginTop: 24 }}>Display Name</h2>
+      <p className="search-hint" style={{ marginTop: 0 }}>
+        {options.length > 1
+          ? 'Choose which account name is shown throughout the site.'
+          : 'Link another account to set the name shown throughout the site.'}
+      </p>
+      <div className="display-name-picker">
+        {options.map(opt => (
+          <button
+            key={opt.key}
+            className={`display-name-opt${opt.key === source ? ' active' : ''}`}
+            onClick={() => setSource(opt.key)}
+          >
+            <span className="display-name-opt-header">
+              {opt.icon
+                ? <img src={opt.icon} width={16} height={16} style={{ borderRadius: 3 }} alt="" />
+                : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="7" cy="6.5" r="3" />
+                    <circle cx="17" cy="6.5" r="3" />
+                    <circle cx="7" cy="6.5" r="0.8" fill="currentColor" stroke="none" />
+                    <circle cx="17" cy="6.5" r="0.8" fill="currentColor" stroke="none" />
+                    <rect x="3" y="9" width="18" height="10" rx="5" />
+                    <path d="M8.5 15.5q3.5 2.5 7 0" />
+                  </svg>
+                )
+              }
+              <span className="display-name-opt-platform">{opt.label}</span>
+            </span>
+            <span className="display-name-opt-name">{opt.name}</span>
+          </button>
+        ))}
+        <a className="display-name-add" href={sourceEnrollmentUrl} aria-label="Link another account" title="Link another account">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </a>
+      </div>
 
       <h2 style={{ marginTop: 24 }}>Badges</h2>
       {profileLoading ? (
@@ -131,14 +138,19 @@ export default function Account() {
         <p className="search-hint">No badges yet.</p>
       )}
 
-      <h2 style={{ marginTop: 24 }}>Friend Code</h2>
+      <div className="account-header-row" style={{ marginTop: 24 }}>
+        <h2>Friend Code</h2>
+        {profile?.flair && !profile?.flair_status && !confirmingClear && (
+          <button className="csv-btn" onClick={() => setConfirmingClear(true)}>Clear</button>
+        )}
+      </div>
       {profile?.flair && !profile?.flair_status ? (
         // ── Approved and live — show read-only; hide the submission dialogue ──
         <div className="flair-state">
           <p className="search-hint" style={{ marginTop: 0 }}>
             Your Friend Code: <strong>{profile.flair}</strong>
           </p>
-          {confirmingClear ? (
+          {confirmingClear && (
             <div className="flair-editor">
               <span className="search-hint" style={{ marginTop: 0 }}>Clear your Friend Code — are you sure?</span>
               <button className="csv-btn" disabled={cancelFlair.isPending} onClick={() => cancelFlair.mutate()}>
@@ -148,8 +160,6 @@ export default function Account() {
                 Never mind
               </button>
             </div>
-          ) : (
-            <button className="csv-btn" onClick={() => setConfirmingClear(true)}>Clear</button>
           )}
         </div>
       ) : (
@@ -179,6 +189,12 @@ export default function Account() {
                 We've sent a frog to Friend Code <strong>{profile.flair_pending}</strong>.
                 Enter the full name of the frog and confirm to complete the registration.
               </p>
+              {profile.flair_sender_code && (
+                <p className="search-hint" style={{ marginTop: 0 }}>
+                  Sent from Friend Code: <strong>{profile.flair_sender_code}</strong> — make sure this
+                  matches who you expect before confirming.
+                </p>
+              )}
               <div className="flair-editor">
                 <input
                   className="search-input"
@@ -258,16 +274,6 @@ export default function Account() {
           </>
         );
       })()}
-
-      {isAdmin && (
-        <p style={{ marginTop: 24 }}>
-          <Link to="/admin" className="csv-btn">Admin tools →</Link>
-        </p>
-      )}
-
-      <button className="csv-btn" style={{ marginTop: isAdmin ? 8 : 24 }} onClick={() => void auth.signoutRedirect()}>
-        Sign out
-      </button>
     </div>
   );
 }

@@ -21,6 +21,7 @@ export interface Profile {
   flair: string | null;          // approved friend code (displayed)
   flair_pending: string | null;  // requested friend code while a request is active
   flair_status: FlairStatus;     // null | 'pending' (awaiting admin) | 'sent' (awaiting user confirm)
+  flair_sender_code: string | null; // sender's Friend Code, set once status is 'sent'
   badges: Badge[];
 }
 

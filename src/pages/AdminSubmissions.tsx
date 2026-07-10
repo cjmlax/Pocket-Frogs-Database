@@ -6,6 +6,7 @@ import {
   listFlairRequests, markFlairSent, denyFlairRequest,
   type PendingSubmission, type FlairRequest,
 } from '../api/adminSubmissions';
+import { fetchMe } from '../api/profile';
 import AuthedImage from '../components/AuthedImage';
 import CropDialog from '../components/CropDialog';
 
@@ -30,6 +31,14 @@ export default function AdminSubmissions() {
     queryFn: () => listFlairRequests(idToken!),
     enabled: auth.isAuthenticated && isAdmin && !!idToken,
     refetchInterval: 15_000,
+  });
+
+  // The signed-in reviewer's own approved Friend Code, used to prefill the
+  // "sender" field below — they can still edit it before marking a request Sent.
+  const { data: myProfile } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => fetchMe(idToken!),
+    enabled: auth.isAuthenticated && isAdmin && !!idToken,
   });
 
   if (auth.isLoading) return <p className="search-hint">Loading…</p>;
@@ -60,7 +69,9 @@ export default function AdminSubmissions() {
         <>
           <h1>Friend Code Requests <span className="breed-weekly-count">({flairRows.length})</span></h1>
           <div className="submission-list">
-            {flairRows.map(fr => <FlairRequestCard key={fr.sub} req={fr} idToken={idToken!} />)}
+            {flairRows.map(fr => (
+              <FlairRequestCard key={fr.sub} req={fr} idToken={idToken!} defaultSenderCode={myProfile?.flair ?? ''} />
+            ))}
           </div>
         </>
       )}
@@ -81,15 +92,27 @@ export default function AdminSubmissions() {
   );
 }
 
-function FlairRequestCard({ req, idToken }: { req: FlairRequest; idToken: string }) {
+function FlairRequestCard(
+  { req, idToken, defaultSenderCode }: { req: FlairRequest; idToken: string; defaultSenderCode: string },
+) {
   const queryClient = useQueryClient();
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['admin-flair-requests'] });
 
   const [passphrase, setPassphrase] = useState('');
+  const [senderCode, setSenderCode] = useState(defaultSenderCode);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
 
+  // Prefill from the reviewer's own profile once it loads (it arrives async,
+  // shortly after mount), but don't clobber anything they've already typed.
+  // Adjusting state during render, per React's guidance, instead of an effect.
+  const [seenDefault, setSeenDefault] = useState(defaultSenderCode);
+  if (defaultSenderCode !== seenDefault) {
+    setSeenDefault(defaultSenderCode);
+    if (senderCode === '') setSenderCode(defaultSenderCode);
+  }
+
   const sent = useMutation({
-    mutationFn: () => markFlairSent(idToken, req.sub, passphrase.trim()),
+    mutationFn: () => markFlairSent(idToken, req.sub, passphrase.trim(), senderCode.trim()),
     onSuccess: () => { setResult({ ok: true, text: 'Marked as sent ✓' }); setTimeout(refresh, 800); },
     onError: (e) => setResult({ ok: false, text: (e as Error).message }),
   });
@@ -117,6 +140,13 @@ function FlairRequestCard({ req, idToken }: { req: FlairRequest; idToken: string
         <div className="submission-actions flair-sent-row">
           <input
             className="search-input"
+            placeholder="Your Friend Code"
+            value={senderCode}
+            disabled={busy}
+            onChange={e => setSenderCode(e.target.value)}
+          />
+          <input
+            className="search-input"
             placeholder="Confirmation frog"
             value={passphrase}
             disabled={busy}
@@ -124,7 +154,7 @@ function FlairRequestCard({ req, idToken }: { req: FlairRequest; idToken: string
           />
           <button
             className="csv-btn submission-approve"
-            disabled={busy || !passphrase.trim()}
+            disabled={busy || !passphrase.trim() || !senderCode.trim()}
             onClick={() => sent.mutate()}
           >
             {sent.isPending ? 'Saving…' : 'Sent'}
@@ -136,7 +166,9 @@ function FlairRequestCard({ req, idToken }: { req: FlairRequest; idToken: string
       ) : (
         <div className="submission-actions flair-sent-row">
           <span className="search-hint">
-            Sent — awaiting user confirmation{req.passphrase ? ` (code: ${req.passphrase})` : ''}.
+            Sent — awaiting user confirmation
+            {req.passphrase ? ` (code: ${req.passphrase})` : ''}
+            {req.senderCode ? `, from: ${req.senderCode}` : ''}.
           </span>
           <button className="csv-btn submission-reject" disabled={busy} onClick={() => deny.mutate()}>
             {deny.isPending ? 'Denying…' : 'Denied'}

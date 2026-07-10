@@ -277,14 +277,14 @@ interface LinkEntry {
 }
 
 const COMMUNITY_LINKS: LinkEntry[] = [
+  { label: 'NimbleBit Official Site', url: 'https://nimblebit.com/#about' },
   { label: 'Android Download',      url: 'https://play.google.com/store/apps/details?id=com.nimblebit.pocketfrogs' },
   { label: 'iOS Download',          url: 'https://apps.apple.com/us/app/pocket-frogs-tiny-pond-keeper/id386644958' },
-  { label: 'NimbleBit Official Site', url: 'https://nimblebit.com/#about' },
   { label: 'Community Discord',     url: 'https://discord.gg/XZ3eeEp', faviconDomain: 'discord.com' },
   { label: 'Community Subreddit',   url: 'https://www.reddit.com/r/Pocketfrogs' },
   { label: 'Community Wiki',        url: 'http://pocketfrogs.fandom.com/wiki/Pocket_Frogs_Wiki' },
-  { label: 'My Google Sheet',   url: 'https://docs.google.com/spreadsheets/d/1TNTK09vM8tlj6BC8haobuWCQvV4qNyDsRYsf-4hXdCc/' },
-  { label: 'Thi site\'s GitHub',         url: 'https://github.com/cjmlax/Pocket-Frogs-Database' },
+  { label: 'Old Google Sheet',   url: 'https://docs.google.com/spreadsheets/d/1TNTK09vM8tlj6BC8haobuWCQvV4qNyDsRYsf-4hXdCc/', faviconDomain: 'sheets.google.com' },
+  { label: 'This site\'s GitHub',         url: 'https://github.com/cjmlax/Pocket-Frogs-Database' },
   { label: 'Site Feedback Form',     url: 'https://teable.cjmlax.com/share/shre9SHevGPtThTpVGz/view', faviconDomain: 'teable.io' },
 ];
 

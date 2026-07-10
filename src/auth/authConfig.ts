@@ -24,3 +24,10 @@ export const oidcConfig: AuthProviderProps = {
     window.history.replaceState({}, document.title, window.location.pathname);
   },
 };
+
+// Authentik flow for linking an additional login source while already signed
+// in (the "+" tile on Account). Override at build time with
+// VITE_OIDC_SOURCE_ENROLLMENT_URL if the flow slug ever changes.
+export const sourceEnrollmentUrl =
+  import.meta.env.VITE_OIDC_SOURCE_ENROLLMENT_URL
+  ?? 'https://pfdbauth.cjmlax.com/if/flow/pfdb-source-enrollment-/';
