@@ -1559,6 +1559,23 @@ main {
   min-width: 180px;
 }
 
+/* Labeled Friend Code / Confirmation Frog inputs on the admin "mark sent" row */
+.flair-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 240px;
+}
+
+.flair-field-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 /* Badge admin page */
 .badge-admin-form {
   display: flex;

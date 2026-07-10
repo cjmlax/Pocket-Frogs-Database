@@ -65,18 +65,7 @@ export default function AdminSubmissions() {
 
   return (
     <div>
-      {flairRows.length > 0 && (
-        <>
-          <h1>Friend Code Requests <span className="breed-weekly-count">({flairRows.length})</span></h1>
-          <div className="submission-list">
-            {flairRows.map(fr => (
-              <FlairRequestCard key={fr.sub} req={fr} idToken={idToken!} defaultSenderCode={myProfile?.flair ?? ''} />
-            ))}
-          </div>
-        </>
-      )}
-
-      <h1 style={{ marginTop: flairRows.length > 0 ? 28 : 0 }}>
+      <h1>
         Pending Submissions <span className="breed-weekly-count">({rows.length})</span>
       </h1>
       {isLoading ? (
@@ -86,6 +75,19 @@ export default function AdminSubmissions() {
       ) : (
         <div className="submission-list">
           {rows.map(sub => <SubmissionCard key={sub.id} sub={sub} idToken={idToken!} />)}
+        </div>
+      )}
+
+      <h1 style={{ marginTop: 28 }}>
+        Friend Code Requests <span className="breed-weekly-count">({flairRows.length})</span>
+      </h1>
+      {flairRows.length === 0 ? (
+        <p className="search-hint">No active Friend Code requests.</p>
+      ) : (
+        <div className="submission-list">
+          {flairRows.map(fr => (
+            <FlairRequestCard key={fr.sub} req={fr} idToken={idToken!} defaultSenderCode={myProfile?.flair ?? ''} />
+          ))}
         </div>
       )}
     </div>
@@ -138,20 +140,24 @@ function FlairRequestCard(
 
       {req.status === 'pending' ? (
         <div className="submission-actions flair-sent-row">
-          <input
-            className="search-input"
-            placeholder="Your Friend Code"
-            value={senderCode}
-            disabled={busy}
-            onChange={e => setSenderCode(e.target.value)}
-          />
-          <input
-            className="search-input"
-            placeholder="Confirmation frog"
-            value={passphrase}
-            disabled={busy}
-            onChange={e => setPassphrase(e.target.value)}
-          />
+          <label className="flair-field">
+            <span className="flair-field-text">Your Friend Code</span>
+            <input
+              className="search-input"
+              value={senderCode}
+              disabled={busy}
+              onChange={e => setSenderCode(e.target.value)}
+            />
+          </label>
+          <label className="flair-field">
+            <span className="flair-field-text">Confirmation Frog</span>
+            <input
+              className="search-input"
+              value={passphrase}
+              disabled={busy}
+              onChange={e => setPassphrase(e.target.value)}
+            />
+          </label>
           <button
             className="csv-btn submission-approve"
             disabled={busy || !passphrase.trim() || !senderCode.trim()}

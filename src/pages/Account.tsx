@@ -186,15 +186,9 @@ export default function Account() {
             // ── Admin sent it; user enters the passphrase to confirm and publish ──
             <div className="flair-state">
               <p className="search-hint" style={{ marginTop: 0 }}>
-                We've sent a frog to Friend Code <strong>{profile.flair_pending}</strong>.
-                Enter the full name of the frog and confirm to complete the registration.
+                We've sent a frog from <strong>{profile.flair_sender_code}</strong> to <strong>{profile.flair_pending}</strong>.
+                Enter the full name of the frog and click confirm to complete the registration.
               </p>
-              {profile.flair_sender_code && (
-                <p className="search-hint" style={{ marginTop: 0 }}>
-                  Sent from Friend Code: <strong>{profile.flair_sender_code}</strong> — make sure this
-                  matches who you expect before confirming.
-                </p>
-              )}
               <div className="flair-editor">
                 <input
                   className="search-input"
