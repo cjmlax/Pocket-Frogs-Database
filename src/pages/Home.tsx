@@ -164,9 +164,9 @@ async function fetchManualEntries(): Promise<ChangelogEntry[]> {
 function formatUpdateDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
-
+//Below formula is counter for highlighting an app update in the feed. First number is number of days and should be the adjusted value.
 function isRecent(iso: string) {
-  return Date.now() - new Date(iso).getTime() < 3 * 24 * 60 * 60 * 1000;
+  return Date.now() - new Date(iso).getTime() < 7 * 24 * 60 * 60 * 1000;
 }
 
 // Per-OS designation: show "iOS"/"Android" for platform-specific updates, but

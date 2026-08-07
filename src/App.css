@@ -2199,6 +2199,25 @@ a.csv-btn {
   font-weight: 600;
 }
 
+/* "Completed" checkbox column — narrow and centered, same idea as .pin-cell */
+.weekly-complete-cell {
+  width: 28px;
+  padding: 0 4px !important;
+  text-align: center;
+}
+
+.weekly-hide-completed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+
 /* Corner cell is sticky in both axes (top via parent thead, left explicitly) */
 .breed-corner {
   position: sticky;

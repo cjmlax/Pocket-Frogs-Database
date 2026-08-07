@@ -1,3 +1,6 @@
+import { useMemo, useState } from 'react';
+import { useAuth } from 'react-oidc-context';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   useReactTable,
   getCoreRowModel,
@@ -10,6 +13,7 @@ import {
   type OnChangeFn,
 } from '@tanstack/react-table';
 import type { TeableRecord } from '../api/teable';
+import { fetchWeeklyCompletions, markWeeklyCompleted, clearWeeklyCompleted } from '../api/weeklyCompletions';
 
 export interface WeeklyFields extends Record<string, unknown> {
   SetName?: string;
@@ -114,9 +118,58 @@ export default function WeeklyTable({
   highlightNames,
   countLabel = 'sets',
 }: WeeklyTableProps) {
+  const auth = useAuth();
+  const idToken = auth.user?.id_token;
+  const queryClient = useQueryClient();
+
+  // The signed-in user's completed-set ids. Disabled (and the column/filter
+  // below hidden entirely) for anonymous visitors — completion is account-bound.
+  const completionsQuery = useQuery({
+    queryKey: ['weekly-completions'],
+    queryFn: () => fetchWeeklyCompletions(idToken!),
+    enabled: auth.isAuthenticated && !!idToken,
+  });
+  const completedIds = useMemo(() => new Set(completionsQuery.data ?? []), [completionsQuery.data]);
+
+  const toggleCompleted = useMutation({
+    mutationFn: ({ id, completed }: { id: string; completed: boolean }) =>
+      completed ? markWeeklyCompleted(idToken!, id) : clearWeeklyCompleted(idToken!, id),
+    onSuccess: updated => queryClient.setQueryData(['weekly-completions'], updated),
+  });
+
+  const [hideCompleted, setHideCompleted] = useState(false);
+
+  // Prepend a "completed" checkbox column only when signed in; omitted (not just
+  // visually hidden) for anonymous visitors since it can't do anything for them.
+  const tableColumns = useMemo(() => {
+    if (!auth.isAuthenticated) return columns;
+    const completedColumn = col.accessor(r => (completedIds.has(r.id) ? 1 : 0), {
+      id: 'completed',
+      header: () => <span title="Completed">✓</span>,
+      cell: ({ row }) => {
+        const done = completedIds.has(row.original.id);
+        return (
+          <input
+            type="checkbox"
+            checked={done}
+            disabled={toggleCompleted.isPending}
+            onChange={() => toggleCompleted.mutate({ id: row.original.id, completed: !done })}
+            aria-label={done ? 'Mark set as not completed' : 'Mark set as completed'}
+          />
+        );
+      },
+    });
+    return [completedColumn, ...columns];
+  }, [auth.isAuthenticated, completedIds, toggleCompleted]);
+
+  const visibleData = useMemo(() => {
+    if (!auth.isAuthenticated || !hideCompleted) return data;
+    return data.filter(r => !completedIds.has(r.id));
+  }, [data, auth.isAuthenticated, hideCompleted, completedIds]);
+
   const table = useReactTable({
-    data,
-    columns,
+    data: visibleData,
+    columns: tableColumns,
     state: { sorting, globalFilter },
     onSortingChange,
     onGlobalFilterChange,
@@ -137,6 +190,16 @@ export default function WeeklyTable({
 
   return (
     <>
+      {auth.isAuthenticated && (
+        <label className="weekly-hide-completed">
+          <input
+            type="checkbox"
+            checked={hideCompleted}
+            onChange={e => setHideCompleted(e.target.checked)}
+          />
+          Hide completed
+        </label>
+      )}
       <div className="table-wrapper">
         <table>
           <thead>
@@ -144,7 +207,10 @@ export default function WeeklyTable({
               {table.getFlatHeaders().map(header => (
                 <th
                   key={header.id}
-                  className={header.column.getCanSort() ? 'sortable' : undefined}
+                  className={
+                    `${header.column.getCanSort() ? 'sortable' : ''} ${header.column.id === 'completed' ? 'weekly-complete-cell' : ''}`
+                      .trim() || undefined
+                  }
                   onClick={header.column.getToggleSortingHandler()}
                 >
                   {flexRender(header.column.columnDef.header, header.getContext())}
@@ -172,7 +238,10 @@ export default function WeeklyTable({
                       FROG_COL_IDS.has(cell.column.id) &&
                       highlightNames.has(String(cell.getValue()));
                     return (
-                      <td key={cell.id} className={match ? 'weekly-frog-match' : undefined}>
+                      <td
+                        key={cell.id}
+                        className={match ? 'weekly-frog-match' : cell.column.id === 'completed' ? 'weekly-complete-cell' : undefined}
+                      >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     );
