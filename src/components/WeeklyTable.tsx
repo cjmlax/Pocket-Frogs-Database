@@ -137,7 +137,15 @@ export default function WeeklyTable({
     onSuccess: updated => queryClient.setQueryData(['weekly-completions'], updated),
   });
 
-  const [hideCompleted, setHideCompleted] = useState(false);
+  // Cycles Show All → Redeemed Only → Unredeemed Only for a claimed weekly set.
+  const completionFilters = ['all', 'redeemed', 'unredeemed'] as const;
+  type CompletionFilter = (typeof completionFilters)[number];
+  const completionFilterLabels: Record<CompletionFilter, string> = {
+    all: 'All Sets',
+    redeemed: 'Redeemed Only',
+    unredeemed: 'Unredeemed Only',
+  };
+  const [completionFilter, setCompletionFilter] = useState<CompletionFilter>('all');
 
   // Prepend a "completed" checkbox column only when signed in; omitted (not just
   // visually hidden) for anonymous visitors since it can't do anything for them.
@@ -145,7 +153,7 @@ export default function WeeklyTable({
     if (!auth.isAuthenticated) return columns;
     const completedColumn = col.accessor(r => (completedIds.has(r.id) ? 1 : 0), {
       id: 'completed',
-      header: () => <span title="Completed">✓</span>,
+      header: () => <span title="Redeemed">✓</span>,
       cell: ({ row }) => {
         const done = completedIds.has(row.original.id);
         return (
@@ -154,7 +162,7 @@ export default function WeeklyTable({
             checked={done}
             disabled={toggleCompleted.isPending}
             onChange={() => toggleCompleted.mutate({ id: row.original.id, completed: !done })}
-            aria-label={done ? 'Mark set as not completed' : 'Mark set as completed'}
+            aria-label={done ? 'Mark set as not redeemed' : 'Mark set as redeemed'}
           />
         );
       },
@@ -163,9 +171,10 @@ export default function WeeklyTable({
   }, [auth.isAuthenticated, completedIds, toggleCompleted]);
 
   const visibleData = useMemo(() => {
-    if (!auth.isAuthenticated || !hideCompleted) return data;
-    return data.filter(r => !completedIds.has(r.id));
-  }, [data, auth.isAuthenticated, hideCompleted, completedIds]);
+    if (!auth.isAuthenticated || completionFilter === 'all') return data;
+    const wantRedeemed = completionFilter === 'redeemed';
+    return data.filter(r => completedIds.has(r.id) === wantRedeemed);
+  }, [data, auth.isAuthenticated, completionFilter, completedIds]);
 
   const table = useReactTable({
     data: visibleData,
@@ -191,14 +200,17 @@ export default function WeeklyTable({
   return (
     <>
       {auth.isAuthenticated && (
-        <label className="weekly-hide-completed">
-          <input
-            type="checkbox"
-            checked={hideCompleted}
-            onChange={e => setHideCompleted(e.target.checked)}
-          />
-          Hide completed
-        </label>
+        <button
+          type="button"
+          className={`weekly-hide-completed-btn${completionFilter === 'all' ? '' : ' active'}`}
+          onClick={() =>
+            setCompletionFilter(
+              completionFilters[(completionFilters.indexOf(completionFilter) + 1) % completionFilters.length]
+            )
+          }
+        >
+          {completionFilterLabels[completionFilter]}
+        </button>
       )}
       <div className="table-wrapper">
         <table>

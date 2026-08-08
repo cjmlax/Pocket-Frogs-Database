@@ -2206,16 +2206,28 @@ a.csv-btn {
   text-align: center;
 }
 
-.weekly-hide-completed {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  justify-content: flex-end;
+.weekly-hide-completed-btn {
+  display: inline-block;
   margin-bottom: 8px;
-  font-size: 14px;
-  color: var(--text);
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  color: var(--text-h);
+  padding: 5px 14px;
+  border-radius: 4px;
   cursor: pointer;
-  user-select: none;
+  font-size: 14px;
+  font-family: var(--sans);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.weekly-hide-completed-btn:hover {
+  background: var(--accent-bg);
+}
+
+.weekly-hide-completed-btn.active {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  color: var(--accent);
 }
 
 /* Corner cell is sticky in both axes (top via parent thead, left explicitly) */
