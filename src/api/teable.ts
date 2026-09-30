@@ -140,7 +140,31 @@ export async function searchFrogs<T extends Record<string, unknown>>(
   if (filterSet.length) {
     params.set('filter', JSON.stringify({ conjunction: 'and', filterSet }));
   }
+  return fetchFrogPages<T>(params);
+}
 
+// Stat field IDs, for filtering on missing values
+const FROG_STAT_FIELDS = {
+  value:   'fldsFCJTusSBpi0mYH3',
+  speed:   'fldAT1leTayFhF9nQbZ',
+  stamina: 'fldbRrtQMFW7HERHSIi',
+} as const;
+
+// Every frog missing at least one of Value / Speed / Stamina. This is a small
+// slice of the table (a few hundred rows), so the Submit Stats page fetches it
+// whole and filters client-side. Not cached — it shrinks as submissions land.
+export async function fetchIncompleteFrogs<T extends Record<string, unknown>>(): Promise<TeableRecord<T>[]> {
+  const filterSet = Object.values(FROG_STAT_FIELDS).map(fieldId => ({ fieldId, operator: 'isEmpty', value: null }));
+  const params = new URLSearchParams({
+    fieldKeyType: 'dbFieldName',
+    filter: JSON.stringify({ conjunction: 'or', filterSet }),
+  });
+  return fetchFrogPages<T>(params);
+}
+
+async function fetchFrogPages<T extends Record<string, unknown>>(
+  params: URLSearchParams,
+): Promise<TeableRecord<T>[]> {
   const take = 1000;
   let skip = 0;
   let hasMore = true;

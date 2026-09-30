@@ -126,6 +126,9 @@ function SubmitDropdown() {
           <NavLink to="/submit" end className="submit-nav-link" onClick={() => setOpen(false)}>
             Mutations
           </NavLink>
+          <NavLink to="/submit/stats" className="submit-nav-link" onClick={() => setOpen(false)}>
+            Frog Stats
+          </NavLink>
         </div>,
         document.body,
       )}

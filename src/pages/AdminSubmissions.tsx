@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  listPending, approveSubmission, rejectSubmission, editSubmission,
+  listPending, approveSubmission, rejectSubmission, editSubmission, approveBatch, rejectBatch,
   listFlairRequests, markFlairSent, denyFlairRequest,
   type PendingSubmission, type FlairRequest,
 } from '../api/adminSubmissions';
@@ -69,12 +69,13 @@ export default function AdminSubmissions() {
   const FRIEND_CODE_TYPE = 'friend code';
   // Types that always belong in the filter, even with nothing currently pending —
   // union with live data so any new backend-issued type still shows up too.
-  const KNOWN_TYPES = ['combo'];
+  const KNOWN_TYPES = ['combo', 'frogStats'];
   const submissionTypes = Array.from(new Set([...KNOWN_TYPES, ...rows.map(sub => sub.type)])).sort();
 
   const showRegular = typeFilter === 'all' || typeFilter !== FRIEND_CODE_TYPE;
   const showFriendCode = typeFilter === 'all' || typeFilter === FRIEND_CODE_TYPE;
   const filteredRows = typeFilter === 'all' ? rows : rows.filter(sub => sub.type === typeFilter);
+  const cards = groupByBatch(filteredRows);
   const allEmpty = !isLoading && totalCount === 0;
 
   return (
@@ -107,7 +108,9 @@ export default function AdminSubmissions() {
               </p>
             ) : (
               <div className="submission-list">
-                {filteredRows.map(sub => <SubmissionCard key={sub.id} sub={sub} idToken={idToken!} />)}
+                {cards.map(g => g.length > 1
+                  ? <BatchCard key={g[0].batchId} items={g} idToken={idToken!} />
+                  : <SubmissionCard key={g[0].id} sub={g[0]} idToken={idToken!} />)}
               </div>
             )
           )}
@@ -124,6 +127,112 @@ export default function AdminSubmissions() {
             )
           )}
         </>
+      )}
+    </div>
+  );
+}
+
+// Collapses items from the same batch submit into one group, placed where the
+// batch's first (newest) item falls. Items without a batch stay on their own.
+function groupByBatch(rows: PendingSubmission[]): PendingSubmission[][] {
+  const groups: PendingSubmission[][] = [];
+  const byBatch = new Map<string, PendingSubmission[]>();
+  for (const row of rows) {
+    const existing = row.batchId ? byBatch.get(row.batchId) : undefined;
+    if (existing) { existing.push(row); continue; }
+    const group = [row];
+    groups.push(group);
+    if (row.batchId) byBatch.set(row.batchId, group);
+  }
+  return groups;
+}
+
+// Plural noun for a batch's items, e.g. "12 frog stat entries".
+const TYPE_NOUN: Record<string, string> = { frogStats: 'frog stat entries', combo: 'combinations' };
+
+// One card standing in for a whole batch submit: approve or reject everything at
+// once, or expand it to handle the items individually.
+function BatchCard({ items, idToken }: { items: PendingSubmission[]; idToken: string }) {
+  const queryClient = useQueryClient();
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ['admin-pending'] });
+
+  const [expanded, setExpanded] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; text: string; failures?: string[] } | null>(null);
+
+  const first = items[0];
+  const batchId = first.batchId!;
+  const noun = TYPE_NOUN[first.type] ?? 'submissions';
+  // Summaries read "<name> — <details>"; the name alone makes a compact preview.
+  const names = items.map(i => i.summary.split(' — ')[0]);
+  const preview = names.slice(0, 3).join(', ') + (names.length > 3 ? `, +${names.length - 3} more` : '');
+
+  const approve = useMutation({
+    mutationFn: () => approveBatch(idToken, batchId),
+    onSuccess: (d) => {
+      const failed = d.results.filter(r => !r.ok);
+      setResult({
+        ok: failed.length === 0,
+        text: `Pushed ${d.results.length - failed.length} of ${d.results.length}${failed.length ? '' : ' ✓'}`,
+        failures: failed.map(f => {
+          const name = f.summary.split(' — ')[0];
+          return f.error?.includes(name) ? f.error : `${name}: ${f.error}`;
+        }),
+      });
+      // Failures leave the pending queue (as 'error'), so refresh either way —
+      // but give the reviewer time to read them first.
+      setTimeout(refresh, failed.length ? 8000 : 1000);
+    },
+    onError: (e) => setResult({ ok: false, text: (e as Error).message }),
+  });
+  const reject = useMutation({
+    mutationFn: () => rejectBatch(idToken, batchId),
+    onSuccess: (d) => { setResult({ ok: true, text: `Rejected ${d.count} ✓` }); setTimeout(refresh, 1000); },
+    onError: (e) => setResult({ ok: false, text: (e as Error).message }),
+  });
+  const busy = approve.isPending || reject.isPending;
+
+  return (
+    <div className="submission-card">
+      <div className="submission-main">
+        <span className="badge-chip submission-type">{first.type}</span>
+        <strong className="submission-summary">{items.length} {noun}</strong>
+        <span className="submission-when">
+          by {first.submitter ?? 'anonymous'} · {new Date(first.createdAt).toLocaleString()}
+        </span>
+        <p className="submission-note">{preview}</p>
+      </div>
+
+      <div className="submission-actions">
+        <button
+          className="csv-btn submission-approve"
+          disabled={busy}
+          onClick={() => { if (window.confirm(`Approve all ${items.length} ${noun}?`)) approve.mutate(); }}
+        >
+          {approve.isPending ? 'Approving…' : `Approve all (${items.length})`}
+        </button>
+        <button
+          className="csv-btn submission-reject"
+          disabled={busy}
+          onClick={() => { if (window.confirm(`Reject all ${items.length} ${noun}?`)) reject.mutate(); }}
+        >
+          {reject.isPending ? 'Rejecting…' : 'Reject all'}
+        </button>
+        <button className="csv-btn" disabled={busy} onClick={() => setExpanded(x => !x)} aria-expanded={expanded}>
+          {expanded ? 'Collapse ▴' : `Show ${items.length} items ▾`}
+        </button>
+      </div>
+
+      {result && (
+        <div className={`submission-result ${result.ok ? 'ok' : 'err'}`}>
+          {result.text}
+          {!!result.failures?.length && <ul className="submission-batch-failures">{result.failures.map(f => <li key={f}>{f}</li>)}</ul>}
+        </div>
+      )}
+
+      {expanded && (
+        <div className="submission-batch-items">
+          {items.map(sub => <SubmissionCard key={sub.id} sub={sub} idToken={idToken} />)}
+        </div>
       )}
     </div>
   );

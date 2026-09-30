@@ -17,6 +17,8 @@ interface ComboBoxProps {
   initialSelection?: ComboOption | null;
   /** When true, keep the given option order instead of sorting alphabetically */
   presorted?: boolean;
+  /** Locks the input (e.g. until an earlier filter in a sequence is chosen) */
+  disabled?: boolean;
 }
 
 export default function ComboBox({
@@ -26,6 +28,7 @@ export default function ComboBox({
   onSelect,
   initialSelection = null,
   presorted = false,
+  disabled = false,
 }: ComboBoxProps) {
   const inputId = useId();
   const [inputValue, setInputValue] = useState(initialSelection?.label ?? '');
@@ -121,6 +124,7 @@ export default function ComboBox({
           value={inputValue}
           placeholder={placeholder}
           autoComplete="off"
+          disabled={disabled}
           onChange={e => handleInput(e.target.value)}
           onFocus={() => { if (!selected) setIsOpen(true); }}
           onBlur={e => {
@@ -133,12 +137,12 @@ export default function ComboBox({
           }}
           onKeyDown={handleKeyDown}
         />
-        {inputValue && (
+        {inputValue && !disabled && (
           <button className="combobox-clear" type="button" onClick={handleClear} aria-label="Clear">
             ×
           </button>
         )}
-        {isOpen && suggestions.length > 0 && (
+        {isOpen && !disabled && suggestions.length > 0 && (
           <ul className="combobox-suggestions" role="listbox" ref={listRef}>
             {suggestions.map((opt, i) => (
               <li

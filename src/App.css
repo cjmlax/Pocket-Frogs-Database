@@ -706,6 +706,62 @@ a.plain-link:hover {
   margin: 0 0 16px;
 }
 
+/* ─── Submit Frog Stats page ─────────────────────────────────────────────── */
+/* Doubled class to win over .search-input, which is declared further down */
+.search-input.stat-input {
+  width: 110px;
+  padding: 4px 8px;
+}
+
+/* Stats already in the database — shown, not editable */
+.stat-existing {
+  color: var(--text);
+  opacity: 0.6;
+}
+
+.stats-row-entered td {
+  background: var(--accent-bg);
+}
+
+.stats-excluded {
+  font-size: 14px;
+  color: var(--text-h);
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 0 0 16px;
+}
+
+.stats-excluded-title {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.stats-excluded ul {
+  margin: 0;
+  padding-left: 20px;
+  list-style: disc;
+}
+
+.stats-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 /* Clickable camera icon next to a special-combination callout */
 .screenshot-btn {
   display: inline-flex;
@@ -1959,6 +2015,19 @@ a.csv-btn {
 .submission-reject  { background: #8f3a3a; color: #ffeaea; }
 
 .submission-result { grid-area: result; margin: 4px 0 0; font-size: 14px; }
+.submission-batch-failures { margin: 4px 0 0; padding-left: 20px; list-style: disc; }
+
+/* A batch card's individual items, revealed when expanded */
+.submission-batch-items {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 14px;
+  border-left: 2px solid var(--accent-border);
+}
+
+.submission-batch-items .submission-card { box-shadow: none; }
 .submission-result.ok  { color: #4caf50; }
 .submission-result.err { color: #e06666; }
 

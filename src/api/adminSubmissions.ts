@@ -11,6 +11,7 @@ export interface PendingSubmission {
   submitter: string | null;   // display name, or null for anonymous
   screenshot: string | null;  // URL path, e.g. /api/admin/uploads/<file>
   createdAt: string;
+  batchId: string | null;     // shared by every item from one batch submit
 }
 
 function authed(idToken: string, path: string, init?: RequestInit): Promise<Response> {
@@ -72,6 +73,20 @@ export async function denyFlairRequest(idToken: string, sub: string) {
 export async function approveSubmission(idToken: string, id: string) {
   return asJson<{ ok: boolean; pushed_ref: string | null }>(
     await authed(idToken, `/api/admin/${id}/approve`, { method: 'POST' }),
+  );
+}
+
+// Approves every still-pending item of a batch. Each item succeeds or fails on
+// its own; the response says which.
+export async function approveBatch(idToken: string, batchId: string) {
+  return asJson<{ ok: boolean; results: { id: string; summary: string; ok: boolean; error?: string }[] }>(
+    await authed(idToken, `/api/admin/batch/${encodeURIComponent(batchId)}/approve`, { method: 'POST' }),
+  );
+}
+
+export async function rejectBatch(idToken: string, batchId: string) {
+  return asJson<{ ok: boolean; count: number }>(
+    await authed(idToken, `/api/admin/batch/${encodeURIComponent(batchId)}/reject`, { method: 'POST' }),
   );
 }
 
