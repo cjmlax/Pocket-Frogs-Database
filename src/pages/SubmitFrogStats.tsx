@@ -161,20 +161,34 @@ export default function SubmitFrogStats() {
     queryFn: fetchPendingFrogStatIds,
   });
 
+  // Rows follow the breed and color sort chosen in the settings menu: breed
+  // first, then base color, then secondary. Each rank is the item's position in
+  // the same option lists the pickers use, so table and dropdowns always agree.
+  const breedSort = useBreedSort();
+  const colorSort = useColorSort();
+  const compareFrogs = useMemo(() => {
+    const rankOf = (opts: ComboOption[]) => new Map(opts.map((o, i) => [o.id, i]));
+    const breedRank = rankOf(breedOptionsFrom(breeds, breedSort));
+    const baseRank  = rankOf(colorOptionsFrom(bases, 'BaseColors', colorSort));
+    const secRank   = rankOf(colorOptionsFrom(secs,  'Sec_Color',  colorSort));
+    const rank = (m: Map<string, number>, val: unknown) => m.get(link(val)?.id ?? '') ?? Number.MAX_SAFE_INTEGER;
+    return (a: Frog, b: Frog) =>
+      rank(breedRank, a.fields.Breed)   - rank(breedRank, b.fields.Breed) ||
+      rank(baseRank, a.fields.Primary)  - rank(baseRank, b.fields.Primary) ||
+      rank(secRank, a.fields.Secondary) - rank(secRank, b.fields.Secondary) ||
+      (a.fields.fullname ?? '').localeCompare(b.fields.fullname ?? '');
+  }, [breeds, bases, secs, breedSort, colorSort]);
+
   // Frogs still open for submission: missing a stat, with nothing pending review.
   const available = useMemo(() => {
     const pending = new Set(pendingIds ?? []);
-    return (incomplete ?? [])
-      .filter(f => !pending.has(f.id))
-      .sort((a, b) => level(a) - level(b) || (a.fields.fullname ?? '').localeCompare(b.fields.fullname ?? ''));
-  }, [incomplete, pendingIds]);
+    return (incomplete ?? []).filter(f => !pending.has(f.id)).sort(compareFrogs);
+  }, [incomplete, pendingIds, compareFrogs]);
   const byId = useMemo(() => new Map(available.map(f => [f.id, f])), [available]);
   const pendingCount = (incomplete ?? []).length - available.length;
 
   // ── Cascading filters: Breed → Base Color → Secondary Color ────────────────
   // Each picker only offers values that still have frogs left at that step.
-  const breedSort = useBreedSort();
-  const colorSort = useColorSort();
 
   const inBreed = useMemo(
     () => (breed ? available.filter(f => link(f.fields.Breed)?.id === breed.id) : available),
@@ -218,12 +232,14 @@ export default function SubmitFrogStats() {
 
   const enteredIds = useMemo(() => Object.keys(drafts).filter(id => hasInput(drafts[id])), [drafts]);
 
-  const evaluated = useMemo(
-    () => enteredIds
+  // Same order as the entry table; entries whose frog is no longer listed go last.
+  const evaluated = useMemo(() => {
+    const order = new Map(available.map((f, i) => [f.id, i]));
+    const pos = (e: Evaluated) => order.get(e.id) ?? Number.MAX_SAFE_INTEGER;
+    return enteredIds
       .map(id => evaluate(id, drafts[id], byId.get(id)))
-      .sort((a, b) => a.name.localeCompare(b.name)),
-    [enteredIds, drafts, byId],
-  );
+      .sort((a, b) => pos(a) - pos(b) || a.name.localeCompare(b.name));
+  }, [enteredIds, drafts, byId, available]);
   const ready    = evaluated.filter((e): e is Extract<Evaluated, { ok: true }>  => e.ok);
   const excluded = evaluated.filter((e): e is Extract<Evaluated, { ok: false }> => !e.ok);
 
@@ -320,7 +336,7 @@ export default function SubmitFrogStats() {
                     {STATS.map(s => (
                       <td
                         key={s.key}
-                        className={r.prefilled.has(s.key) ? 'stat-existing' : undefined}
+                        className={r.prefilled.has(s.key) ? 'stat-existing stat-existing-cell' : undefined}
                         title={r.prefilled.has(s.key) ? 'Already recorded' : undefined}
                       >
                         {formatNum(r.payload[s.key])}
@@ -392,7 +408,8 @@ export default function SubmitFrogStats() {
 
       {error && <p className="search-error">Error: {String(error)}</p>}
 
-      {isLoading ? (
+      {/* Wait for the lookups too, so rows don't reshuffle once the sort order arrives */}
+      {isLoading || !breeds || !bases || !secs ? (
         <p className="search-hint">Loading frogs…</p>
       ) : available.length === 0 ? (
         <p className="search-hint">
@@ -416,7 +433,7 @@ export default function SubmitFrogStats() {
                       {STATS.map(s => {
                         const known = existing(f, s.field);
                         return (
-                          <td key={s.key}>
+                          <td key={s.key} className={known !== null ? 'stat-existing-cell' : undefined}>
                             {known !== null ? (
                               <span className="stat-existing" title="Already recorded">{formatNum(known)}</span>
                             ) : (
