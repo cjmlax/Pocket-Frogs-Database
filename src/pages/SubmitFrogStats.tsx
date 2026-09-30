@@ -20,7 +20,6 @@ interface FrogFields  extends Record<string, unknown> {
   Breed?:       unknown;
   Primary?:     unknown;
   Secondary?:   unknown;
-  Breed_Level?: unknown;
   Value?:       number;
   Speed?:       number;
   Stamina?:     number;
@@ -60,11 +59,6 @@ function link(val: unknown): { id: string; title: string } | null {
     return { id: String(f.id), title: String(f.title ?? '') };
   }
   return null;
-}
-
-function level(f: Frog): number {
-  const n = parseInt(link(f.fields.Breed_Level)?.title ?? '', 10);
-  return Number.isNaN(n) ? Infinity : n;
 }
 
 function existing(f: Frog | undefined, field: 'Value' | 'Speed' | 'Stamina'): number | null {
@@ -336,7 +330,7 @@ export default function SubmitFrogStats() {
                     {STATS.map(s => (
                       <td
                         key={s.key}
-                        className={r.prefilled.has(s.key) ? 'stat-existing stat-existing-cell' : undefined}
+                        className={r.prefilled.has(s.key) ? 'stat-existing' : undefined}
                         title={r.prefilled.has(s.key) ? 'Already recorded' : undefined}
                       >
                         {formatNum(r.payload[s.key])}
@@ -420,20 +414,18 @@ export default function SubmitFrogStats() {
           <div className="table-wrapper">
             <table>
               <thead>
-                <tr><th>Frog</th><th>Level</th>{STATS.map(s => <th key={s.key}>{s.label}</th>)}</tr>
+                <tr><th>Frog</th>{STATS.map(s => <th key={s.key}>{s.label}</th>)}</tr>
               </thead>
               <tbody>
                 {visible.map(f => {
                   const entry = drafts[f.id];
-                  const lvl = level(f);
                   return (
                     <tr key={f.id} className={entry ? 'stats-row-entered' : undefined}>
                       <td>{f.fields.fullname}</td>
-                      <td>{Number.isFinite(lvl) ? lvl : '—'}</td>
                       {STATS.map(s => {
                         const known = existing(f, s.field);
                         return (
-                          <td key={s.key} className={known !== null ? 'stat-existing-cell' : undefined}>
+                          <td key={s.key}>
                             {known !== null ? (
                               <span className="stat-existing" title="Already recorded">{formatNum(known)}</span>
                             ) : (
