@@ -1,10 +1,11 @@
 import { useState, useMemo, useRef } from 'react';
 import { useQuery, useQueries } from '@tanstack/react-query';
-import { fetchTable, fetchBreedFrogs, fetchMutations, fetchFrogById, type Mutation, type TeableRecord } from '../api/teable';
+import { fetchTable, fetchBreedFrogs, fetchFrogPairs, fetchMutations, fetchFrogById, type Mutation, type TeableRecord } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
 import { formatNum } from '../utils/format';
 import { breedOptionsFrom } from '../utils/breeds';
-import { imageProxyUrl } from '../utils/attachments';
+import { pairScreenshotUrls } from '../utils/attachments';
+import ImageLightbox from '../components/ImageLightbox';
 import { useBreedSort } from '../hooks/useBreedSort';
 import { useColorSort } from '../hooks/useColorSort';
 import { useSpoilers } from '../hooks/useSpoilers';
@@ -65,6 +66,18 @@ function IconSwap() {
   );
 }
 
+// Circled check / X marking whether the pair's results are verified.
+function IconVerified({ ok }: { ok: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      {ok
+        ? <polyline points="8 12 11 15 16 9"/>
+        : <><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></>}
+    </svg>
+  );
+}
+
 // ── Parent selector column ──────────────────────────────────────────────────────
 
 function ParentInputs({
@@ -111,7 +124,7 @@ function ParentInputs({
 export default function BreedingPairs() {
   const [pa, setPa] = useState<ParentSel>(EMPTY);
   const [pb, setPb] = useState<ParentSel>(EMPTY);
-  const [lightbox, setLightbox] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<string[] | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
 
   // Lookup tables for the ComboBoxes (small, ETag-cached)
@@ -143,6 +156,7 @@ export default function BreedingPairs() {
 
   // Special-combination tables — small and ETag-cached, so fetch eagerly
   const { data: mutations } = useQuery({ queryKey: ['mutations'], queryFn: fetchMutations });
+  const { data: pairs }     = useQuery({ queryKey: ['pairs'],     queryFn: fetchFrogPairs });
 
   // Index every fetched frog by its fullname for O(1) offspring lookups
   const index = useMemo(() => {
@@ -166,6 +180,17 @@ export default function BreedingPairs() {
     [allSelected, index, pb],
   );
 
+  // Whether this pair's results are confirmed: it must be in Frog Pairs and
+  // Verified. A missing or unverified pair may produce mutations we don't know of.
+  // Null until the pairs table has loaded, so the indicator doesn't flash.
+  const pairVerified = useMemo(() => {
+    if (!frogA || !frogB || !pairs) return null;
+    const a = frogA.id, b = frogB.id;
+    return pairs.some(p =>
+      p.verified && ((p.frogAId === a && p.frogBId === b) || (p.frogAId === b && p.frogBId === a)),
+    );
+  }, [frogA, frogB, pairs]);
+
   // Find the parent pair's Chroma/Glass mutations (pair stored in either order).
   // Matches on frog record ID, the reliable link-field key. A pair can have
   // several mutations, each carrying the Lost→Result swap it defines.
@@ -178,12 +203,15 @@ export default function BreedingPairs() {
       (m.frogAId === a && m.frogBId === b) || (m.frogAId === b && m.frogBId === a);
     return (mutations ?? []).filter(matches).map(m => ({
       type: m.type as string,
-      screenshot: m.hasScreenshot ? imageProxyUrl('pairs', m.pairId, 'Screenshot') : null,
+      screenshots: pairScreenshotUrls(m.pairId, m.screenshotCount),
       lostId: m.lostId,
       resultId: m.resultId,
       resultTitle: m.resultTitle,
     }));
   }, [frogA, frogB, mutations]);
+
+  // All of a pair's mutations share its screenshots, so any match carries them.
+  const pairScreenshots = specialMatches[0]?.screenshots ?? [];
 
   // Resolve each Result Frog's record (stats + fullname) for the swapped slot.
   // Shares the ['frog', id] cache with the Frog Detail page.
@@ -345,25 +373,46 @@ export default function BreedingPairs() {
         <p className="search-hint">Loading frog data…</p>
       ) : result ? (
         <>
-          {spoilers && specialMatches.map((s, i) => (
-            <p key={`${s.type}-${i}`} className="breeding-special">
-              ✨ This pairing is known to produce a <strong>{s.type}</strong> frog!
-              {s.screenshot && (
+          {spoilers && specialMatches.length > 0 && (
+            <p className="breeding-special">
+              ✨ This pairing is known to produce {specialMatches.map((s, i) => (
+                <span key={i}>
+                  {i === 0 ? '' : i === specialMatches.length - 1 ? (specialMatches.length > 2 ? ', and ' : ' and ') : ', '}
+                  a <strong>{s.type}</strong>
+                </span>
+              ))} frog!
+              {pairScreenshots.length > 0 && (
                 <button
                   className="screenshot-btn"
-                  onClick={() => setLightbox(s.screenshot)}
-                  aria-label={`View ${s.type} screenshot`}
-                  title="View screenshot"
+                  onClick={() => setLightbox(pairScreenshots)}
+                  aria-label={pairScreenshots.length > 1 ? 'View screenshots' : 'View screenshot'}
+                  title={pairScreenshots.length > 1 ? `View screenshots (${pairScreenshots.length})` : 'View screenshot'}
                 >
                   <IconCamera />
                 </button>
               )}
             </p>
-          ))}
+          )}
 
-          <p className="breeding-cost">
-            Breeding Cost: <strong>{formatNum(result.cost)}</strong>
-          </p>
+          <div className="breeding-cost-bar">
+            {pairVerified !== null && (
+              <span
+                className={`breeding-verified${pairVerified ? '' : ' is-unverified'}`}
+                role="img"
+                aria-label={pairVerified
+                  ? "This breeding pair's results have been confirmed"
+                  : "This pair's breeding results may contain unknown mutations"}
+                title={pairVerified
+                  ? "This breeding pair's results have been confirmed"
+                  : "This pair's breeding results may contain unknown mutations"}
+              >
+                <IconVerified ok={pairVerified} />
+              </span>
+            )}
+            <p className="breeding-cost">
+              Breeding Cost: <strong>{formatNum(result.cost)}</strong>
+            </p>
+          </div>
 
           <div className="table-wrapper">
             <table
@@ -444,15 +493,7 @@ export default function BreedingPairs() {
       ) : null}
 
       {lightbox && (
-        <div className="lightbox-overlay" onClick={() => setLightbox(null)}>
-          <button className="lightbox-close" aria-label="Close" onClick={() => setLightbox(null)}>×</button>
-          <img
-            className="lightbox-image"
-            src={lightbox}
-            alt="Combination screenshot"
-            onClick={e => e.stopPropagation()}
-          />
-        </div>
+        <ImageLightbox images={lightbox} alt="Combination screenshot" onClose={() => setLightbox(null)} />
       )}
     </div>
   );

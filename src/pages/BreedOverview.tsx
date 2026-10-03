@@ -5,7 +5,8 @@ import { type SortingState } from '@tanstack/react-table';
 import { fetchTable, fetchBreedFrogs, fetchMutations, fetchFrogById } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
 import WeeklyTable, { type WeeklyFields, WEEKLY_FROG_FIELDS } from '../components/WeeklyTable';
-import { hasAttachment, imageProxyUrl } from '../utils/attachments';
+import { hasAttachment, imageProxyUrl, pairScreenshotUrls } from '../utils/attachments';
+import ImageLightbox from '../components/ImageLightbox';
 import { formatNum } from '../utils/format';
 import { downloadCsv } from '../utils/csv';
 import { breedOptionsFrom } from '../utils/breeds';
@@ -238,7 +239,7 @@ export default function BreedOverview() {
   }, [weekly, breedFrogNames]);
 
   const [weeklySort, setWeeklySort] = useState<SortingState>([{ id: 'date', desc: true }]);
-  const [lightbox, setLightbox] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<string[] | null>(null);
   const { spoilers } = useSpoilers();
 
   // ── Chroma / Glass combinations ───────────────────────────────────────────
@@ -262,7 +263,7 @@ export default function BreedOverview() {
         partnerId:    isBreedA ? m.frogBId : m.frogAId,
         partnerTitle: isBreedA ? m.frogBTitle : m.frogATitle,
         resultId:     m.resultId,
-        screenshot:   m.hasScreenshot ? imageProxyUrl('pairs', m.pairId, 'Screenshot') : null,
+        screenshots:  pairScreenshotUrls(m.pairId, m.screenshotCount),
       }];
     });
   }, [breedFrogIds, mutations]);
@@ -619,10 +620,10 @@ export default function BreedOverview() {
                               : row.resultName}
                           </td>
                           <td className="pin-cell">
-                            {row.screenshot && (
+                            {row.screenshots.length > 0 && (
                               <button
                                 className="screenshot-btn"
-                                onClick={() => setLightbox(row.screenshot)}
+                                onClick={() => setLightbox(row.screenshots)}
                                 aria-label={`View ${type} screenshot`}
                                 title="View screenshot"
                               >
@@ -642,15 +643,7 @@ export default function BreedOverview() {
       )}
 
       {lightbox && (
-        <div className="lightbox-overlay" onClick={() => setLightbox(null)}>
-          <button className="lightbox-close" aria-label="Close" onClick={() => setLightbox(null)}>×</button>
-          <img
-            className="lightbox-image"
-            src={lightbox}
-            alt="Combination screenshot"
-            onClick={e => e.stopPropagation()}
-          />
-        </div>
+        <ImageLightbox images={lightbox} alt="Combination screenshot" onClose={() => setLightbox(null)} />
       )}
     </div>
   );

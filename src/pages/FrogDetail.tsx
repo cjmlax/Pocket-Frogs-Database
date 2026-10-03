@@ -12,7 +12,8 @@ import { useBreedSort } from '../hooks/useBreedSort';
 import { useColorSort } from '../hooks/useColorSort';
 import { useSpoilers } from '../hooks/useSpoilers';
 import { colorOptionsFrom } from '../utils/colors';
-import { imageProxyUrl } from '../utils/attachments';
+import { pairScreenshotUrls } from '../utils/attachments';
+import ImageLightbox from '../components/ImageLightbox';
 import { formatNum } from '../utils/format';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
@@ -76,7 +77,7 @@ interface PickerSel {
 export default function FrogDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [lightbox, setLightbox] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<string[] | null>(null);
   const [weeklySort, setWeeklySort] = useState<SortingState>([{ id: 'date', desc: true }]);
 
   const queryClient = useQueryClient();
@@ -197,7 +198,7 @@ export default function FrogDetail() {
         partnerId:    isA ? m.frogBId : m.frogAId,
         partnerTitle: isA ? m.frogBTitle : m.frogATitle,
         resultId:     m.resultId,
-        screenshot:   m.hasScreenshot ? imageProxyUrl('pairs', m.pairId, 'Screenshot') : null,
+        screenshots:  pairScreenshotUrls(m.pairId, m.screenshotCount),
       }];
     });
   }, [frog, mutations]);
@@ -378,10 +379,10 @@ export default function FrogDetail() {
                                   : row.resultName}
                               </td>
                               <td className="pin-cell">
-                                {row.screenshot && (
+                                {row.screenshots.length > 0 && (
                                   <button
                                     className="screenshot-btn"
-                                    onClick={() => setLightbox(row.screenshot)}
+                                    onClick={() => setLightbox(row.screenshots)}
                                     aria-label={`View ${type} screenshot`}
                                     title="View screenshot"
                                   >
@@ -403,15 +404,7 @@ export default function FrogDetail() {
       )}
 
       {lightbox && (
-        <div className="lightbox-overlay" onClick={() => setLightbox(null)}>
-          <button className="lightbox-close" aria-label="Close" onClick={() => setLightbox(null)}>×</button>
-          <img
-            className="lightbox-image"
-            src={lightbox}
-            alt="Combination screenshot"
-            onClick={e => e.stopPropagation()}
-          />
-        </div>
+        <ImageLightbox images={lightbox} alt="Combination screenshot" onClose={() => setLightbox(null)} />
       )}
     </div>
   );

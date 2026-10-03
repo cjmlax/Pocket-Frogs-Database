@@ -546,15 +546,35 @@ a.plain-link:hover {
 }
 
 /* Cost bar sits flush atop the results table as a connected header */
-.breeding-cost {
-  font-size: 15px;
-  color: var(--text);
-  margin: 0;
+/* Bar above the results table: verified indicator cell + breeding cost cell */
+.breeding-cost-bar {
+  display: flex;
+  align-items: stretch;
   background: var(--code-bg);
   border: 1px solid var(--border);
   border-bottom: none;
   border-radius: 6px 6px 0 0;
+}
+
+.breeding-cost {
+  font-size: 15px;
+  color: var(--text);
+  margin: 0;
   padding: 10px 14px;
+}
+
+/* Subtle check when the pair is verified; accent X draws the eye when it isn't */
+.breeding-verified {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border-right: 1px solid var(--border);
+  color: var(--text);
+  cursor: help;
+}
+
+.breeding-verified.is-unverified {
+  color: var(--accent);
 }
 
 .breeding-cost strong {
@@ -562,7 +582,7 @@ a.plain-link:hover {
 }
 
 /* Square off the table's top corners so it joins the cost bar seamlessly */
-.breeding-cost + .table-wrapper {
+.breeding-cost-bar + .table-wrapper {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
 }
@@ -801,6 +821,40 @@ a.plain-link:hover {
   border-radius: 6px;
   box-shadow: var(--shadow);
   object-fit: contain;
+}
+
+/* Carousel controls, shown when a lightbox holds more than one image */
+.lightbox-nav {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.4);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 40px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 6px 14px 10px;
+}
+
+.lightbox-nav:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.lightbox-prev { left: 16px; }
+.lightbox-next { right: 16px; }
+
+.lightbox-counter {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: 14px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 6px;
+  padding: 4px 10px;
 }
 
 .lightbox-close {

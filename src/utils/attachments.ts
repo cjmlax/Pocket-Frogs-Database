@@ -11,6 +11,13 @@ export function hasAttachment(val: unknown): boolean {
   return Array.isArray(val) && val.length > 0;
 }
 
-export function imageProxyUrl(table: AttachmentTable, recordId: string, field: string): string {
-  return `${API_BASE}/api/image/${table}/${encodeURIComponent(recordId)}/${encodeURIComponent(field)}`;
+// index picks one of several attachments in the field (the first by default).
+export function imageProxyUrl(table: AttachmentTable, recordId: string, field: string, index = 0): string {
+  const url = `${API_BASE}/api/image/${table}/${encodeURIComponent(recordId)}/${encodeURIComponent(field)}`;
+  return index > 0 ? `${url}?i=${index}` : url;
+}
+
+// Proxy URLs for every screenshot on a Frog Pairs record.
+export function pairScreenshotUrls(pairId: string, count: number): string[] {
+  return Array.from({ length: count }, (_, i) => imageProxyUrl('pairs', pairId, 'Screenshot', i));
 }

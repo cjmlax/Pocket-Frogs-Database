@@ -128,7 +128,7 @@ export interface FrogPair {
   frogAId: string | null;
   frogBId: string | null;
   verified: boolean;
-  hasScreenshot: boolean;
+  screenshotCount: number;
 }
 
 // One mutation, flattened with its parent pair. Titles are the frogs' codes.
@@ -144,7 +144,7 @@ export interface Mutation {
   resultTitle: string | null;
   lostId: string | null;
   lostTitle: string | null;
-  hasScreenshot: boolean;
+  screenshotCount: number;   // the pair's screenshots (shared by its mutations)
 }
 
 function linkRef(val: unknown): { id: string; title: string | null } | null {
@@ -153,6 +153,8 @@ function linkRef(val: unknown): { id: string; title: string | null } | null {
   const title = 'title' in first ? String((first as { title: unknown }).title) : null;
   return { id: String((first as { id: unknown }).id), title };
 }
+
+const attachmentCount = (val: unknown) => (Array.isArray(val) ? val.length : 0);
 
 async function fetchPairRecords() {
   const { id, take } = TABLES.pairs;
@@ -165,7 +167,7 @@ export async function fetchFrogPairs(): Promise<FrogPair[]> {
     frogAId: linkRef(r.fields['Frog A'])?.id ?? null,
     frogBId: linkRef(r.fields['Frog B'])?.id ?? null,
     verified: !!r.fields.Verified,
-    hasScreenshot: Array.isArray(r.fields.Screenshot) && r.fields.Screenshot.length > 0,
+    screenshotCount: attachmentCount(r.fields.Screenshot),
   }));
 }
 
@@ -190,7 +192,7 @@ export async function fetchMutations(): Promise<Mutation[]> {
       frogBId: b?.id ?? null, frogBTitle: b?.title ?? null,
       resultId: result?.id ?? null, resultTitle: result?.title ?? null,
       lostId: lost?.id ?? null, lostTitle: lost?.title ?? null,
-      hasScreenshot: Array.isArray(pair.fields.Screenshot) && pair.fields.Screenshot.length > 0,
+      screenshotCount: attachmentCount(pair.fields.Screenshot),
     }];
   });
 }
