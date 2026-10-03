@@ -686,12 +686,13 @@ a.plain-link:hover {
   cursor: pointer;
 }
 
-.submit-btn:not(:disabled):hover {
+.submit-btn:not(:disabled):not(.is-disabled):hover {
   background: var(--accent);
   color: var(--bg);
 }
 
-.submit-btn:disabled {
+.submit-btn:disabled,
+.submit-btn.is-disabled {
   opacity: 0.45;
   cursor: default;
 }

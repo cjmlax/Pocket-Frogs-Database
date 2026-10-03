@@ -35,13 +35,9 @@ const touched = (p: ParentSel) => !!(p.base || p.sec || p.breed);
 function fullName(p: ParentSel): string | null {
   return p.base && p.sec && p.breed ? `${p.base.label} ${p.sec.label} ${p.breed.label}` : null;
 }
+// https:// followed by a host ending in a .tld, optionally with a path/query.
 function isUrl(s: string): boolean {
-  try {
-    const u = new URL(s);
-    return u.protocol === 'http:' || u.protocol === 'https:';
-  } catch {
-    return false;
-  }
+  return /^https:\/\/[^\s/?#]+\.[a-z]{2,}(?:[/?#]\S*)?$/i.test(s);
 }
 
 // ── Frog selector column (mirrors the Breeding Pairs inputs) ────────────────────
@@ -87,6 +83,8 @@ export default function SubmitCombo() {
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
   // Parents are verified first, then locked; the rest of the form is gated on this.
   const [checked, setChecked] = useState(false);
+  // Set when the inactive submit button is pressed, to explain what's missing.
+  const [attempted, setAttempted] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Lookup tables for the pickers (small, ETag-cached, shared with other pages)
@@ -192,7 +190,7 @@ export default function SubmitCombo() {
     picked(pResult) && !!frogR &&
     picked(pLost) && !!frogL &&
     !resolving && !unknownFrog && !lostPartial && sourceValid && !alreadyExists &&
-    colorConstraintMet;
+    colorConstraintMet && !!screenshot;
   const canSubmit = checked && resultReady && !submitting;
 
   async function handleSubmit() {
@@ -215,7 +213,7 @@ export default function SubmitCombo() {
       setResult({ ok: true, message: 'Thanks! Your submission was received and is pending review.' });
       setTimeout(() => setResult(null), 3000);
       setP1(EMPTY); setP2(EMPTY); setPResult(EMPTY); setPLost(EMPTY);
-      setSourceLink(''); setScreenshot(null); setFileError(null); setChecked(false);
+      setSourceLink(''); setScreenshot(null); setFileError(null); setChecked(false); setAttempted(false);
       if (fileRef.current) fileRef.current.value = '';
     } catch (e) {
       setResult({ ok: false, message: e instanceof Error ? e.message : 'Something went wrong.' });
@@ -250,6 +248,7 @@ export default function SubmitCombo() {
   // Unlock the parents to correct an input error (re-check required to proceed).
   function handleUnlock() {
     setChecked(false);
+    setAttempted(false);
     setResult(null);
   }
 
@@ -316,7 +315,7 @@ export default function SubmitCombo() {
 
           <div className="submit-extras">
             <div className="combobox-field">
-              <label className="combobox-label" htmlFor="combo-shot">Screenshot <span className="submit-optional">(optional)</span></label>
+              <label className="combobox-label" htmlFor="combo-shot">Screenshot</label>
               <input
                 id="combo-shot"
                 ref={fileRef}
@@ -336,6 +335,9 @@ export default function SubmitCombo() {
                   }
                 }}
               />
+              <p className="search-hint" style={{ marginTop: 4 }}>
+                Please use original, uncropped images. Preferably tap the mutation to show its name.
+              </p>
               {fileError && <p className="search-error" style={{ marginTop: 4 }}>{fileError}</p>}
             </div>
             <div className="combobox-field">
@@ -353,27 +355,22 @@ export default function SubmitCombo() {
             </div>
           </div>
 
-          {/* Inline guidance about the current selection */}
-          {resolving ? (
-            <p className="search-hint">Checking…</p>
-          ) : unknownFrog ? (
-            <p className="search-error">One of the selected combinations isn't a known frog.</p>
-          ) : lostPartial ? (
-            <p className="search-error">Finish or clear the Lost Frog selection.</p>
-          ) : !sourceValid ? (
-            <p className="search-error">The attribution link must be a valid http(s) URL.</p>
-          ) : !colorConstraintMet ? (
-            <p className="search-error">
-              {variant === 'glass'
-                ? 'The result frog\'s Base Color must be Glass.'
-                : 'The result frog\'s Secondary Color must be Chroma.'}
-            </p>
-          ) : alreadyExists ? (
-            <p className="breeding-special">This {variant === 'chroma' ? 'Chroma' : 'Glass'} pairing is already cataloged — please try another.</p>
+          {/* Only an invalid link is flagged live; anything else waits for a submit attempt. */}
+          {!sourceValid ? (
+            <p className="search-error">Attribution link is not a valid URL</p>
+          ) : attempted && !resultReady ? (
+            <p className="search-error">Both frogs and a screenshot are required</p>
           ) : null}
 
           <div className="submit-actions">
-            <button className="submit-btn" type="button" disabled={!canSubmit} onClick={handleSubmit}>
+            {/* Not natively disabled (except for a bad link) so a press can explain what's missing. */}
+            <button
+              className={`submit-btn${canSubmit ? '' : ' is-disabled'}`}
+              type="button"
+              aria-disabled={!canSubmit}
+              disabled={!sourceValid || submitting}
+              onClick={() => canSubmit ? handleSubmit() : setAttempted(true)}
+            >
               {submitting ? 'Submitting…' : 'Submit for review'}
             </button>
           </div>
