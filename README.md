@@ -12,8 +12,8 @@ I am also newer to Github, especially managing a repo. Please don't hesitate to 
 
 The App Updates panel on the homepage reads from the `Changelog` table in Teable.
 
-1. **Automatic** — the submissions worker polls the Apple App Store daily and adds a row for each new iOS version (`Source` = iTunes Poller). It skips a version that already has an iOS row.
-2. **Manual** — older entries, Android releases, or corrections can be added directly in Teable (`Source` = Manual).
+1. **Automatic** — the submissions worker polls the Apple App Store daily and adds a row for each new version (`Platform` = Both, `Source` = iTunes Poller). The current app ships one build to both stores; iTunes is just the source that can be polled. A version that already has a row (any platform) is skipped.
+2. **Manual** — older entries (including legacy platform-specific releases) can be added directly in Teable (`Source` = Manual).
 
 ### Fields
 
