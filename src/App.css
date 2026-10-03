@@ -856,6 +856,38 @@ a.plain-link:hover {
   color: var(--accent);
 }
 
+/* Flips a mutation column back to the frog it replaces (and again). */
+.breeding-results .swap-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+  padding: 3px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--accent);
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.breeding-results .swap-btn:hover {
+  background: var(--bg);
+}
+
+/* Quick fade when a swappable column flips (cells remount on flip). */
+.breeding-results .breeding-swap {
+  animation: breeding-swap-in 0.15s ease-out;
+}
+
+@keyframes breeding-swap-in {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .breeding-results .breeding-swap { animation: none; }
+}
+
 /* Subtle alternating column shading to separate offspring (mirrors the
    original gray columns). Child 1 is the sticky label, so even children are
    the 1st, 3rd, 5th… offspring. */

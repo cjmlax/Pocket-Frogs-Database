@@ -54,6 +54,17 @@ function IconCamera() {
   );
 }
 
+// Two circling arrows — flips a column between a mutation and the frog it replaces.
+function IconSwap() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="23 4 23 10 17 10"/>
+      <polyline points="1 20 1 14 7 14"/>
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+    </svg>
+  );
+}
+
 // ── Parent selector column ──────────────────────────────────────────────────────
 
 function ParentInputs({
@@ -238,20 +249,38 @@ export default function BreedingPairs() {
         stamina,
         racing:  speed !== null && stamina !== null ? speed + stamina : null,
         special: null as string | null,
+        // Lost-frog id of a column a known mutation replaces (null otherwise).
+        swapId:  null as string | null,
       }];
     });
 
     return { cost, offspring };
   }, [allSelected, index, pa, pb, frogA, frogB]);
 
+  // Columns flipped back to their original (lost) frog, by lost-frog id. Tied to
+  // the parent pair, so picking new parents shows every mutation again.
+  const pairKey = frogA && frogB ? `${frogA.id}|${frogB.id}` : '';
+  const [flipped, setFlipped] = useState<{ pairKey: string; ids: Set<string> }>({ pairKey: '', ids: new Set() });
+  const flippedIds = useMemo(
+    () => (flipped.pairKey === pairKey ? flipped.ids : new Set<string>()),
+    [flipped, pairKey],
+  );
+  function toggleFlip(lostId: string) {
+    const ids = new Set(flippedIds);
+    if (ids.has(lostId)) ids.delete(lostId); else ids.add(lostId);
+    setFlipped({ pairKey, ids });
+  }
+
   // Apply special-pair swaps: each offspring matching a Lost Frog is replaced by
-  // its Result Frog (real stats, profit recomputed against the same cost).
+  // its Result Frog (real stats, profit recomputed against the same cost) —
+  // unless that column has been flipped back to show the original frog.
   const displayedOffspring = useMemo(() => {
     if (!result) return [];
     if (replacementByLostId.size === 0) return result.offspring;
     return result.offspring.map(o => {
       const repl = o.id ? replacementByLostId.get(o.id) : undefined;
       if (!repl) return o;
+      if (flippedIds.has(o.id!)) return { ...o, swapId: o.id };
       const rec = resultById.get(repl.resultId);
       const value   = statInt(rec?.fields.Value);
       const speed   = statInt(rec?.fields.Speed);
@@ -266,9 +295,15 @@ export default function BreedingPairs() {
         stamina,
         racing:  speed !== null && stamina !== null ? speed + stamina : null,
         special: repl.type,
+        swapId:  o.id,
       };
     });
-  }, [result, replacementByLostId, resultById]);
+  }, [result, replacementByLostId, resultById, flippedIds]);
+
+  // Swappable columns get a quick fade; cells are keyed by frog so a flip remounts them.
+  const cellKey = (o: { id: string | null; name: string }, i: number) => `${i}:${o.id ?? o.name}`;
+  const swapCls = (o: { swapId: string | null }, extra?: string) =>
+    [extra, o.swapId ? 'breeding-swap' : null].filter(Boolean).join(' ') || undefined;
 
   const shownOffspring = spoilers ? displayedOffspring : (result?.offspring ?? []);
 
@@ -342,8 +377,8 @@ export default function BreedingPairs() {
                   <th className="breeding-row-label" data-row="frog">Frog</th>
                   {shownOffspring.map((o, i) => (
                     <th
-                      key={i}
-                      className={`breeding-frog-name${o.special ? ' breeding-frog-special' : ''}`}
+                      key={cellKey(o, i)}
+                      className={swapCls(o, `breeding-frog-name${o.special ? ' breeding-frog-special' : ''}`)}
                       data-row="frog"
                       data-col={i}
                       title={o.special ? `${o.special} replacement` : undefined}
@@ -351,24 +386,35 @@ export default function BreedingPairs() {
                       {o.name.split(' ').map((word, w) => (
                         <span key={w} className="breeding-frog-word">{word}</span>
                       ))}
+                      {o.swapId && (
+                        <button
+                          type="button"
+                          className="swap-btn"
+                          onClick={() => toggleFlip(o.swapId!)}
+                          aria-label={o.special ? 'Show the original frog' : 'Show the mutation'}
+                          title={o.special ? 'Show the original frog' : 'Show the mutation'}
+                        >
+                          <IconSwap />
+                        </button>
+                      )}
                     </th>
                   ))}
                 </tr>
                 <tr>
                   <th className="breeding-row-label" data-row="value">Value</th>
                   {shownOffspring.map((o, i) => (
-                    <td key={i} data-row="value" data-col={i}>{o.value !== null ? formatNum(o.value) : (o.found ? '—' : 'Not Found')}</td>
+                    <td key={cellKey(o, i)} className={swapCls(o)} data-row="value" data-col={i}>{o.value !== null ? formatNum(o.value) : (o.found ? '—' : 'Not Found')}</td>
                   ))}
                 </tr>
                 <tr>
                   <th className="breeding-row-label" data-row="profit">Net Profit</th>
                   {shownOffspring.map((o, i) => (
-                    <td key={i} data-row="profit" data-col={i} className={
+                    <td key={cellKey(o, i)} data-row="profit" data-col={i} className={swapCls(o,
                       o.profit === null ? undefined
                         : o.profit > 0 ? 'profit-positive'
                         : o.profit < 0 ? 'profit-negative'
-                        : undefined
-                    }>
+                        : undefined,
+                    )}>
                       {o.profit === null ? '—' : `${o.profit > 0 ? '+' : ''}${formatNum(o.profit)}`}
                     </td>
                   ))}
@@ -376,19 +422,19 @@ export default function BreedingPairs() {
                 <tr>
                   <th className="breeding-row-label" data-row="speed">Speed</th>
                   {shownOffspring.map((o, i) => (
-                    <td key={i} data-row="speed" data-col={i}>{o.speed !== null ? formatNum(o.speed) : '—'}</td>
+                    <td key={cellKey(o, i)} className={swapCls(o)} data-row="speed" data-col={i}>{o.speed !== null ? formatNum(o.speed) : '—'}</td>
                   ))}
                 </tr>
                 <tr>
                   <th className="breeding-row-label" data-row="stamina">Stamina</th>
                   {shownOffspring.map((o, i) => (
-                    <td key={i} data-row="stamina" data-col={i}>{o.stamina !== null ? formatNum(o.stamina) : '—'}</td>
+                    <td key={cellKey(o, i)} className={swapCls(o)} data-row="stamina" data-col={i}>{o.stamina !== null ? formatNum(o.stamina) : '—'}</td>
                   ))}
                 </tr>
                 <tr>
                   <th className="breeding-row-label" data-row="racing">Racing Stat</th>
                   {shownOffspring.map((o, i) => (
-                    <td key={i} data-row="racing" data-col={i}>{o.racing !== null ? formatNum(o.racing) : '—'}</td>
+                    <td key={cellKey(o, i)} className={swapCls(o)} data-row="racing" data-col={i}>{o.racing !== null ? formatNum(o.racing) : '—'}</td>
                   ))}
                 </tr>
               </tbody>
