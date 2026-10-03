@@ -856,13 +856,20 @@ a.plain-link:hover {
   color: var(--accent);
 }
 
-/* Flips a mutation column back to the frog it replaces (and again). */
+/* Flips a mutation column back to the frog it replaces (and again). Pinned to
+   the name cell's top-right corner so it doesn't add to the row's height. */
+.breeding-results .breeding-frog-name:has(.swap-btn) {
+  position: relative;
+}
+
 .breeding-results .swap-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-top: 4px;
-  padding: 3px;
+  padding: 2px;
   background: none;
   border: none;
   cursor: pointer;
