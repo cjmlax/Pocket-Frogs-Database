@@ -14,6 +14,8 @@ export interface ComboSubmission {
   lostFrogId?:    string;
   lostFrogName?:  string;
   sourceLink?:    string;
+  versionId?:     string;
+  versionName?:   string;
 }
 
 export interface FrogStatsSubmission {

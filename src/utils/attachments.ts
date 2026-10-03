@@ -5,7 +5,7 @@ import { API_BASE } from '../api/base';
 // so a directly-embedded presignedUrl is usually expired by the time it's
 // rendered. Instead, build a stable proxy URL — the pfdb-submissions worker
 // re-resolves a fresh presignedUrl on every hit (see its /api/image route).
-export type AttachmentTable = 'breeds' | 'chroma' | 'glass';
+export type AttachmentTable = 'breeds' | 'pairs';
 
 export function hasAttachment(val: unknown): boolean {
   return Array.isArray(val) && val.length > 0;

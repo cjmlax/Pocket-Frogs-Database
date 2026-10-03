@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { type SortingState } from '@tanstack/react-table';
-import { fetchTable, fetchBreedFrogs, fetchCombos, fetchFrogById } from '../api/teable';
+import { fetchTable, fetchBreedFrogs, fetchMutations, fetchFrogById } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
 import WeeklyTable, { type WeeklyFields, WEEKLY_FROG_FIELDS } from '../components/WeeklyTable';
 import { hasAttachment, imageProxyUrl } from '../utils/attachments';
@@ -38,23 +38,10 @@ interface LevelFields extends Record<string, unknown> {
   Restricted?: boolean;
 }
 
-interface ComboFields extends Record<string, unknown> {
-  'Frog 1'?:      unknown;
-  'Frog 2'?:      unknown;
-  'Result Frog'?: unknown;
-  'Screenshot'?:  unknown;
-}
-
 // Pulls the linked record's id from a Teable link field ({ id, title } or array).
 function linkId(val: unknown): string | null {
   const first = Array.isArray(val) ? val[0] : val;
   if (first && typeof first === 'object' && 'id' in first) return String((first as { id: unknown }).id);
-  return null;
-}
-
-function linkTitle(val: unknown): string | null {
-  const first = Array.isArray(val) ? val[0] : val;
-  if (first && typeof first === 'object' && 'title' in first) return String((first as { title: unknown }).title);
   return null;
 }
 
@@ -255,8 +242,7 @@ export default function BreedOverview() {
   const { spoilers } = useSpoilers();
 
   // ── Chroma / Glass combinations ───────────────────────────────────────────
-  const { data: chromaCombos } = useQuery({ queryKey: ['table', 'chroma'], queryFn: () => fetchCombos<ComboFields>('chroma') });
-  const { data: glassCombos  } = useQuery({ queryKey: ['table', 'glass'],  queryFn: () => fetchCombos<ComboFields>('glass')  });
+  const { data: mutations } = useQuery({ queryKey: ['mutations'], queryFn: fetchMutations });
 
   const breedFrogIds = useMemo(() => {
     const ids = new Set<string>();
@@ -266,24 +252,20 @@ export default function BreedOverview() {
 
   const specials = useMemo(() => {
     if (!breedFrogIds.size) return [];
-    const find = (combos: typeof chromaCombos, type: 'Chroma' | 'Glass') =>
-      (combos ?? []).flatMap(rec => {
-        const id1 = linkId(rec.fields['Frog 1']);
-        const id2 = linkId(rec.fields['Frog 2']);
-        const isBreed1 = breedFrogIds.has(id1 ?? '');
-        const isBreed2 = breedFrogIds.has(id2 ?? '');
-        if (!isBreed1 && !isBreed2) return [];
-        const thisId       = isBreed1 ? id1 : id2;
-        const partnerId    = isBreed1 ? id2 : id1;
-        const partnerTitle = isBreed1 ? linkTitle(rec.fields['Frog 2']) : linkTitle(rec.fields['Frog 1']);
-        const resultId     = linkId(rec.fields['Result Frog']);
-        const screenshot = hasAttachment(rec.fields['Screenshot'])
-          ? imageProxyUrl(type === 'Chroma' ? 'chroma' : 'glass', rec.id, 'Screenshot')
-          : null;
-        return [{ type, thisId, partnerId, partnerTitle, resultId, screenshot }];
-      });
-    return [...find(chromaCombos, 'Chroma'), ...find(glassCombos, 'Glass')];
-  }, [breedFrogIds, chromaCombos, glassCombos]);
+    return (mutations ?? []).flatMap(m => {
+      const isBreedA = breedFrogIds.has(m.frogAId ?? '');
+      const isBreedB = breedFrogIds.has(m.frogBId ?? '');
+      if (!isBreedA && !isBreedB) return [];
+      return [{
+        type:         m.type,
+        thisId:       isBreedA ? m.frogAId : m.frogBId,
+        partnerId:    isBreedA ? m.frogBId : m.frogAId,
+        partnerTitle: isBreedA ? m.frogBTitle : m.frogATitle,
+        resultId:     m.resultId,
+        screenshot:   m.hasScreenshot ? imageProxyUrl('pairs', m.pairId, 'Screenshot') : null,
+      }];
+    });
+  }, [breedFrogIds, mutations]);
 
   const thisFrogNames = specials.map(
     s => (frogs ?? []).find(f => f.id === s.thisId)?.fields.fullname ?? '—',

@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router';
 import { useQuery, useQueries, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { type SortingState } from '@tanstack/react-table';
 import {
-  fetchFrogById, fetchTable, fetchCombos, fetchBreedFrogs, fetchFrogStats,
-  type TeableRecord,
+  fetchFrogById, fetchTable, fetchMutations, fetchBreedFrogs, fetchFrogStats,
 } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
 import WeeklyTable, { type WeeklyFields, WEEKLY_FROG_FIELDS } from '../components/WeeklyTable';
@@ -13,7 +12,7 @@ import { useBreedSort } from '../hooks/useBreedSort';
 import { useColorSort } from '../hooks/useColorSort';
 import { useSpoilers } from '../hooks/useSpoilers';
 import { colorOptionsFrom } from '../utils/colors';
-import { hasAttachment, imageProxyUrl } from '../utils/attachments';
+import { imageProxyUrl } from '../utils/attachments';
 import { formatNum } from '../utils/format';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
@@ -39,25 +38,10 @@ interface LevelFields extends Record<string, unknown> {
   Restricted?: boolean;
 }
 
-// Chroma / Glass combination tables — Frog 1 / Frog 2 / Result Frog link to the frogs table.
-interface ComboFields extends Record<string, unknown> {
-  'Frog 1'?:      unknown;
-  'Frog 2'?:      unknown;
-  'Result Frog'?: unknown;
-  'Screenshot'?:  unknown;
-}
-
 // Pulls the linked record's id from a Teable link field ({ id, title } or array).
 function linkId(val: unknown): string | null {
   const first = Array.isArray(val) ? val[0] : val;
   if (first && typeof first === 'object' && 'id' in first) return String((first as { id: unknown }).id);
-  return null;
-}
-
-// Pulls the linked record's display title (the partner frog's short code).
-function linkTitle(val: unknown): string | null {
-  const first = Array.isArray(val) ? val[0] : val;
-  if (first && typeof first === 'object' && 'title' in first) return String((first as { title: unknown }).title);
   return null;
 }
 
@@ -111,8 +95,7 @@ export default function FrogDetail() {
   const { data: secs   } = useQuery({ queryKey: ['table', 'secs'],   queryFn: () => fetchTable<SecFields>('secs')    });
   const { data: levels } = useQuery({ queryKey: ['table', 'levels'], queryFn: () => fetchTable<LevelFields>('levels') });
   const { data: weekly } = useQuery({ queryKey: ['table', 'weekly'], queryFn: () => fetchTable<WeeklyFields>('weekly') });
-  const { data: chromaCombos } = useQuery({ queryKey: ['table', 'chroma'], queryFn: () => fetchCombos<ComboFields>('chroma') });
-  const { data: glassCombos  } = useQuery({ queryKey: ['table', 'glass'],  queryFn: () => fetchCombos<ComboFields>('glass')  });
+  const { data: mutations } = useQuery({ queryKey: ['mutations'], queryFn: fetchMutations });
 
   const breedSort = useBreedSort();
   const { spoilers } = useSpoilers();
@@ -203,24 +186,21 @@ export default function FrogDetail() {
     [fullname],
   );
 
-  // Chroma / Glass combinations where this frog is one of the two parents.
+  // Chroma / Glass mutations where this frog is one of the two parents.
   const specials = useMemo(() => {
     if (!frog) return [];
-    const find = (combos: TeableRecord<ComboFields>[] | undefined, type: 'Chroma' | 'Glass') =>
-      (combos ?? []).flatMap(rec => {
-        const id1 = linkId(rec.fields['Frog 1']);
-        const id2 = linkId(rec.fields['Frog 2']);
-        if (id1 !== frog.id && id2 !== frog.id) return [];
-        const partnerId    = id1 === frog.id ? id2 : id1;
-        const partnerTitle = id1 === frog.id ? linkTitle(rec.fields['Frog 2']) : linkTitle(rec.fields['Frog 1']);
-        const resultId     = linkId(rec.fields['Result Frog']);
-        const screenshot = hasAttachment(rec.fields['Screenshot'])
-          ? imageProxyUrl(type === 'Chroma' ? 'chroma' : 'glass', rec.id, 'Screenshot')
-          : null;
-        return [{ type, partnerId, partnerTitle, resultId, screenshot }];
-      });
-    return [...find(chromaCombos, 'Chroma'), ...find(glassCombos, 'Glass')];
-  }, [frog, chromaCombos, glassCombos]);
+    return (mutations ?? []).flatMap(m => {
+      if (m.frogAId !== frog.id && m.frogBId !== frog.id) return [];
+      const isA = m.frogAId === frog.id;
+      return [{
+        type:         m.type,
+        partnerId:    isA ? m.frogBId : m.frogAId,
+        partnerTitle: isA ? m.frogBTitle : m.frogATitle,
+        resultId:     m.resultId,
+        screenshot:   m.hasScreenshot ? imageProxyUrl('pairs', m.pairId, 'Screenshot') : null,
+      }];
+    });
+  }, [frog, mutations]);
 
   // Resolve partner and result frog fullnames by id. Shares ['frog', id] query
   // keys with the main query so already-viewed frogs are served from cache.

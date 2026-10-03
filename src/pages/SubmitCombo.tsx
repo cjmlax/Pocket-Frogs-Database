@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchTable, fetchBreedFrogs, fetchCombos, type TeableRecord } from '../api/teable';
+import { fetchTable, fetchBreedFrogs, fetchFrogPairs, fetchChangelog, type TeableRecord } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
 import { breedOptionsFrom } from '../utils/breeds';
 import { useBreedSort } from '../hooks/useBreedSort';
@@ -15,20 +15,12 @@ interface BreedFields extends Record<string, unknown> { Breed?: string }
 interface BaseFields  extends Record<string, unknown> { BaseColors?: string }
 interface SecFields   extends Record<string, unknown> { Sec_Color?:  string }
 interface FrogFields  extends Record<string, unknown> { fullname?: string }
-interface ComboFields extends Record<string, unknown> { 'Frog 1'?: unknown; 'Frog 2'?: unknown }
 
 interface ParentSel { base: ComboOption | null; sec: ComboOption | null; breed: ComboOption | null }
 const EMPTY: ParentSel = { base: null, sec: null, breed: null };
 
 type Variant = 'chroma' | 'glass';
 const DAY = 1000 * 60 * 60 * 24;
-
-// Pulls the linked frog record id from a Teable link field.
-function linkId(val: unknown): string | null {
-  const first = Array.isArray(val) ? val[0] : val;
-  if (first && typeof first === 'object' && 'id' in first) return String((first as { id: unknown }).id);
-  return null;
-}
 
 const picked = (p: ParentSel) => !!(p.base && p.sec && p.breed);
 const touched = (p: ParentSel) => !!(p.base || p.sec || p.breed);
@@ -77,6 +69,8 @@ export default function SubmitCombo() {
   const [pResult, setPResult] = useState<ParentSel>(EMPTY);
   const [pLost, setPLost] = useState<ParentSel>(EMPTY);
   const [sourceLink, setSourceLink] = useState('');
+  // Changelog record id of the game version; '' means the latest.
+  const [versionSel, setVersionSel] = useState('');
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -153,43 +147,47 @@ export default function SubmitCombo() {
     variant === 'chroma' ? pResult.sec?.id  === chromaSecOpt?.id :
     true;
 
-  // Existing combos, to warn about duplicate parent pairs before submitting.
-  const { data: chromaCombos } = useQuery({ queryKey: ['table', 'chroma'], queryFn: () => fetchCombos<ComboFields>('chroma') });
-  const { data: glassCombos  } = useQuery({ queryKey: ['table', 'glass'],  queryFn: () => fetchCombos<ComboFields>('glass')  });
+  // Existing pairs, to catch verified ones before submitting.
+  const { data: pairs } = useQuery({ queryKey: ['pairs'], queryFn: fetchFrogPairs });
 
-  // Does this parent pair already exist in each special table? (Either order.)
-  const pairIn = (combos: TeableRecord<ComboFields>[] | undefined) => {
-    if (!frog1 || !frog2) return false;
+  // The recorded parent pair, if any (stored in either order).
+  const existingPair = useMemo(() => {
+    if (!frog1 || !frog2) return null;
     const a = frog1.id, b = frog2.id;
-    return (combos ?? []).some(rec => {
-      const f1 = linkId(rec.fields['Frog 1']), f2 = linkId(rec.fields['Frog 2']);
-      return (f1 === a && f2 === b) || (f1 === b && f2 === a);
-    });
-  };
-  const existsChroma = useMemo(() => pairIn(chromaCombos), [frog1, frog2, chromaCombos]);
-  const existsGlass  = useMemo(() => pairIn(glassCombos),  [frog1, frog2, glassCombos]);
-  const alreadyExists = variant === 'chroma' ? existsChroma : existsGlass;
+    return (pairs ?? []).find(p =>
+      (p.frogAId === a && p.frogBId === b) || (p.frogAId === b && p.frogBId === a),
+    ) ?? null;
+  }, [frog1, frog2, pairs]);
+  // Game versions, newest first (one entry per version string).
+  const { data: changelog } = useQuery({ queryKey: ['changelog'], queryFn: fetchChangelog });
+  const versions = useMemo(() => {
+    const seen = new Set<string>();
+    return (changelog ?? []).filter(c => !seen.has(c.version) && !!seen.add(c.version));
+  }, [changelog]);
+  const version = versions.find(v => v.id === versionSel) ?? versions[0] ?? null;
 
   // ── Phase 1: confirm the parent pair before unlocking the rest ─────────────
   // Any base/secondary/breed selection resolves to a real frog (the pickers are
   // referential), and breeding a frog with itself is valid — so the only blocker
-  // is the pairing already existing in either special table.
-  const combosLoaded = !!chromaCombos && !!glassCombos;
-  const pairExists = existsChroma || existsGlass;
-  const canProceed = picked(p1) && picked(p2) && !!frog1 && !!frog2 && combosLoaded && !pairExists;
+  // is the pair already being verified (its data is taken as accurate). An
+  // unverified pair is missing data or flagged as wrong, so a submission for it
+  // overwrites what's there.
+  const combosLoaded = !!pairs;
+  const pairVerified = !!existingPair?.verified;
+  const canProceed = picked(p1) && picked(p2) && !!frog1 && !!frog2 && combosLoaded && !pairVerified;
 
   // The proceed button reflects the live state of the parent pairing.
   const proceedLabel =
     (!picked(p1) || !picked(p2)) ? 'Complete both parent frogs'
     : (!frog1 || !frog2 || !combosLoaded) ? 'Checking…'
-    : pairExists ? 'Duplicate found'
+    : pairVerified ? 'Pair already verified'
     : 'Proceed →';
 
   // ── Phase 2: the rest of the submission (only after a successful check) ─────
   const resultReady =
     picked(pResult) && !!frogR &&
     picked(pLost) && !!frogL &&
-    !resolving && !unknownFrog && !lostPartial && sourceValid && !alreadyExists &&
+    !resolving && !unknownFrog && !lostPartial && sourceValid &&
     colorConstraintMet && !!screenshot;
   const canSubmit = checked && resultReady && !submitting;
 
@@ -206,6 +204,7 @@ export default function SubmitCombo() {
           resultFrogId: frogR.id, resultFrogName: fullName(pResult)!,
           lostFrogId: frogL?.id, lostFrogName: frogL ? fullName(pLost)! : undefined,
           sourceLink: sourceTrim || undefined,
+          versionId: version?.id, versionName: version?.version,
         },
         screenshot,
         auth.user?.id_token,
@@ -213,7 +212,7 @@ export default function SubmitCombo() {
       setResult({ ok: true, message: 'Thanks! Your submission was received and is pending review.' });
       setTimeout(() => setResult(null), 3000);
       setP1(EMPTY); setP2(EMPTY); setPResult(EMPTY); setPLost(EMPTY);
-      setSourceLink(''); setScreenshot(null); setFileError(null); setChecked(false); setAttempted(false);
+      setSourceLink(''); setVersionSel(''); setScreenshot(null); setFileError(null); setChecked(false); setAttempted(false);
       if (fileRef.current) fileRef.current.value = '';
     } catch (e) {
       setResult({ ok: false, message: e instanceof Error ? e.message : 'Something went wrong.' });
@@ -285,6 +284,11 @@ export default function SubmitCombo() {
             </div>
             <button className="csv-btn" type="button" onClick={handleUnlock}>Edit parents</button>
           </div>
+          {existingPair && (
+            <p className="search-hint">
+              This pair is recorded but unverified — your submission will replace its existing data.
+            </p>
+          )}
 
           <div className="breeding-parents">
             <FrogInputs
@@ -352,6 +356,23 @@ export default function SubmitCombo() {
                 placeholder="https://… link to Discord/Reddit/etc post"
                 onChange={e => setSourceLink(e.target.value)}
               />
+            </div>
+            <div className="combobox-field">
+              <label className="combobox-label" htmlFor="combo-version">Game version</label>
+              <select
+                id="combo-version"
+                className="search-input"
+                style={{ width: '100%' }}
+                value={version?.id ?? ''}
+                onChange={e => setVersionSel(e.target.value)}
+              >
+                {versions.map((v, i) => (
+                  <option key={v.id} value={v.id}>{v.version}{i === 0 ? ' (latest)' : ''}</option>
+                ))}
+              </select>
+              <p className="search-hint" style={{ marginTop: 4 }}>
+                The version the mutation was found on, if it wasn't the current one.
+              </p>
             </div>
           </div>
 

@@ -1,10 +1,10 @@
 import { useState, useMemo, useRef } from 'react';
 import { useQuery, useQueries } from '@tanstack/react-query';
-import { fetchTable, fetchBreedFrogs, fetchCombos, fetchFrogById, type TeableRecord } from '../api/teable';
+import { fetchTable, fetchBreedFrogs, fetchMutations, fetchFrogById, type Mutation, type TeableRecord } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
 import { formatNum } from '../utils/format';
 import { breedOptionsFrom } from '../utils/breeds';
-import { hasAttachment, imageProxyUrl } from '../utils/attachments';
+import { imageProxyUrl } from '../utils/attachments';
 import { useBreedSort } from '../hooks/useBreedSort';
 import { useColorSort } from '../hooks/useColorSort';
 import { useSpoilers } from '../hooks/useSpoilers';
@@ -22,22 +22,6 @@ interface FrogFields  extends Record<string, unknown> {
   Stamina?:  number;
 }
 
-// Chroma / Glass combination tables — Frog 1 / Frog 2 are links to the frogs table.
-// Result Frog / Lost Frog describe the in-game swap: when this pair pops, the
-// Lost Frog offspring is replaced by the (special) Result Frog.
-interface ComboFields extends Record<string, unknown> {
-  'Frog 1'?:      unknown;
-  'Frog 2'?:      unknown;
-  'Screenshot'?:  unknown;
-  'Result Frog'?: unknown; // dbFieldName: result_frog
-  'Lost Frog'?:   unknown; // dbFieldName: lost_frog
-}
-
-// Display-name keys for the swap fields (combos are fetched with fieldKeyType=name).
-// Adjust here if the Teable field display names differ.
-const RESULT_FROG_FIELD = 'Result Frog';
-const LOST_FROG_FIELD = 'Lost Frog';
-
 interface ParentSel {
   base:  ComboOption | null;
   sec:   ComboOption | null;
@@ -45,26 +29,6 @@ interface ParentSel {
 }
 
 const EMPTY: ParentSel = { base: null, sec: null, breed: null };
-
-// Extracts the linked frog record ID from a Teable link field, which may come
-// back as a single { id, title } object or an array of them.
-function linkId(val: unknown): string | null {
-  const first = Array.isArray(val) ? val[0] : val;
-  if (first && typeof first === 'object' && 'id' in first) {
-    return String((first as { id: unknown }).id);
-  }
-  return null;
-}
-
-// Linked record's display title (used as a fallback name before its full record
-// loads).
-function linkTitle(val: unknown): string | null {
-  const first = Array.isArray(val) ? val[0] : val;
-  if (first && typeof first === 'object' && 'title' in first) {
-    return String((first as { title: unknown }).title);
-  }
-  return null;
-}
 
 // All 8 offspring trait combinations: each character picks parent A's or B's
 // base / secondary / breed respectively.
@@ -167,8 +131,7 @@ export default function BreedingPairs() {
   });
 
   // Special-combination tables — small and ETag-cached, so fetch eagerly
-  const { data: chromaCombos } = useQuery({ queryKey: ['table', 'chroma'], queryFn: () => fetchCombos<ComboFields>('chroma') });
-  const { data: glassCombos  } = useQuery({ queryKey: ['table', 'glass'],  queryFn: () => fetchCombos<ComboFields>('glass')  });
+  const { data: mutations } = useQuery({ queryKey: ['mutations'], queryFn: fetchMutations });
 
   // Index every fetched frog by its fullname for O(1) offspring lookups
   const index = useMemo(() => {
@@ -192,40 +155,24 @@ export default function BreedingPairs() {
     [allSelected, index, pb],
   );
 
-  // Check the parent pair against the Chroma/Glass tables (either order).
-  // Matches on frog record ID, the reliable link-field key. Collects every match
-  // (a pair can hit both tables), each carrying the Lost→Result swap it defines.
+  // Find the parent pair's Chroma/Glass mutations (pair stored in either order).
+  // Matches on frog record ID, the reliable link-field key. A pair can have
+  // several mutations, each carrying the Lost→Result swap it defines.
+  // Mutation Result / Lost Frog describe the in-game swap: when this pair pops,
+  // the Lost Frog offspring is replaced by the (special) Result Frog.
   const specialMatches = useMemo(() => {
     if (!frogA || !frogB) return [];
     const a = frogA.id, b = frogB.id;
-    const matches = (rec: TeableRecord<ComboFields>) => {
-      const f1 = linkId(rec.fields['Frog 1']);
-      const f2 = linkId(rec.fields['Frog 2']);
-      return (f1 === a && f2 === b) || (f1 === b && f2 === a);
-    };
-    const out: {
-      type: string;
-      screenshot: string | null;
-      lostId: string | null;
-      resultId: string | null;
-      resultTitle: string | null;
-    }[] = [];
-    const scan = (combos: TeableRecord<ComboFields>[] | undefined, type: 'Chroma' | 'Glass') =>
-      (combos ?? []).filter(matches).forEach(rec =>
-        out.push({
-          type,
-          screenshot: hasAttachment(rec.fields['Screenshot'])
-            ? imageProxyUrl(type === 'Chroma' ? 'chroma' : 'glass', rec.id, 'Screenshot')
-            : null,
-          lostId: linkId(rec.fields[LOST_FROG_FIELD]),
-          resultId: linkId(rec.fields[RESULT_FROG_FIELD]),
-          resultTitle: linkTitle(rec.fields[RESULT_FROG_FIELD]),
-        }),
-      );
-    scan(chromaCombos, 'Chroma');
-    scan(glassCombos, 'Glass');
-    return out;
-  }, [frogA, frogB, chromaCombos, glassCombos]);
+    const matches = (m: Mutation) =>
+      (m.frogAId === a && m.frogBId === b) || (m.frogAId === b && m.frogBId === a);
+    return (mutations ?? []).filter(matches).map(m => ({
+      type: m.type as string,
+      screenshot: m.hasScreenshot ? imageProxyUrl('pairs', m.pairId, 'Screenshot') : null,
+      lostId: m.lostId,
+      resultId: m.resultId,
+      resultTitle: m.resultTitle,
+    }));
+  }, [frogA, frogB, mutations]);
 
   // Resolve each Result Frog's record (stats + fullname) for the swapped slot.
   // Shares the ['frog', id] cache with the Frog Detail page.

@@ -18,8 +18,8 @@ export const TABLES = {
   secs:   { id: 'tbl5bLdOraLU5UDwNX2', take: 30  },
   frogs:  { id: 'tblgaaUnZGx1i61RCOZ', take: 1000 },
   weekly: { id: 'tblOuIZRVGlTPLAfM56', take: 300 },
-  chroma: { id: 'tbluqJI6VaHK0fWiPo6', take: 200 },
-  glass:  { id: 'tblaToM9WCudYNtRjaV', take: 200 },
+  pairs:     { id: 'tblzV3tVS6lzwXqKZb6', take: 1000 },
+  mutations: { id: 'tblZtnFsFF8dHF5pS5C', take: 1000 },
   levels: { id: 'tblD0zbgzX4vYjMPws2', take: 50  },
   changelog: { id: 'tblr5QaxStssOMP7jpR', take: 200 },
 } as const;
@@ -104,13 +104,95 @@ export async function fetchTable<T extends Record<string, unknown>>(
   return apiFetch<T>(id, key, take, 'fieldKeyType=dbFieldName');
 }
 
-// Special-combination tables (Chroma / Glass) use display field names so the
-// "Frog 1" / "Frog 2" link fields are easy to read.
-export async function fetchCombos<T extends Record<string, unknown>>(
-  key: 'chroma' | 'glass',
-): Promise<TeableRecord<T>[]> {
-  const { id, take } = TABLES[key];
-  return apiFetch<T>(id, key, take, 'fieldKeyType=name');
+// ── Frog pairs & mutations ─────────────────────────────────────────────────
+// Every recorded parent pair is a "Frog Pairs" record; each Chroma / Glass
+// mutation it produces is a "Mutations" record linking back to it (the pair's
+// screenshot covers all of its mutations). Both use display field names.
+
+interface PairFields extends Record<string, unknown> {
+  'Frog A'?:     unknown;
+  'Frog B'?:     unknown;
+  Verified?:     boolean;
+  Screenshot?:   unknown;
+}
+
+interface MutationFields extends Record<string, unknown> {
+  'Breeding Pair'?:   unknown;
+  'Mutation Type'?:   'Glass' | 'Chroma';
+  'Mutation Result'?: unknown;
+  'Lost Frog'?:       unknown;
+}
+
+export interface FrogPair {
+  id: string;
+  frogAId: string | null;
+  frogBId: string | null;
+  verified: boolean;
+  hasScreenshot: boolean;
+}
+
+// One mutation, flattened with its parent pair. Titles are the frogs' codes.
+export interface Mutation {
+  id: string;
+  pairId: string;
+  type: 'Glass' | 'Chroma';
+  frogAId: string | null;
+  frogATitle: string | null;
+  frogBId: string | null;
+  frogBTitle: string | null;
+  resultId: string | null;
+  resultTitle: string | null;
+  lostId: string | null;
+  lostTitle: string | null;
+  hasScreenshot: boolean;
+}
+
+function linkRef(val: unknown): { id: string; title: string | null } | null {
+  const first = Array.isArray(val) ? val[0] : val;
+  if (!first || typeof first !== 'object' || !('id' in first)) return null;
+  const title = 'title' in first ? String((first as { title: unknown }).title) : null;
+  return { id: String((first as { id: unknown }).id), title };
+}
+
+async function fetchPairRecords() {
+  const { id, take } = TABLES.pairs;
+  return apiFetch<PairFields>(id, 'pairs', take, 'fieldKeyType=name');
+}
+
+export async function fetchFrogPairs(): Promise<FrogPair[]> {
+  return (await fetchPairRecords()).map(r => ({
+    id: r.id,
+    frogAId: linkRef(r.fields['Frog A'])?.id ?? null,
+    frogBId: linkRef(r.fields['Frog B'])?.id ?? null,
+    verified: !!r.fields.Verified,
+    hasScreenshot: Array.isArray(r.fields.Screenshot) && r.fields.Screenshot.length > 0,
+  }));
+}
+
+export async function fetchMutations(): Promise<Mutation[]> {
+  const { id, take } = TABLES.mutations;
+  const [pairs, mutations] = await Promise.all([
+    fetchPairRecords(),
+    apiFetch<MutationFields>(id, 'mutations', take, 'fieldKeyType=name'),
+  ]);
+  const pairById = new Map(pairs.map(p => [p.id, p]));
+  return mutations.flatMap(m => {
+    const pair = pairById.get(linkRef(m.fields['Breeding Pair'])?.id ?? '');
+    const type = m.fields['Mutation Type'];
+    if (!pair || !type) return [];
+    const a = linkRef(pair.fields['Frog A']), b = linkRef(pair.fields['Frog B']);
+    const result = linkRef(m.fields['Mutation Result']), lost = linkRef(m.fields['Lost Frog']);
+    return [{
+      id: m.id,
+      pairId: pair.id,
+      type,
+      frogAId: a?.id ?? null, frogATitle: a?.title ?? null,
+      frogBId: b?.id ?? null, frogBTitle: b?.title ?? null,
+      resultId: result?.id ?? null, resultTitle: result?.title ?? null,
+      lostId: lost?.id ?? null, lostTitle: lost?.title ?? null,
+      hasScreenshot: Array.isArray(pair.fields.Screenshot) && pair.fields.Screenshot.length > 0,
+    }];
+  });
 }
 
 // ── Changelog ──────────────────────────────────────────────────────────────

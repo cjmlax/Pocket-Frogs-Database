@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { useDailyFrog } from '../hooks/useDailyFrog';
-import { fetchTable, fetchCombos, fetchFrogStats, fetchChangelog, type ChangelogEntry, type TeableRecord } from '../api/teable';
+import { fetchTable, fetchMutations, fetchFrogStats, fetchChangelog, type ChangelogEntry, type TeableRecord } from '../api/teable';
 import { formatNum } from '../utils/format';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -70,8 +70,7 @@ function SiteSummaryCard() {
   // so these add no network requests on a warm cache.
   const { data: breeds } = useQuery({ queryKey: ['table', 'breeds'], queryFn: () => fetchTable('breeds') });
   const { data: weekly } = useQuery({ queryKey: ['table', 'weekly'], queryFn: () => fetchTable('weekly') });
-  const { data: chroma } = useQuery({ queryKey: ['table', 'chroma'], queryFn: () => fetchCombos('chroma') });
-  const { data: glass  } = useQuery({ queryKey: ['table', 'glass'],  queryFn: () => fetchCombos('glass')  });
+  const { data: mutations } = useQuery({ queryKey: ['mutations'], queryFn: fetchMutations });
 
   // The frogs table is too large to fetch in full — two aggregation calls instead.
   const { data: frogStats } = useQuery({
@@ -80,7 +79,6 @@ function SiteSummaryCard() {
     staleTime: 60 * 60 * 1000,
   });
 
-  const combos = (chroma?.length ?? 0) + (glass?.length ?? 0);
   const holders = frogStats?.topFrogs ?? [];
 
   // Popup listing the frog(s) holding the highest value.
@@ -100,7 +98,7 @@ function SiteSummaryCard() {
     { label: 'Breeds',        value: breeds?.length },
     { label: 'Weekly Sets',   value: weekly?.length },
     { label: 'Highest Value', value: frogStats?.maxValue, isMax: true },
-    { label: 'Combos', value: chroma && glass ? combos : undefined },
+    { label: 'Combos', value: mutations?.length },
   ];
 
   return (

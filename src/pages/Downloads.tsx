@@ -16,8 +16,8 @@ const SLUG_TO_TABLE_ID: Record<string, string> = {
   secs:   TABLES.secs.id,
   frogs:  TABLES.frogs.id,
   weekly: TABLES.weekly.id,
-  chroma: TABLES.chroma.id,
-  glass:  TABLES.glass.id,
+  pairs:     TABLES.pairs.id,
+  mutations: TABLES.mutations.id,
   levels: TABLES.levels.id,
 };
 
@@ -28,8 +28,8 @@ const TABLE_DESCRIPTIONS: Record<string, string> = {
   secs:   'The table of pattern colors for frogs in the game and their corresponding index and values.',
   frogs:  'The table of each individual frog with in-game values and correlated data accociations.',
   weekly: 'The table of each weekly set, the frogs associated with it, and additional values.',
-  chroma: 'The table of frog breeding combinations that result in a chroma-based mutation.',
-  glass:  'The table of frog breeding combinations that result in a glass-based mutation.',
+  pairs:     'The table of parent frog pairs, whether or not they produce a mutation.',
+  mutations: 'The table of glass and chroma mutations, each linked to the frog pair that produces it.',
   levels: 'The table of frog levels and the in-game values accosicate with each level.',
 };
 
