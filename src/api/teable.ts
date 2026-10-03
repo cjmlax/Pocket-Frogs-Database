@@ -21,6 +21,7 @@ export const TABLES = {
   chroma: { id: 'tbluqJI6VaHK0fWiPo6', take: 200 },
   glass:  { id: 'tblaToM9WCudYNtRjaV', take: 200 },
   levels: { id: 'tblD0zbgzX4vYjMPws2', take: 50  },
+  changelog: { id: 'tblr5QaxStssOMP7jpR', take: 200 },
 } as const;
 
 export type TableKey = keyof typeof TABLES;
@@ -110,6 +111,41 @@ export async function fetchCombos<T extends Record<string, unknown>>(
 ): Promise<TeableRecord<T>[]> {
   const { id, take } = TABLES[key];
   return apiFetch<T>(id, key, take, 'fieldKeyType=name');
+}
+
+// ── Changelog ──────────────────────────────────────────────────────────────
+// Small table, so visibility filtering and date sorting happen client-side —
+// that keeps the whole table in the shared IndexedDB cache.
+
+export interface ChangelogEntry {
+  id: string;
+  version: string;
+  date: string;
+  platform: 'Both' | 'iOS' | 'Android';
+  notes: string;
+}
+
+interface ChangelogFields extends Record<string, unknown> {
+  Version?: string;
+  Date?: string;
+  Platform?: ChangelogEntry['platform'];
+  Visible?: boolean;
+  'Change Notes'?: string;
+}
+
+export async function fetchChangelog(): Promise<ChangelogEntry[]> {
+  const { id, take } = TABLES.changelog;
+  const records = await apiFetch<ChangelogFields>(id, 'changelog', take, 'fieldKeyType=name');
+  return records
+    .filter(r => r.fields.Visible && r.fields.Version && r.fields.Date)
+    .map(r => ({
+      id: r.id,
+      version: r.fields.Version!,
+      date: r.fields.Date!,
+      platform: r.fields.Platform ?? 'Both',
+      notes: r.fields['Change Notes'] ?? '',
+    }))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
 // ── Frog search ────────────────────────────────────────────────────────────

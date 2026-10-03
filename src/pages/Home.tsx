@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { useDailyFrog } from '../hooks/useDailyFrog';
-import { fetchTable, fetchCombos, fetchFrogStats, type TeableRecord } from '../api/teable';
+import { fetchTable, fetchCombos, fetchFrogStats, fetchChangelog, type ChangelogEntry, type TeableRecord } from '../api/teable';
 import { formatNum } from '../utils/format';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -149,18 +149,6 @@ function SiteSummaryCard() {
 
 // ── Update feed card ──────────────────────────────────────────────────────────
 
-interface ChangelogEntry {
-  version: string;
-  date: string;
-  platform: 'ios' | 'android' | 'both';
-  notes: string;
-}
-
-async function fetchManualEntries(): Promise<ChangelogEntry[]> {
-  const res = await fetch('/changelog.json');
-  return res.json();
-}
-
 function formatUpdateDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
@@ -172,9 +160,7 @@ function isRecent(iso: string) {
 // Per-OS designation: show "iOS"/"Android" for platform-specific updates, but
 // stay hidden for "both" (the common case) so it doesn't clutter every entry.
 function platformLabel(platform: ChangelogEntry['platform']): string | null {
-  if (platform === 'ios') return 'iOS';
-  if (platform === 'android') return 'Android';
-  return null;
+  return platform === 'Both' ? null : platform;
 }
 
 function groupByMinor(entries: ChangelogEntry[]): [string, ChangelogEntry[]][] {
@@ -189,8 +175,8 @@ function groupByMinor(entries: ChangelogEntry[]): [string, ChangelogEntry[]][] {
 
 function UpdateFeedCard() {
   const { data: entries = [] } = useQuery({
-    queryKey: ['manual-changelog'],
-    queryFn: fetchManualEntries,
+    queryKey: ['changelog'],
+    queryFn: fetchChangelog,
     staleTime: 60 * 60 * 1000,
   });
 
@@ -216,7 +202,7 @@ function UpdateFeedCard() {
               return (
                 <Fragment key={key}>
                   {groupEntries.map((entry, i) => (
-                    <div key={entry.version} className={`update-entry${i === 0 && isRecent(entry.date) ? ' update-entry--new' : ''}`}>
+                    <div key={entry.id} className={`update-entry${i === 0 && isRecent(entry.date) ? ' update-entry--new' : ''}`}>
                       <div className="update-entry-header">
                         <span className="update-version">v{entry.version}</span>
                         <span className="update-meta-sep">·</span>
@@ -243,7 +229,7 @@ function UpdateFeedCard() {
                   <span className={`weekly-expand-arrow${isOpen ? ' open' : ''}`}>▼</span>
                 </button>
                 {isOpen && groupEntries.map((entry) => (
-                  <div key={entry.version} className="update-entry update-entry--grouped">
+                  <div key={entry.id} className="update-entry update-entry--grouped">
                     <div className="update-entry-header">
                       <span className="update-version">v{entry.version}</span>
                       <span className="update-meta-sep">·</span>

@@ -8,38 +8,20 @@ This website is also two terrible things combined — a work in progress and vib
 
 I am also newer to Github, especially managing a repo. Please don't hesitate to reach out and start a conversion in whatever way feels right, I'm happy to take input and make changes since this entire project is comunnity-driven at its heart.
 
-## Changelog (`public/changelog.json`)
+## Changelog (Teable `Changelog` table)
 
-The App Updates panel on the homepage pulls from two sources:
+The App Updates panel on the homepage reads from the `Changelog` table in Teable.
 
-1. **Automatic** — the latest iOS version is fetched live from the Apple App Store API by the worker. It appears automatically whenever a new version ships.
-2. **Manual** — older entries are read from `public/changelog.json`. The worker deduplicates by version number so the live entry never appears twice.
+1. **Automatic** — the submissions worker polls the Apple App Store daily and adds a row for each new iOS version (`Source` = iTunes Poller). It skips a version that already has an iOS row.
+2. **Manual** — older entries, Android releases, or corrections can be added directly in Teable (`Source` = Manual).
 
-### Adding an entry
+### Fields
 
-Add new entries at the **top** of the array, above any existing ones.
-
-```json
-[
-  {
-    "version": "3.9.0",
-    "date": "2025-03-10T00:00:00Z",
-    "platform": "both",
-    "notes": "• New frog habitats\n• Bug fixes"
-  },
-  {
-    "version": "3.8.0",
-    "date": "2024-01-01T00:00:00Z",
-    "platform": "both",
-    "notes": "Example older entry."
-  }
-]
-```
-
-### Format rules
-
-- **Newest entry at the top** of the array
-- **Commas** go after each `}` except the very last entry
-- **Line breaks** in `notes` must be written as `\n` — actual newlines inside a JSON string will break the file
-- **`date`** must be ISO 8601 format: `"YYYY-MM-DDT00:00:00Z"` — just swap the date portion
-- **`platform`** accepts `"ios"`, `"android"`, or `"both"` — not currently displayed in the UI but kept for reference
+| Field | Notes |
+|---|---|
+| **Version** | e.g. `3.9.0`. Not unique — the same version can appear once per platform. |
+| **Date** | Release date. The feed is sorted by this, newest first. |
+| **Platform** | `iOS`, `Android`, or `Both`. iOS/Android are shown on the entry; `Both` is hidden. |
+| **Visible** | Unchecked entries are hidden from the site without deleting them. |
+| **Source** | `iTunes Poller` or `Manual` — for reference only. |
+| **Change Notes** | Release notes. Line breaks can be typed directly. |
