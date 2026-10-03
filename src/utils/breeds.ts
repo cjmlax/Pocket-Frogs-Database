@@ -10,6 +10,18 @@ export function breedLevel(r: TeableRecord): number {
   return Number.isNaN(n) ? Infinity : n;
 }
 
+// Position in the in-game Froggydex (dex_order field). Unnumbered breeds sort
+// last, falling back to level so new frogs still land roughly in place.
+function breedDex(r: TeableRecord): number {
+  const n = r.fields.dex_order;
+  return typeof n === 'number' ? n : Infinity;
+}
+
+// Infinity - Infinity is NaN, which sort() treats as unordered; compare explicitly.
+function cmpNum(a: number, b: number): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
 // Builds Breed ComboBox options, fully ordered by the active sort key and
 // direction. Breed boxes always pass presorted so the ComboBox keeps this order.
 export function breedOptionsFrom(
@@ -18,8 +30,9 @@ export function breedOptionsFrom(
 ): ComboOption[] {
   const recs = breeds ?? [];
   const label = (r: TeableRecord) => (r.fields.Breed as string) ?? r.id;
-  const cmp = sort.key === 'level'
-    ? (a: TeableRecord, b: TeableRecord) => breedLevel(a) - breedLevel(b) || label(a).localeCompare(label(b))
+  const cmp = sort.key === 'dex'
+    ? (a: TeableRecord, b: TeableRecord) =>
+        cmpNum(breedDex(a), breedDex(b)) || cmpNum(breedLevel(a), breedLevel(b)) || label(a).localeCompare(label(b))
     : (a: TeableRecord, b: TeableRecord) => label(a).localeCompare(label(b));
   const ordered = [...recs].sort(cmp);
   if (sort.dir === 'desc') ordered.reverse();

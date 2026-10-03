@@ -1,18 +1,19 @@
 import { useSyncExternalStore } from 'react';
 
-export type BreedSortKey = 'alpha' | 'level';
+export type BreedSortKey = 'alpha' | 'dex';
 export type SortDir = 'asc' | 'desc';
 export interface BreedSort { key: BreedSortKey; dir: SortDir }
 
 const KEY = 'breedSort';
-const DEFAULT: BreedSort = { key: 'level', dir: 'asc' };
+const DEFAULT: BreedSort = { key: 'dex', dir: 'asc' };
 
 function load(): BreedSort {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const p = JSON.parse(raw);
-      if ((p.key === 'alpha' || p.key === 'level') && (p.dir === 'asc' || p.dir === 'desc')) return p;
+      if (p.key === 'level') p.key = 'dex'; // the old level sort was replaced by dex order
+      if ((p.key === 'alpha' || p.key === 'dex') && (p.dir === 'asc' || p.dir === 'desc')) return p;
     }
   } catch { /* ignore malformed value */ }
   return DEFAULT;

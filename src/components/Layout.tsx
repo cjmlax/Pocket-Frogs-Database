@@ -188,10 +188,10 @@ function SettingsDropdown() {
             <IconMoon />
           </button>
 
-          {/* Row 2: Breed sort — label (left), level (center), alpha (right) */}
+          {/* Row 2: Breed sort — label (left), dex (center), alpha (right) */}
           <span className="settings-row-label" title="Sort order of Breed selectors">Breed:</span>
-          <button className={`settings-theme-opt${breedSort.key === 'level' ? ' active' : ''}`} onClick={() => selectBreedSort('level')} aria-label="Sort breeds by level" title="Level Order">
-            #{breedSort.key === 'level' && (breedSort.dir === 'asc' ? ' ↑' : ' ↓')}
+          <button className={`settings-theme-opt${breedSort.key === 'dex' ? ' active' : ''}`} onClick={() => selectBreedSort('dex')} aria-label="Sort breeds by froggydex order" title="Froggydex Order">
+            #{breedSort.key === 'dex' && (breedSort.dir === 'asc' ? ' ↑' : ' ↓')}
           </button>
           <button className={`settings-theme-opt${breedSort.key === 'alpha' ? ' active' : ''}`} onClick={() => selectBreedSort('alpha')} aria-label="Sort breeds alphabetically" title="Alphabetical Order">
             A{breedSort.key === 'alpha' && (breedSort.dir === 'asc' ? ' ↑' : ' ↓')}
