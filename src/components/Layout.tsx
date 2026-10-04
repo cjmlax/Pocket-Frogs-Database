@@ -6,6 +6,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useBreedSort, selectBreedSort } from '../hooks/useBreedSort';
 import { useColorSort, selectColorSort } from '../hooks/useColorSort';
 import { useSpoilers } from '../hooks/useSpoilers';
+import { usePlatform } from '../hooks/usePlatform';
 import { useDisplayName } from '../hooks/useDisplayName';
 import AlertBanner from './AlertBanner';
 import '../App.css';
@@ -146,6 +147,7 @@ function SettingsDropdown() {
   const breedSort = useBreedSort();
   const colorSort = useColorSort();
   const { spoilers, set: setSpoilers } = useSpoilers();
+  const { platform, set: setPlatform } = usePlatform();
   const auth = useAuth();
   const { displayName, current } = useDisplayName();
   const navigate = useNavigate();
@@ -213,6 +215,15 @@ function SettingsDropdown() {
           </button>
           <button className={`settings-theme-opt${!spoilers ? ' active' : ''}`} onClick={() => setSpoilers(false)} aria-label="Spoilers off" title="Hide Glass/Chroma combinations">
             Off
+          </button>
+
+          {/* Row 5: Platform — label (left), iOS (center), Android (right) */}
+          <span className="settings-row-label" title="Platform shown by default for app updates">Platform:</span>
+          <button className={`settings-theme-opt settings-text-opt${platform === 'iOS' ? ' active' : ''}`} onClick={() => setPlatform('iOS')} aria-label="Default platform iOS" title="Show iOS updates by default">
+            iOS
+          </button>
+          <button className={`settings-theme-opt settings-text-opt${platform === 'Android' ? ' active' : ''}`} onClick={() => setPlatform('Android')} aria-label="Default platform Android" title="Show Android updates by default">
+            Android
           </button>
 
           {/* Account — username (→ account page) when signed in, else "Log In" */}

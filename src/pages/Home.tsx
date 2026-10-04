@@ -4,6 +4,7 @@ import { Link } from 'react-router';
 import { useDailyFrog } from '../hooks/useDailyFrog';
 import { fetchTable, fetchMutations, fetchFrogStats, fetchChangelog, type ChangelogEntry, type TeableRecord } from '../api/teable';
 import { formatNum } from '../utils/format';
+import { usePlatform, type Platform } from '../hooks/usePlatform';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -155,20 +156,82 @@ function isRecent(iso: string) {
   return Date.now() - new Date(iso).getTime() < 7 * 24 * 60 * 60 * 1000;
 }
 
-// Per-OS designation: show "iOS"/"Android" for platform-specific updates, but
-// stay hidden for "both" (the common case) so it doesn't clutter every entry.
-function platformLabel(platform: ChangelogEntry['platform']): string | null {
-  return platform === 'Both' ? null : platform;
+// One feed entry per version. The poller records each store separately, so a
+// version can have an iOS row, an Android row, or both; legacy "Both" rows
+// (from the old iTunes poller) cover either platform.
+interface VersionUpdate {
+  version: string;
+  latest: string; // newest date across platforms — drives ordering and "new"
+  entries: Partial<Record<Platform, ChangelogEntry>>;
+  split: boolean; // has platform-specific rows, so the pills are shown
 }
 
-function groupByMinor(entries: ChangelogEntry[]): [string, ChangelogEntry[]][] {
-  const groups = new Map<string, ChangelogEntry[]>();
+const PLATFORMS: Platform[] = ['iOS', 'Android'];
+
+// Entries arrive newest first, so versions keep the order of their newest row.
+function groupByVersion(entries: ChangelogEntry[]): VersionUpdate[] {
+  const versions = new Map<string, VersionUpdate>();
   for (const entry of entries) {
-    const key = entry.version.split('.').slice(0, 2).join('.');
+    let v = versions.get(entry.version);
+    if (!v) {
+      v = { version: entry.version, latest: entry.date, entries: {}, split: false };
+      versions.set(entry.version, v);
+    }
+    if (entry.platform === 'Both') {
+      for (const p of PLATFORMS) v.entries[p] ??= entry;
+    } else {
+      v.entries[entry.platform] = entry; // platform-specific row beats a legacy "Both"
+      v.split = true;
+    }
+  }
+  return [...versions.values()];
+}
+
+function groupByMinor(updates: VersionUpdate[]): [string, VersionUpdate[]][] {
+  const groups = new Map<string, VersionUpdate[]>();
+  for (const update of updates) {
+    const key = update.version.split('.').slice(0, 2).join('.');
     if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(entry);
+    groups.get(key)!.push(update);
   }
   return [...groups.entries()];
+}
+
+function UpdateEntry({ update, selected, onSelect, className }: {
+  update: VersionUpdate;
+  selected: Platform;
+  onSelect: (p: Platform) => void;
+  className: string;
+}) {
+  // Fall back to whichever platform has this version if the selected one doesn't yet.
+  const shown = update.entries[selected] ? selected : PLATFORMS.find(p => update.entries[p])!;
+  const entry = update.entries[shown]!;
+  return (
+    <div className={className}>
+      <div className="update-entry-header">
+        <span className="update-version">v{update.version}</span>
+        <span className="update-meta-sep">·</span>
+        <span className="update-date">{formatUpdateDate(entry.date)}</span>
+        {update.split && (
+          <span className="update-platform-pills" role="group" aria-label="Platform">
+            {PLATFORMS.map(p => (
+              <button
+                key={p}
+                className={`update-platform-pill${p === shown ? ' active' : ''}`}
+                onClick={() => onSelect(p)}
+                disabled={!update.entries[p]}
+                aria-pressed={p === shown}
+                title={update.entries[p] ? undefined : `Not recorded for ${p}`}
+              >
+                {p}
+              </button>
+            ))}
+          </span>
+        )}
+      </div>
+      {entry.notes && <p className="update-notes">{entry.notes}</p>}
+    </div>
+  );
 }
 
 function UpdateFeedCard() {
@@ -177,9 +240,20 @@ function UpdateFeedCard() {
     queryFn: fetchChangelog,
     staleTime: 60 * 60 * 1000,
   });
+  const { platform } = usePlatform();
 
-  const groups = useMemo(() => groupByMinor(entries), [entries]);
+  const groups = useMemo(() => groupByMinor(groupByVersion(entries)), [entries]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  // Per-version platform picks. They're tied to the default they were made
+  // under, so changing the site-wide setting resets every entry to it.
+  const [picks, setPicks] = useState<{ base: Platform; byVersion: Record<string, Platform> }>(
+    { base: platform, byVersion: {} },
+  );
+  const byVersion = picks.base === platform ? picks.byVersion : {};
+  const selectedFor = (version: string) => byVersion[version] ?? platform;
+  const pick = (version: string, p: Platform) =>
+    setPicks({ base: platform, byVersion: { ...byVersion, [version]: p } });
 
   const toggleGroup = (key: string) =>
     setExpanded(prev => {
@@ -195,25 +269,18 @@ function UpdateFeedCard() {
         {entries.length === 0 ? (
           <p className="updates-empty">Loading…</p>
         ) : (
-          groups.map(([key, groupEntries], gi) => {
+          groups.map(([key, updates], gi) => {
             if (gi === 0) {
               return (
                 <Fragment key={key}>
-                  {groupEntries.map((entry, i) => (
-                    <div key={entry.id} className={`update-entry${i === 0 && isRecent(entry.date) ? ' update-entry--new' : ''}`}>
-                      <div className="update-entry-header">
-                        <span className="update-version">v{entry.version}</span>
-                        <span className="update-meta-sep">·</span>
-                        <span className="update-date">{formatUpdateDate(entry.date)}</span>
-                        {platformLabel(entry.platform) && (
-                          <>
-                            <span className="update-meta-sep">·</span>
-                            <span className="update-platform">{platformLabel(entry.platform)}</span>
-                          </>
-                        )}
-                      </div>
-                      {entry.notes && <p className="update-notes">{entry.notes}</p>}
-                    </div>
+                  {updates.map((update, i) => (
+                    <UpdateEntry
+                      key={update.version}
+                      update={update}
+                      selected={selectedFor(update.version)}
+                      onSelect={p => pick(update.version, p)}
+                      className={`update-entry${i === 0 && isRecent(update.latest) ? ' update-entry--new' : ''}`}
+                    />
                   ))}
                 </Fragment>
               );
@@ -223,24 +290,17 @@ function UpdateFeedCard() {
               <div key={key} className="update-group">
                 <button className="update-group-header" onClick={() => toggleGroup(key)} aria-expanded={isOpen}>
                   <span className="update-group-label">v{key}</span>
-                  <span className="update-group-count">{groupEntries.length} update{groupEntries.length !== 1 ? 's' : ''}</span>
+                  <span className="update-group-count">{updates.length} update{updates.length !== 1 ? 's' : ''}</span>
                   <span className={`weekly-expand-arrow${isOpen ? ' open' : ''}`}>▼</span>
                 </button>
-                {isOpen && groupEntries.map((entry) => (
-                  <div key={entry.id} className="update-entry update-entry--grouped">
-                    <div className="update-entry-header">
-                      <span className="update-version">v{entry.version}</span>
-                      <span className="update-meta-sep">·</span>
-                      <span className="update-date">{formatUpdateDate(entry.date)}</span>
-                      {platformLabel(entry.platform) && (
-                        <>
-                          <span className="update-meta-sep">·</span>
-                          <span className="update-platform">{platformLabel(entry.platform)}</span>
-                        </>
-                      )}
-                    </div>
-                    {entry.notes && <p className="update-notes">{entry.notes}</p>}
-                  </div>
+                {isOpen && updates.map(update => (
+                  <UpdateEntry
+                    key={update.version}
+                    update={update}
+                    selected={selectedFor(update.version)}
+                    onSelect={p => pick(update.version, p)}
+                    className="update-entry update-entry--grouped"
+                  />
                 ))}
               </div>
             );

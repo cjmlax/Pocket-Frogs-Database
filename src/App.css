@@ -304,11 +304,43 @@ a.plain-link:hover {
   opacity: 0.6;
 }
 
-.update-platform {
-  font-size: 12px;
+/* iOS / Android toggle on versions with per-platform rows */
+.update-platform-pills {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 4px;
+  align-self: center;
+}
+
+.update-platform-pill {
+  font-family: var(--sans);
+  font-size: 11px;
   font-weight: 600;
+  line-height: 1;
   letter-spacing: 0.02em;
-  opacity: 0.75;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.update-platform-pill:hover:not(:disabled):not(.active) {
+  border-color: var(--accent-border);
+  color: var(--text-h);
+}
+
+.update-platform-pill.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  cursor: default;
+}
+
+.update-platform-pill:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .update-notes {
@@ -1415,7 +1447,7 @@ tr:hover .pin-btn,
   box-shadow: var(--shadow), 0 20px 40px -8px rgba(0, 0, 0, 0.18);
   z-index: 50;
   display: grid;
-  grid-template-columns: auto 34px 34px;
+  grid-template-columns: auto minmax(34px, auto) minmax(34px, auto);
   gap: 4px;
 }
 
@@ -1464,6 +1496,11 @@ tr:hover .pin-btn,
 .settings-theme-opt:hover {
   background: var(--code-bg);
   color: var(--text-h);
+}
+
+.settings-theme-opt.settings-text-opt {
+  font-size: 13px;
+  padding: 0 8px;
 }
 
 .settings-theme-opt.active {
