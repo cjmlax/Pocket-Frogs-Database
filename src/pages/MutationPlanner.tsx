@@ -37,7 +37,12 @@ interface PlannedFrog {
   sel:  CompleteFrogSel;
   name: string;
   id:   string | null; // Frog_ID, e.g. "0:18:11"
+  key:  string;        // name plus copy number, since a frog may appear twice
 }
+
+// A frog can breed with itself, so a plan may hold two copies of it (the line
+// between them is its self-pair) but no more.
+const MAX_COPIES = 2;
 
 interface Edge {
   key:    string;
@@ -212,16 +217,18 @@ export default function MutationPlanner() {
   const [activeEdge, setActiveEdge] = useState<string | null>(null);
 
   // The plan lives in the URL as Frog_IDs (?frogs=0-18-11_0-18-4), so a plan
-  // can be shared as a link. Duplicates and anything past the cap are dropped.
+  // can be shared as a link. Extra copies of a frog and anything past the cap
+  // are dropped.
   const frogs = useMemo<PlannedFrog[]>(() => {
     if (!lookup) return [];
-    const seen = new Set<string>();
+    const copies = new Map<string, number>();
     return decodeFrogParam(searchParams.get('frogs'), lookup)
-      .map(sel => ({ sel, name: frogName(sel), id: frogId(sel, lookup) }))
-      .filter(f => {
-        if (seen.has(f.name)) return false;
-        seen.add(f.name);
-        return true;
+      .flatMap(sel => {
+        const name = frogName(sel);
+        const copy = copies.get(name) ?? 0;
+        if (copy >= MAX_COPIES) return [];
+        copies.set(name, copy + 1);
+        return [{ sel, name, id: frogId(sel, lookup), key: `${name}#${copy}` }];
       })
       .slice(0, MAX_FROGS);
   }, [lookup, searchParams]);
@@ -279,10 +286,9 @@ export default function MutationPlanner() {
   // ── Editing ───────────────────────────────────────────────────────────────
 
   const editName = editor && isComplete(editor.sel) ? frogName(editor.sel) : null;
-  const duplicateOf = editName
-    ? frogs.findIndex((f, i) => i !== editor?.index && f.name === editName)
-    : -1;
-  const canSave = !!editName && duplicateOf < 0;
+  const tooMany = !!editName
+    && frogs.filter((f, i) => i !== editor?.index && f.name === editName).length >= MAX_COPIES;
+  const canSave = !!editName && !tooMany;
 
   function openEditor(index: number | null) {
     setEditor(prev => ({
@@ -405,7 +411,7 @@ export default function MutationPlanner() {
 
             {frogs.map((f, i) => (
               <div
-                key={f.name}
+                key={f.key}
                 className={`planner-frog${activeFrog === i ? ' is-active' : ''}${editor?.index === i ? ' is-editing' : ''}`}
                 style={{ left: `${positions[i].x}%`, top: `${positions[i].y}%` }}
                 onMouseEnter={() => setActiveFrog(i)}
@@ -447,9 +453,9 @@ export default function MutationPlanner() {
                 onChange={sel => setEditor(prev => (prev ? { ...prev, sel } : prev))}
                 options={frogOptions}
               >
-                {duplicateOf >= 0 && (
+                {tooMany && (
                   <p className="planner-duplicate" role="alert">
-                    {editName} is already in this plan. Choose a different frog or cancel.
+                    {editName} is already in this plan twice. Choose a different frog or cancel.
                   </p>
                 )}
                 <div className="crop-buttons">
