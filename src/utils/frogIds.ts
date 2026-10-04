@@ -72,6 +72,16 @@ export function frogIdsParam(ids: (string | null | undefined)[]): string {
     .join('_');
 }
 
+// Frog Detail lives at /frog/<Frog_ID with dashes>, e.g. /frog/0-18-11.
+export function frogPath(frogId: string): string {
+  return `/frog/${frogId.replaceAll(':', '-')}`;
+}
+
+// The Frog_ID in a /frog/:frogId URL segment, or null if it isn't one.
+export function frogIdFromPath(segment: string | undefined): string | null {
+  return segment && /^\d+-\d+-\d+$/.test(segment) ? segment.replaceAll('-', ':') : null;
+}
+
 export function encodeFrogParam(frogs: CompleteFrogSel[], lk: FrogIdLookup): string {
   return frogIdsParam(frogs.map(f => frogId(f, lk)));
 }

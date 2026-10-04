@@ -330,6 +330,23 @@ export async function fetchBreedFrogs<T extends Record<string, unknown>>(
   return records;
 }
 
+// Fetches a single frog by its Frog_ID ("0:18:11"); null when there's no match.
+const FROG_ID_FIELD = 'fldXdFuyFj6NDz1qjMY';
+
+export async function fetchFrogByFrogId<T extends Record<string, unknown>>(
+  frogId: string,
+): Promise<TeableRecord<T> | null> {
+  const params = new URLSearchParams({
+    fieldKeyType: 'dbFieldName',
+    take: '1',
+    filter: JSON.stringify({ conjunction: 'and', filterSet: [{ fieldId: FROG_ID_FIELD, operator: 'is', value: frogId }] }),
+  });
+  const response = await fetch(`${BASE_URL}/${TABLES.frogs.id}/record?${params}`, { headers: { Accept: 'application/json' } });
+  if (!response.ok) throw new Error(`API Error ${response.status}`);
+  const data = (await response.json()) as { records: TeableRecord<T>[] };
+  return data.records[0] ?? null;
+}
+
 // Fetches a single frog record by its Teable record ID
 export async function fetchFrogById<T extends Record<string, unknown>>(
   recordId: string,
@@ -353,7 +370,7 @@ const FROG_VALUE_FIELD = 'fldsFCJTusSBpi0mYH3';
 export interface FrogStats {
   count: number;
   maxValue: number | null;
-  topFrogs: { id: string; fullname: string }[]; // every frog tied at maxValue
+  topFrogs: { id: string; frogId: string; fullname: string }[]; // every frog tied at maxValue
 }
 
 // How many top-sorted records to scan for ties at the max value. The highest
@@ -375,14 +392,14 @@ export async function fetchFrogStats(): Promise<FrogStats> {
 
   const countData = (await countRes.json()) as { rowCount?: number };
   const topData   = (await topRes.json()) as {
-    records?: { id: string; name?: string; fields: { Value?: number; fullname?: string } }[];
+    records?: { id: string; name?: string; fields: { Value?: number; fullname?: string; Frog_ID?: string } }[];
   };
 
   const records  = topData.records ?? [];
   const maxValue = typeof records[0]?.fields.Value === 'number' ? records[0].fields.Value : null;
   const topFrogs = maxValue == null ? [] : records
     .filter(r => r.fields.Value === maxValue)
-    .map(r => ({ id: r.id, fullname: String(r.fields.fullname ?? r.name ?? '') }));
+    .map(r => ({ id: r.id, frogId: String(r.fields.Frog_ID ?? r.name ?? ''), fullname: String(r.fields.fullname ?? r.name ?? '') }));
 
   return { count: countData.rowCount ?? 0, maxValue, topFrogs };
 }

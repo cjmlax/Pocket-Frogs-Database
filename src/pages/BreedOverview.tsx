@@ -11,6 +11,7 @@ import { formatNum } from '../utils/format';
 import { downloadCsv } from '../utils/csv';
 import { breedOptionsFrom } from '../utils/breeds';
 import { useBreedSort } from '../hooks/useBreedSort';
+import { frogPath } from '../utils/frogIds';
 import { useSpoilers } from '../hooks/useSpoilers';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
@@ -260,9 +261,11 @@ export default function BreedOverview() {
       return [{
         type:         m.type,
         thisId:       isBreedA ? m.frogAId : m.frogBId,
+        thisTitle:    isBreedA ? m.frogATitle : m.frogBTitle,
         partnerId:    isBreedA ? m.frogBId : m.frogAId,
         partnerTitle: isBreedA ? m.frogBTitle : m.frogATitle,
         resultId:     m.resultId,
+        resultTitle:  m.resultTitle,
         screenshots:  pairScreenshotUrls(m.pairId, m.screenshotCount),
       }];
     });
@@ -605,18 +608,18 @@ export default function BreedOverview() {
                       ) : rows.map((row, i) => (
                         <tr key={i}>
                           <td>
-                            {row.thisId
-                              ? <a href={`/frog/${row.thisId}`} className="plain-link">{row.thisFrogName}</a>
+                            {row.thisTitle
+                              ? <a href={frogPath(row.thisTitle)} className="plain-link">{row.thisFrogName}</a>
                               : row.thisFrogName}
                           </td>
                           <td>
-                            {row.partnerId
-                              ? <a href={`/frog/${row.partnerId}`} className="plain-link">{row.partnerName}</a>
+                            {row.partnerTitle
+                              ? <a href={frogPath(row.partnerTitle)} className="plain-link">{row.partnerName}</a>
                               : row.partnerName}
                           </td>
                           <td>
-                            {row.resultId
-                              ? <a href={`/frog/${row.resultId}`} className="plain-link">{row.resultName}</a>
+                            {row.resultTitle
+                              ? <a href={frogPath(row.resultTitle)} className="plain-link">{row.resultName}</a>
                               : row.resultName}
                           </td>
                           <td className="pin-cell">

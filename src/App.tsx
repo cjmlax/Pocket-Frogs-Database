@@ -25,7 +25,7 @@ const router = createBrowserRouter([
       { index: true, element: <Home /> },
       { path: 'frogs', element: <FrogList /> },
       { path: 'frog', element: <FrogDetail /> },
-      { path: 'frog/:id', element: <FrogDetail /> },
+      { path: 'frog/:frogId', element: <FrogDetail /> },
       { path: 'weekly', element: <WeeklyList /> },
       { path: 'breeds', element: <BreedOverview /> },
       { path: 'breeding', element: <BreedingPairs /> },

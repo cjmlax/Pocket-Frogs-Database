@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router';
 import { useQuery, useQueries, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { type SortingState } from '@tanstack/react-table';
 import {
-  fetchFrogById, fetchTable, fetchMutations, fetchBreedFrogs, fetchFrogStats,
+  fetchFrogById, fetchFrogByFrogId, fetchTable, fetchMutations, fetchBreedFrogs, fetchFrogStats,
 } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
 import WeeklyTable, { type WeeklyFields, WEEKLY_FROG_FIELDS } from '../components/WeeklyTable';
@@ -15,10 +15,12 @@ import { colorOptionsFrom } from '../utils/colors';
 import { pairScreenshotUrls } from '../utils/attachments';
 import ImageLightbox from '../components/ImageLightbox';
 import { formatNum } from '../utils/format';
+import { frogIdFromPath, frogPath } from '../utils/frogIds';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
 interface FrogFields extends Record<string, unknown> {
+  Frog_ID?:   string;
   fullname?:  string;
   Breed?:     unknown;
   Primary?:   unknown;
@@ -75,7 +77,9 @@ interface PickerSel {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function FrogDetail() {
-  const { id } = useParams<{ id: string }>();
+  // The URL carries the frog's Frog_ID with dashes: /frog/0-18-11.
+  const { frogId: segment } = useParams<{ frogId: string }>();
+  const code = frogIdFromPath(segment);
   const navigate = useNavigate();
   const [lightbox, setLightbox] = useState<string[] | null>(null);
   const [weeklySort, setWeeklySort] = useState<SortingState>([{ id: 'date', desc: true }]);
@@ -83,9 +87,9 @@ export default function FrogDetail() {
   const queryClient = useQueryClient();
 
   const { data: frog, isFetching, error } = useQuery({
-    queryKey: ['frog', id],
-    queryFn:  () => fetchFrogById<FrogFields>(id!),
-    enabled:  !!id,
+    queryKey: ['frog-code', code],
+    queryFn:  () => fetchFrogByFrogId<FrogFields>(code!),
+    enabled:  !!code,
     staleTime: 1000 * 60 * 60 * 24, // lets a cache seeded from the breed index render without a refetch
     placeholderData: keepPreviousData, // keep the previous frog visible while the next loads
   });
@@ -139,11 +143,12 @@ export default function FrogDetail() {
   // detail cache from the breed index lets the target render without its own
   // fetch. Pushing history lets browser back/forward walk previously viewed frogs.
   useEffect(() => {
-    if (target && target.id !== id) {
-      queryClient.setQueryData(['frog', target.id], target);
-      navigate(`/frog/${target.id}`);
+    const targetCode = target?.fields.Frog_ID;
+    if (targetCode && targetCode !== code) {
+      queryClient.setQueryData(['frog-code', targetCode], target);
+      navigate(frogPath(targetCode));
     }
-  }, [target, id, navigate, queryClient]);
+  }, [target, code, navigate, queryClient]);
 
   const fullname = frog?.fields.fullname ?? null;
 
@@ -198,13 +203,14 @@ export default function FrogDetail() {
         partnerId:    isA ? m.frogBId : m.frogAId,
         partnerTitle: isA ? m.frogBTitle : m.frogATitle,
         resultId:     m.resultId,
+        resultTitle:  m.resultTitle,
         screenshots:  pairScreenshotUrls(m.pairId, m.screenshotCount),
       }];
     });
   }, [frog, mutations]);
 
-  // Resolve partner and result frog fullnames by id. Shares ['frog', id] query
-  // keys with the main query so already-viewed frogs are served from cache.
+  // Resolve partner and result frog fullnames by record id. Shares ['frog', id]
+  // query keys with other pages so already-fetched frogs are served from cache.
   const partnerQueries = useQueries({
     queries: specials.map(s => ({
       queryKey:  ['frog', s.partnerId],
@@ -260,8 +266,10 @@ export default function FrogDetail() {
         />
       </div>
 
-      {!id ? (
+      {!segment ? (
         <p className="search-hint">Select a base color, secondary color, and breed to view a frog.</p>
+      ) : !code ? (
+        <p className="search-hint">Frog not found.</p>
       ) : error ? (
         <p className="search-error">Error loading frog.</p>
       ) : noMatch ? (
@@ -270,7 +278,7 @@ export default function FrogDetail() {
         <p className="search-hint">{isFetching ? 'Loading…' : 'Frog not found.'}</p>
       ) : (
         <>
-          <h2 className="frog-detail-name">{fullname ?? id}</h2>
+          <h2 className="frog-detail-name">{fullname ?? code}</h2>
 
           <div className="breed-info-stats frog-detail-stats">
             <div className="breed-info-stat">
@@ -366,16 +374,16 @@ export default function FrogDetail() {
                           ) : rows.map((row, i) => (
                             <tr key={i}>
                               <td>
-                                <a href={`/frog/${frog.id}`} className="plain-link">{fullname}</a>
+                                <a href={frogPath(code)} className="plain-link">{fullname}</a>
                               </td>
                               <td>
-                                {row.partnerId
-                                  ? <a href={`/frog/${row.partnerId}`} className="plain-link">{row.partnerName}</a>
+                                {row.partnerTitle
+                                  ? <a href={frogPath(row.partnerTitle)} className="plain-link">{row.partnerName}</a>
                                   : row.partnerName}
                               </td>
                               <td>
-                                {row.resultId
-                                  ? <a href={`/frog/${row.resultId}`} className="plain-link">{row.resultName}</a>
+                                {row.resultTitle
+                                  ? <a href={frogPath(row.resultTitle)} className="plain-link">{row.resultName}</a>
                                   : row.resultName}
                               </td>
                               <td className="pin-cell">

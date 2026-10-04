@@ -5,7 +5,7 @@ import { fetchFrogPairs, type FrogPair } from '../api/teable';
 import FrogInputs from '../components/FrogInputs';
 import { useFrogOptions } from '../hooks/useFrogOptions';
 import {
-  EMPTY_FROG, MAX_PLANNER_FROGS as MAX_FROGS, decodeFrogParam, encodeFrogParam, frogId, frogName, isComplete,
+  EMPTY_FROG, MAX_PLANNER_FROGS as MAX_FROGS, decodeFrogParam, encodeFrogParam, frogId, frogName, frogPath, isComplete,
   type CompleteFrogSel, type FrogSel,
 } from '../utils/frogIds';
 
@@ -49,6 +49,8 @@ const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 const MARK_SPOTS = [0.5, 0.4, 0.6, 0.32, 0.68, 0.25, 0.75];
 // Closest two marks may sit, in canvas percent (x is scaled by the 4:3 aspect).
 const MARK_GAP = 6;
+// Clear zone around the centre when several lines cross there, same units.
+const CENTER_GAP = 7;
 const MARK_ORDER: Record<LineStatus, number> = { mutation: 0, clear: 1, unknown: 2 };
 
 // Node centres as percentages of the canvas, evenly spaced around an ellipse
@@ -74,6 +76,15 @@ function IconMinus() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
       <line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  );
+}
+
+function IconClose() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+      <line x1="6" y1="6" x2="18" y2="18"/>
+      <line x1="18" y1="6" x2="6" y2="18"/>
     </svg>
   );
 }
@@ -152,15 +163,24 @@ export default function MutationPlanner() {
 
     // Marks start at their line's midpoint and slide along it until clear of
     // marks already placed (lines across the circle all cross at the centre).
-    // Verified lines go first so their marks get the best spots.
+    // Verified lines go first so their marks get the best spots. With an even
+    // count of 4+, the lines straight across all meet at the centre, so a mark
+    // there would be ambiguous: keep the centre clear.
     const placed: { x: number; y: number }[] = [];
-    const gapTo = (p: { x: number; y: number }) =>
-      Math.min(Infinity, ...placed.map(q => Math.hypot((p.x - q.x) * 4 / 3, p.y - q.y)));
+    const dist = (p: { x: number; y: number }, q: { x: number; y: number }) =>
+      Math.hypot((p.x - q.x) * 4 / 3, p.y - q.y);
+    const crossesAtCenter = n >= 4 && n % 2 === 0;
+    // How much clearance a spot has, as a fraction of what it needs (≥ 1 = fits).
+    const room = (p: { x: number; y: number }) => Math.min(
+      Infinity,
+      ...placed.map(q => dist(p, q) / MARK_GAP),
+      crossesAtCenter ? dist(p, { x: 50, y: 50 }) / CENTER_GAP : Infinity,
+    );
     for (const e of [...list].sort((x, y) => MARK_ORDER[x.status] - MARK_ORDER[y.status])) {
       const pa = positions[e.a], pb = positions[e.b];
       const spots = MARK_SPOTS.map(t => ({ x: pa.x + (pb.x - pa.x) * t, y: pa.y + (pb.y - pa.y) * t }));
-      e.mark = spots.find(p => gapTo(p) >= MARK_GAP)
-        ?? spots.reduce((best, p) => (gapTo(p) > gapTo(best) ? p : best));
+      e.mark = spots.find(p => room(p) >= 1)
+        ?? spots.reduce((best, p) => (room(p) > room(best) ? p : best));
       placed.push(e.mark);
     }
     return list;
@@ -197,7 +217,10 @@ export default function MutationPlanner() {
     if (editor.index === null) list.push(editor.sel);
     else list[editor.index] = editor.sel;
     saveFrogs(list);
-    setEditor(null);
+    // Adding stays open (cleared) for the next frog until the plan is full;
+    // an edit is a one-off.
+    if (editor.index === null && list.length < MAX_FROGS) openEditor(null);
+    else setEditor(null);
   }
 
   function removeFrog(index: number) {
@@ -224,42 +247,39 @@ export default function MutationPlanner() {
         <p className="search-hint">Loading frog data…</p>
       ) : (
         <>
-          {editor && (
-            <div className="planner-editor">
-              <FrogInputs
-                key={editor.key}
-                title={editor.index === null ? 'Add a Frog' : `Edit ${frogs[editor.index]?.name ?? 'Frog'}`}
-                sel={editor.sel}
-                onChange={sel => setEditor(prev => (prev ? { ...prev, sel } : prev))}
-                options={frogOptions}
-              >
-                {duplicateOf >= 0 && (
-                  <p className="planner-duplicate" role="alert">
-                    {editName} is already in this plan. Choose a different frog or cancel.
-                  </p>
-                )}
-                <div className="crop-buttons">
-                  <button type="button" className="csv-btn" onClick={saveEditor} disabled={!canSave}>
-                    {editor.index === null ? 'Add' : 'Save'}
-                  </button>
-                  <button type="button" className="csv-btn" onClick={() => setEditor(null)}>Cancel</button>
-                </div>
-              </FrogInputs>
-            </div>
-          )}
+          <ul className="planner-legend">
+            {(['clear', 'mutation', 'unknown'] as const).map(s => (
+              <li key={s}>
+                <span className={`planner-mark is-${s}`} aria-hidden="true">{STATUS_MARK[s]}</span>
+                {STATUS_TEXT[s]}
+              </li>
+            ))}
+          </ul>
 
           <div className="planner-canvas">
             <div className="planner-toolbar">
-              <button
-                type="button"
-                className="planner-add"
-                onClick={() => openEditor(null)}
-                disabled={full}
-                aria-label="Add a frog"
-                title={full ? `A habitat holds up to ${MAX_FROGS} frogs` : 'Add a frog'}
-              >
-                <IconPlus />
-              </button>
+              {editor ? (
+                <button
+                  type="button"
+                  className="planner-add"
+                  onClick={() => setEditor(null)}
+                  aria-label="Close the frog editor"
+                  title="Close"
+                >
+                  <IconClose />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="planner-add"
+                  onClick={() => openEditor(null)}
+                  disabled={full}
+                  aria-label="Add a frog"
+                  title={full ? `A habitat holds up to ${MAX_FROGS} frogs` : 'Add a frog'}
+                >
+                  <IconPlus />
+                </button>
+              )}
               <span className="planner-count">{frogs.length} / {MAX_FROGS}</span>
             </div>
 
@@ -319,21 +339,46 @@ export default function MutationPlanner() {
                   aria-label={`Remove ${f.name}`} title="Remove">
                   <IconMinus />
                 </button>
-                <span>{f.sel.base.label}</span>
-                <span>{f.sel.sec.label}</span>
-                <span>{f.sel.breed.label}</span>
+                {f.id ? (
+                  <Link to={frogPath(f.id)} className="planner-frog-name" title={`View ${f.name}`}>
+                    <span>{f.sel.base.label}</span>
+                    <span>{f.sel.sec.label}</span>
+                    <span>{f.sel.breed.label}</span>
+                  </Link>
+                ) : (
+                  <span className="planner-frog-name">
+                    <span>{f.sel.base.label}</span>
+                    <span>{f.sel.sec.label}</span>
+                    <span>{f.sel.breed.label}</span>
+                  </span>
+                )}
               </div>
             ))}
           </div>
 
-          <ul className="planner-legend">
-            {(['clear', 'mutation', 'unknown'] as const).map(s => (
-              <li key={s}>
-                <span className={`planner-mark is-${s}`} aria-hidden="true">{STATUS_MARK[s]}</span>
-                {STATUS_TEXT[s]}
-              </li>
-            ))}
-          </ul>
+          {editor && (
+            <div className="planner-editor">
+              <FrogInputs
+                key={editor.key}
+                title={editor.index === null ? 'Add a Frog' : `Edit ${frogs[editor.index]?.name ?? 'Frog'}`}
+                sel={editor.sel}
+                onChange={sel => setEditor(prev => (prev ? { ...prev, sel } : prev))}
+                options={frogOptions}
+              >
+                {duplicateOf >= 0 && (
+                  <p className="planner-duplicate" role="alert">
+                    {editName} is already in this plan. Choose a different frog or cancel.
+                  </p>
+                )}
+                <div className="crop-buttons">
+                  <button type="button" className="csv-btn" onClick={saveEditor} disabled={!canSave}>
+                    {editor.index === null ? 'Add' : 'Save'}
+                  </button>
+                  <button type="button" className="csv-btn" onClick={() => setEditor(null)}>Cancel</button>
+                </div>
+              </FrogInputs>
+            </div>
+          )}
         </>
       )}
     </div>

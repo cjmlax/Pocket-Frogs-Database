@@ -4,6 +4,7 @@ import { Link } from 'react-router';
 import { useDailyFrog } from '../hooks/useDailyFrog';
 import { fetchTable, fetchMutations, fetchFrogStats, fetchChangelog, type ChangelogEntry, type TeableRecord } from '../api/teable';
 import { formatNum } from '../utils/format';
+import { frogPath } from '../utils/frogIds';
 import { usePlatform, type Platform } from '../hooks/usePlatform';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -123,7 +124,7 @@ function SiteSummaryCard() {
                     {holders.map(h => (
                       <Link
                         key={h.id}
-                        to={`/frog/${h.id}`}
+                        to={frogPath(h.frogId)}
                         className="summary-popup-link"
                         onClick={() => setPopupOpen(false)}
                       >
