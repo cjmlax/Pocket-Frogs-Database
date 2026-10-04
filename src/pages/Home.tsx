@@ -161,14 +161,28 @@ function isRecent(iso: string) {
 // (from the old iTunes poller) cover either platform.
 interface VersionUpdate {
   version: string;
-  latest: string; // newest date across platforms — drives ordering and "new"
+  latest: string; // newest date across platforms — drives the "new" highlight
   entries: Partial<Record<Platform, ChangelogEntry>>;
-  split: boolean; // has platform-specific rows, so the pills are shown
+  split: boolean; // has platform-specific rows, so pills are shown for each one present
 }
 
 const PLATFORMS: Platform[] = ['iOS', 'Android'];
 
-// Entries arrive newest first, so versions keep the order of their newest row.
+// Compares versions numerically segment by segment, so 3.10 sorts above 3.9
+// rather than next to 3.1. Missing segments count as 0 (3.2 == 3.2.0).
+function compareVersions(a: string, b: string): number {
+  const pa = a.split('.').map(n => parseInt(n, 10) || 0);
+  const pb = b.split('.').map(n => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const diff = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (diff) return diff;
+  }
+  return 0;
+}
+
+// Ordered by version, newest first — release dates can disagree between
+// platforms (e.g. a same-day patch on only one store), so they can't be trusted
+// for ordering.
 function groupByVersion(entries: ChangelogEntry[]): VersionUpdate[] {
   const versions = new Map<string, VersionUpdate>();
   for (const entry of entries) {
@@ -183,8 +197,10 @@ function groupByVersion(entries: ChangelogEntry[]): VersionUpdate[] {
       v.entries[entry.platform] = entry; // platform-specific row beats a legacy "Both"
       v.split = true;
     }
+    if (entry.date > v.latest) v.latest = entry.date;
   }
-  return [...versions.values()];
+  return [...versions.values()].sort((a, b) =>
+    compareVersions(b.version, a.version) || b.latest.localeCompare(a.latest));
 }
 
 function groupByMinor(updates: VersionUpdate[]): [string, VersionUpdate[]][] {
@@ -212,14 +228,12 @@ function UpdateEntry({ update, selected, onSelect, className }: {
         <span className="update-version">v{update.version}</span>
         {update.split && (
           <span className="update-platform-pills" role="group" aria-label="Platform">
-            {PLATFORMS.map(p => (
+            {PLATFORMS.filter(p => update.entries[p]).map(p => (
               <button
                 key={p}
                 className={`update-platform-pill${p === shown ? ' active' : ''}`}
                 onClick={() => onSelect(p)}
-                disabled={!update.entries[p]}
                 aria-pressed={p === shown}
-                title={update.entries[p] ? undefined : `Not recorded for ${p}`}
               >
                 {p}
               </button>
