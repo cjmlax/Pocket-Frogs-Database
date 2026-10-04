@@ -630,8 +630,21 @@ a.plain-link:hover {
 /* ─── Mutation Planner page ────────────────────────────────────────────────── */
 
 .planner-editor {
-  max-width: 360px;
   margin-top: 20px;
+  container-type: inline-size;
+}
+
+/* Dropdowns side by side once there's room to read the names */
+@container (min-width: 600px) {
+  .planner-editor .parent-group {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    column-gap: 18px;
+  }
+
+  .planner-editor .parent-group > :not(.combobox-field) {
+    grid-column: 1 / -1;
+  }
 }
 
 .planner-duplicate {
@@ -645,8 +658,7 @@ a.plain-link:hover {
 .planner-canvas {
   position: relative;
   width: 100%;
-  max-width: 760px;
-  aspect-ratio: 4 / 3;
+  height: 480px; /* replaced by the measured height on desktop */
   background: var(--code-bg);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -868,6 +880,7 @@ a.planner-frog-name:hover {
 
 @media (max-width: 640px) {
   .planner-canvas {
+    height: auto;
     aspect-ratio: 3 / 4;
   }
 

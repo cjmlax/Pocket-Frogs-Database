@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { fetchFrogPairs, type FrogPair } from '../api/teable';
@@ -53,6 +53,12 @@ const MARK_GAP = 6;
 const CENTER_GAP = 7;
 const MARK_ORDER: Record<LineStatus, number> = { mutation: 0, clear: 1, unknown: 2 };
 
+// Board sizing (desktop): full page width, and as tall as fits on screen with
+// room left below for the frog picker, between a floor and a 4:3 ceiling.
+const PICKER_RESERVE = 250; // open picker (~195px, one row of dropdowns) + 20px gap + page padding
+const BOARD_MIN_HEIGHT = 480;
+const MOBILE_MAX_WIDTH = 640; // phones keep the CSS aspect ratio instead
+
 // Node centres as percentages of the canvas, evenly spaced around an ellipse
 // starting at the top (a lone pair sits side by side).
 function nodePositions(n: number): { x: number; y: number }[] {
@@ -96,6 +102,29 @@ function IconPlus() {
       <line x1="5" y1="12" x2="19" y2="12"/>
     </svg>
   );
+}
+
+// Height for the board element, or undefined to leave it to CSS (phones).
+function useBoardHeight(el: HTMLDivElement | null): number | undefined {
+  const [height, setHeight] = useState<number>();
+  useEffect(() => {
+    if (!el) return;
+    const update = () => {
+      if (window.innerWidth <= MOBILE_MAX_WIDTH) { setHeight(undefined); return; }
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      const fits = window.innerHeight - top - PICKER_RESERVE;
+      setHeight(Math.round(Math.max(BOARD_MIN_HEIGHT, Math.min(el.clientWidth * 3 / 4, fits))));
+    };
+    // Fires once on observe, then whenever the board's width changes.
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener('resize', update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, [el]);
+  return height;
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -235,6 +264,9 @@ export default function MutationPlanner() {
 
   const full = frogs.length >= MAX_FROGS;
 
+  const [board, setBoard] = useState<HTMLDivElement | null>(null);
+  const boardHeight = useBoardHeight(board);
+
   return (
     <div>
       <h1>Mutation Planner</h1>
@@ -256,7 +288,7 @@ export default function MutationPlanner() {
             ))}
           </ul>
 
-          <div className="planner-canvas">
+          <div className="planner-canvas" ref={setBoard} style={{ height: boardHeight }}>
             <div className="planner-toolbar">
               {editor ? (
                 <button
