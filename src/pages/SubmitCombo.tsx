@@ -27,6 +27,10 @@ const touched = (p: ParentSel) => !!(p.base || p.sec || p.breed);
 function fullName(p: ParentSel): string | null {
   return p.base && p.sec && p.breed ? `${p.base.label} ${p.sec.label} ${p.breed.label}` : null;
 }
+// The options from `all` matching either parent's pick, in `all`'s order.
+function fromParents(all: ComboOption[], a: ComboOption | null, b: ComboOption | null): ComboOption[] {
+  return all.filter(o => o.id === a?.id || o.id === b?.id);
+}
 // https:// followed by a host ending in a .tld, optionally with a path/query.
 function isUrl(s: string): boolean {
   return /^https:\/\/[^\s/?#]+\.[a-z]{2,}(?:[/?#]\S*)?$/i.test(s);
@@ -97,14 +101,21 @@ export default function SubmitCombo() {
   const glassBaseOpt  = useMemo(() => baseOpts.find(o => o.label === 'Glass')  ?? null, [baseOpts]);
   const chromaSecOpt  = useMemo(() => secOpts.find(o => o.label === 'Chroma')  ?? null, [secOpts]);
 
-  // Result frog pickers are narrowed to the one valid option for the active variant.
+  // Offspring traits come from the parents, so the result/lost pickers only offer
+  // the parents' values (filtered from the full lists to keep their sort order).
+  const parentBaseOpts  = useMemo(() => fromParents(baseOpts,  p1.base,  p2.base),  [baseOpts,  p1.base,  p2.base]);
+  const parentSecOpts   = useMemo(() => fromParents(secOpts,   p1.sec,   p2.sec),   [secOpts,   p1.sec,   p2.sec]);
+  const parentBreedOpts = useMemo(() => fromParents(breedOpts, p1.breed, p2.breed), [breedOpts, p1.breed, p2.breed]);
+
+  // The mutated color is the exception: it's narrowed to the one valid option for
+  // the active variant instead.
   const resultBaseOpts = useMemo(
-    () => variant === 'glass'  && glassBaseOpt  ? [glassBaseOpt]  : baseOpts,
-    [variant, glassBaseOpt, baseOpts],
+    () => variant === 'glass'  && glassBaseOpt  ? [glassBaseOpt]  : parentBaseOpts,
+    [variant, glassBaseOpt, parentBaseOpts],
   );
   const resultSecOpts  = useMemo(
-    () => variant === 'chroma' && chromaSecOpt  ? [chromaSecOpt]  : secOpts,
-    [variant, chromaSecOpt, secOpts],
+    () => variant === 'chroma' && chromaSecOpt  ? [chromaSecOpt]  : parentSecOpts,
+    [variant, chromaSecOpt, parentSecOpts],
   );
 
   // Resolve each picked frog via its breed's frogs (shared 24h cache, deduped).
@@ -221,12 +232,26 @@ export default function SubmitCombo() {
     }
   }
 
+  // A field with only one possible value (parents share it) is pre-set.
+  const only = (opts: ComboOption[]) => (opts.length === 1 ? opts[0] : null);
+
   // Returns the pResult state with the active variant's required color pre-set.
   function constrainedResult(v: Variant): ParentSel {
     return {
-      base:  v === 'glass'  ? glassBaseOpt  : null,
-      sec:   v === 'chroma' ? chromaSecOpt  : null,
-      breed: null,
+      base:  v === 'glass'  ? glassBaseOpt  : only(parentBaseOpts),
+      sec:   v === 'chroma' ? chromaSecOpt  : only(parentSecOpts),
+      breed: only(parentBreedOpts),
+    };
+  }
+
+  // Keeps lost-frog picks that are still valid for the (possibly edited) parents.
+  function prunedLost(): ParentSel {
+    const keep = (sel: ComboOption | null, opts: ComboOption[]) =>
+      (sel && opts.some(o => o.id === sel.id) ? sel : only(opts));
+    return {
+      base:  keep(pLost.base,  parentBaseOpts),
+      sec:   keep(pLost.sec,   parentSecOpts),
+      breed: keep(pLost.breed, parentBreedOpts),
     };
   }
 
@@ -234,6 +259,7 @@ export default function SubmitCombo() {
   function handleProceed() {
     if (!canProceed) return;
     setPResult(constrainedResult(variant));
+    setPLost(prunedLost());
     setChecked(true);
     setResult(null);
   }
@@ -298,7 +324,7 @@ export default function SubmitCombo() {
               onChange={setPResult}
               baseOpts={resultBaseOpts}
               secOpts={resultSecOpts}
-              breedOpts={breedOpts}
+              breedOpts={parentBreedOpts}
               control={
                 <div className="settings-row type-toggle">
                   {(['glass', 'chroma'] as const).map(v => (
@@ -314,7 +340,7 @@ export default function SubmitCombo() {
                 </div>
               }
             />
-            <FrogInputs title="Lost Frog" sel={pLost} onChange={setPLost} baseOpts={baseOpts} secOpts={secOpts} breedOpts={breedOpts} />
+            <FrogInputs title="Lost Frog" sel={pLost} onChange={setPLost} baseOpts={parentBaseOpts} secOpts={parentSecOpts} breedOpts={parentBreedOpts} />
           </div>
 
           <div className="submit-extras">

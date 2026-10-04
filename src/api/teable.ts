@@ -114,6 +114,7 @@ interface PairFields extends Record<string, unknown> {
   'Frog B'?:     unknown;
   Verified?:     boolean;
   Screenshot?:   unknown;
+  Mutations?:    unknown;
 }
 
 interface MutationFields extends Record<string, unknown> {
@@ -123,11 +124,15 @@ interface MutationFields extends Record<string, unknown> {
   'Lost Frog'?:       unknown;
 }
 
+// Titles are the frogs' Frog_ID codes (e.g. "0:18:11").
 export interface FrogPair {
   id: string;
   frogAId: string | null;
+  frogATitle: string | null;
   frogBId: string | null;
+  frogBTitle: string | null;
   verified: boolean;
+  mutationCount: number;
   screenshotCount: number;
 }
 
@@ -162,13 +167,17 @@ async function fetchPairRecords() {
 }
 
 export async function fetchFrogPairs(): Promise<FrogPair[]> {
-  return (await fetchPairRecords()).map(r => ({
-    id: r.id,
-    frogAId: linkRef(r.fields['Frog A'])?.id ?? null,
-    frogBId: linkRef(r.fields['Frog B'])?.id ?? null,
-    verified: !!r.fields.Verified,
-    screenshotCount: attachmentCount(r.fields.Screenshot),
-  }));
+  return (await fetchPairRecords()).map(r => {
+    const a = linkRef(r.fields['Frog A']), b = linkRef(r.fields['Frog B']);
+    return {
+      id: r.id,
+      frogAId: a?.id ?? null, frogATitle: a?.title ?? null,
+      frogBId: b?.id ?? null, frogBTitle: b?.title ?? null,
+      verified: !!r.fields.Verified,
+      mutationCount: Array.isArray(r.fields.Mutations) ? r.fields.Mutations.length : 0,
+      screenshotCount: attachmentCount(r.fields.Screenshot),
+    };
+  });
 }
 
 export async function fetchMutations(): Promise<Mutation[]> {

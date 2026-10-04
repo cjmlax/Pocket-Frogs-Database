@@ -1,35 +1,24 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router';
 import { useQuery, useQueries } from '@tanstack/react-query';
-import { fetchTable, fetchBreedFrogs, fetchFrogPairs, fetchMutations, fetchFrogById, type Mutation, type TeableRecord } from '../api/teable';
-import ComboBox, { type ComboOption } from '../components/ComboBox';
+import { fetchBreedFrogs, fetchFrogPairs, fetchMutations, fetchFrogById, type Mutation, type TeableRecord } from '../api/teable';
+import type { ComboOption } from '../components/ComboBox';
+import FrogInputs from '../components/FrogInputs';
 import { formatNum } from '../utils/format';
-import { breedOptionsFrom } from '../utils/breeds';
 import { pairScreenshotUrls } from '../utils/attachments';
+import { EMPTY_FROG, decodeFrogParam, encodeFrogParam, isComplete, type FrogSel } from '../utils/frogIds';
 import ImageLightbox from '../components/ImageLightbox';
-import { useBreedSort } from '../hooks/useBreedSort';
-import { useColorSort } from '../hooks/useColorSort';
+import { useFrogOptions } from '../hooks/useFrogOptions';
 import { useSpoilers } from '../hooks/useSpoilers';
-import { colorOptionsFrom } from '../utils/colors';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
-interface BreedFields extends Record<string, unknown> { Breed?: string }
-interface BaseFields  extends Record<string, unknown> { BaseColors?: string }
-interface SecFields   extends Record<string, unknown> { Sec_Color?:  string }
 interface FrogFields  extends Record<string, unknown> {
   fullname?: string;
   Value?:    number;
   Speed?:    number;
   Stamina?:  number;
 }
-
-interface ParentSel {
-  base:  ComboOption | null;
-  sec:   ComboOption | null;
-  breed: ComboOption | null;
-}
-
-const EMPTY: ParentSel = { base: null, sec: null, breed: null };
 
 // All 8 offspring trait combinations: each character picks parent A's or B's
 // base / secondary / breed respectively.
@@ -78,66 +67,40 @@ function IconVerified({ ok }: { ok: boolean }) {
   );
 }
 
-// ── Parent selector column ──────────────────────────────────────────────────────
-
-function ParentInputs({
-  title, sel, onChange, baseOpts, secOpts, breedOpts, breedPresorted,
-}: {
-  title: string;
-  sel: ParentSel;
-  onChange: (s: ParentSel) => void;
-  baseOpts: ComboOption[];
-  secOpts: ComboOption[];
-  breedOpts: ComboOption[];
-  breedPresorted: boolean;
-}) {
-  return (
-    <div className="parent-group">
-      <h2 className="parent-title">{title}</h2>
-      <ComboBox
-        label="Base Color"
-        options={baseOpts}
-        presorted
-        initialSelection={sel.base}
-        onSelect={o => onChange({ ...sel, base: o })}
-      />
-      <ComboBox
-        label="Secondary Color"
-        options={secOpts}
-        presorted
-        initialSelection={sel.sec}
-        onSelect={o => onChange({ ...sel, sec: o })}
-      />
-      <ComboBox
-        label="Breed"
-        options={breedOpts}
-        presorted={breedPresorted}
-        initialSelection={sel.breed}
-        onSelect={o => onChange({ ...sel, breed: o })}
-      />
-    </div>
-  );
-}
-
 // ── Page ────────────────────────────────────────────────────────────────────────
 
 export default function BreedingPairs() {
-  const [pa, setPa] = useState<ParentSel>(EMPTY);
-  const [pb, setPb] = useState<ParentSel>(EMPTY);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [pa, setPa] = useState<FrogSel>(EMPTY_FROG);
+  const [pb, setPb] = useState<FrogSel>(EMPTY_FROG);
   const [lightbox, setLightbox] = useState<string[] | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
 
-  // Lookup tables for the ComboBoxes (small, ETag-cached)
-  const { data: breeds } = useQuery({ queryKey: ['table', 'breeds'], queryFn: () => fetchTable<BreedFields>('breeds') });
-  const { data: bases  } = useQuery({ queryKey: ['table', 'bases'],  queryFn: () => fetchTable<BaseFields>('bases')  });
-  const { data: secs   } = useQuery({ queryKey: ['table', 'secs'],   queryFn: () => fetchTable<SecFields>('secs')    });
-
-  const breedSort = useBreedSort();
-  const colorSort = useColorSort();
+  const frogOptions = useFrogOptions();
+  const { lookup } = frogOptions;
   const { spoilers } = useSpoilers();
-  const breedOpts = useMemo<ComboOption[]>(() => breedOptionsFrom(breeds, breedSort), [breeds, breedSort]);
-  const baseOpts  = useMemo<ComboOption[]>(() => colorOptionsFrom(bases, 'BaseColors', colorSort), [bases, colorSort]);
-  const secOpts   = useMemo<ComboOption[]>(() => colorOptionsFrom(secs,  'Sec_Color',  colorSort), [secs,  colorSort]);
+
+  // ?pair= holds both parents' Frog_IDs (e.g. "0-18-11_0-18-4", as linked from
+  // the Mutation Planner). Read once the lookup tables load; the inputs are keyed
+  // on this so they remount showing the restored parents.
+  const [urlRead, setUrlRead] = useState(false);
+  if (lookup && !urlRead) {
+    const [a, b] = decodeFrogParam(searchParams.get('pair'), lookup);
+    if (a) setPa(a);
+    if (b) setPb(b);
+    setUrlRead(true);
+  }
+
+  // Keep ?pair= in step with the chosen parents so the page can be shared.
+  useEffect(() => {
+    if (!urlRead || !lookup) return;
+    const next = isComplete(pa) && isComplete(pb) ? encodeFrogParam([pa, pb], lookup) : '';
+    if ((searchParams.get('pair') ?? '') === next) return;
+    setSearchParams(p => {
+      if (next) p.set('pair', next); else p.delete('pair');
+      return p;
+    }, { replace: true });
+  }, [urlRead, lookup, pa, pb, searchParams, setSearchParams]);
 
   // Offspring only ever use the two parents' breeds, so fetching those two breed
   // sets covers every combination. If both breeds match, TanStack dedupes the query.
@@ -363,8 +326,8 @@ export default function BreedingPairs() {
       </p>
 
       <div className="breeding-parents">
-        <ParentInputs title="Parent Frog A" sel={pa} onChange={setPa} baseOpts={baseOpts} secOpts={secOpts} breedOpts={breedOpts} breedPresorted />
-        <ParentInputs title="Parent Frog B" sel={pb} onChange={setPb} baseOpts={baseOpts} secOpts={secOpts} breedOpts={breedOpts} breedPresorted />
+        <FrogInputs key={`a-${urlRead}`} title="Parent Frog A" sel={pa} onChange={setPa} options={frogOptions} />
+        <FrogInputs key={`b-${urlRead}`} title="Parent Frog B" sel={pb} onChange={setPb} options={frogOptions} />
       </div>
 
       {!allSelected ? (

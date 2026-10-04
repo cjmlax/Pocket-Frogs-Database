@@ -340,6 +340,7 @@ function NavBar() {
         <NavLink to="/weekly">Weekly Sets</NavLink>
         <NavLink to="/breeds">Breed Overview</NavLink>
         <NavLink to="/breeding">Breeding Pairs</NavLink>
+        <NavLink to="/planner">Mutation Planner</NavLink>
         <SubmitDropdown />
         <NavLink to="/downloads">Downloads</NavLink>
       </nav>

@@ -627,6 +627,266 @@ a.plain-link:hover {
   color: var(--accent);
 }
 
+/* ─── Mutation Planner page ────────────────────────────────────────────────── */
+
+.planner-editor {
+  max-width: 360px;
+  margin-bottom: 20px;
+}
+
+.planner-duplicate {
+  margin: 0;
+  font-size: 14px;
+  color: var(--cell-min-text);
+}
+
+/* Square-ish board: lines are an SVG stretched over it, frogs and marks are
+   HTML positioned by percentage on top */
+.planner-canvas {
+  position: relative;
+  width: 100%;
+  max-width: 760px;
+  aspect-ratio: 4 / 3;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.planner-toolbar {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.planner-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: var(--bg);
+  border: 2px solid var(--text-h);
+  border-radius: 6px;
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.planner-add:hover:not(:disabled) {
+  background: var(--accent-bg);
+}
+
+.planner-add:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.planner-count {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.planner-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  color: var(--text);
+}
+
+.planner-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Line colour comes from the edge's status class via currentColor */
+.planner-edge,
+.planner-mark { color: var(--text); }
+.planner-edge.is-clear,
+.planner-mark.is-clear    { color: var(--cell-max-text); }
+.planner-edge.is-mutation,
+.planner-mark.is-mutation { color: var(--cell-min-text); }
+
+.planner-edge {
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.planner-line {
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+/* Unverified lines are dashed so they don't rely on colour alone */
+.planner-edge.is-unknown .planner-line {
+  stroke-dasharray: 6 5;
+  opacity: 0.7;
+}
+
+/* Wide invisible stroke so thin lines are easy to hover and click */
+.planner-line-hit {
+  stroke: transparent;
+  stroke-width: 14;
+  pointer-events: stroke;
+}
+
+.planner-edge.is-lit .planner-line { stroke-width: 3.5; opacity: 1; }
+.planner-edge.is-dim,
+.planner-mark.is-dim { opacity: 0.12; }
+
+.planner-mark {
+  position: absolute;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  background: var(--code-bg);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.planner-mark.is-lit {
+  transform: translate(-50%, -50%) scale(1.15);
+}
+
+/* Verified marks stay visible even where crowded frogs overlap their line */
+.planner-mark.is-clear,
+.planner-mark.is-mutation {
+  z-index: 3;
+}
+
+.planner-frog {
+  position: absolute;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 92px;
+  padding: 0 14px;
+  background: var(--bg);
+  border: 2px solid var(--text-h);
+  border-radius: 50%;
+  color: var(--text-h);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.planner-frog span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planner-frog.is-active,
+.planner-frog.is-editing {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.planner-frog-btn {
+  position: absolute;
+  top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.planner-frog-btn:hover {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.planner-frog-edit   { left: 6px; }
+.planner-frog-remove { right: 6px; }
+
+.planner-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.planner-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.planner-legend .planner-mark {
+  position: static;
+  transform: none;
+}
+
+@media (max-width: 640px) {
+  .planner-canvas {
+    aspect-ratio: 3 / 4;
+  }
+
+  .planner-frog {
+    width: 86px;
+    height: 62px;
+    padding: 0 8px;
+    font-size: 10.5px;
+  }
+
+  .planner-frog-btn {
+    top: -6px;
+    width: 22px;
+    height: 22px;
+  }
+
+  .planner-frog-edit   { left: -2px; }
+  .planner-frog-remove { right: -2px; }
+
+  .planner-mark {
+    width: 18px;
+    height: 18px;
+    font-size: 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planner-edge,
+  .planner-mark,
+  .planner-frog { transition: none; }
+}
+
 /* ─── Submit a Combination page ─────────────────────────────────────────────── */
 /* Verified, locked-in parent pairing shown above the rest of the form */
 .locked-parents {
@@ -1216,6 +1476,38 @@ tr:hover .pin-btn,
   align-items: center;
   justify-content: space-between;
   margin-bottom: 12px;
+}
+
+.pinned-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Send-the-comparison-elsewhere icons: soft accent when usable, grey when not */
+.compare-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  transition: background 0.15s;
+}
+
+.compare-link:hover {
+  background: var(--accent-soft);
+}
+
+.compare-link.is-disabled {
+  border-color: var(--border);
+  background: none;
+  color: var(--text);
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* ─── Nav ─────────────────────────────────────────────────────────────────── */

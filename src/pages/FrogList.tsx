@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
@@ -17,12 +17,14 @@ import { breedOptionsFrom, breedLevel } from '../utils/breeds';
 import { useBreedSort } from '../hooks/useBreedSort';
 import { useColorSort } from '../hooks/useColorSort';
 import { colorOptionsFrom } from '../utils/colors';
+import { MAX_PLANNER_FROGS, frogIdsParam } from '../utils/frogIds';
 
 interface BreedFields  extends Record<string, unknown> { Breed?:      string }
 interface BaseFields   extends Record<string, unknown> { BaseColors?: string }
 interface SecFields    extends Record<string, unknown> { Sec_Color?:  string }
 
 interface FrogFields extends Record<string, unknown> {
+  Frog_ID?:   string;
   fullname?:  string;
   Breed?:     unknown;
   Primary?:   unknown;
@@ -60,6 +62,48 @@ function IconPin() {
       <line x1="12" y1="17" x2="12" y2="22"/>
       <path d="M9 10.76a2 2 0 0 1-1.11 1.79L5.5 13.5A2 2 0 0 0 4.5 15.5V17h15v-1.5a2 2 0 0 0-1-1.74l-2.39-.95A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76z"/>
     </svg>
+  );
+}
+
+// Three frogs, all linked to each other — the Mutation Planner.
+function IconPlanner() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <line x1="12" y1="7.5" x2="6.2" y2="16.5"/>
+      <line x1="12" y1="7.5" x2="17.8" y2="16.5"/>
+      <line x1="8" y1="19" x2="16" y2="19"/>
+      <circle cx="12" cy="5" r="3"/>
+      <circle cx="5" cy="19" r="3"/>
+      <circle cx="19" cy="19" r="3"/>
+    </svg>
+  );
+}
+
+// Two overlapping hearts — Breeding Pairs.
+function IconHearts() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+      <path d="M9 20.5S2 16.2 2 10.8A3.8 3.8 0 0 1 9 8.7a3.8 3.8 0 0 1 7 2.1c0 5.4-7 9.7-7 9.7Z"/>
+      <path d="M16.6 15.6c2.6-2 5.4-4.9 5.4-8.2a3.4 3.4 0 0 0-6.2-1.9 3.4 3.4 0 0 0-3.3-1.4"/>
+    </svg>
+  );
+}
+
+// Icon link that sends the comparison list to another page. When the list
+// doesn't fit that page it's shown greyed out and isn't a link at all.
+function ComparisonLink({ to, enabled, label, disabledLabel, children }: {
+  to: string;
+  enabled: boolean;
+  label: string;
+  disabledLabel: string;
+  children: React.ReactNode;
+}) {
+  return enabled ? (
+    <Link to={to} className="compare-link" aria-label={label} title={label}>{children}</Link>
+  ) : (
+    <span className="compare-link is-disabled" role="link" aria-disabled="true" aria-label={disabledLabel} title={disabledLabel}>
+      {children}
+    </span>
   );
 }
 
@@ -291,7 +335,25 @@ export default function FrogList() {
       {pinned.length > 0 && (
         <div className="pinned-section">
           <div className="pinned-header">
-            <h2 style={{ margin: 0 }}>Comparison</h2>
+            <div className="pinned-title">
+              <h2 style={{ margin: 0 }}>Comparison</h2>
+              <ComparisonLink
+                to={`/planner?frogs=${frogIdsParam(pinned.map(r => r.fields.Frog_ID))}`}
+                enabled={pinned.length <= MAX_PLANNER_FROGS}
+                label="Open these frogs in the Mutation Planner"
+                disabledLabel={`The Mutation Planner holds up to ${MAX_PLANNER_FROGS} frogs`}
+              >
+                <IconPlanner />
+              </ComparisonLink>
+              <ComparisonLink
+                to={`/breeding?pair=${frogIdsParam(pinned.map(r => r.fields.Frog_ID))}`}
+                enabled={pinned.length === 2}
+                label="Open this pair in Breeding Pairs"
+                disabledLabel="Pin exactly 2 frogs to open them in Breeding Pairs"
+              >
+                <IconHearts />
+              </ComparisonLink>
+            </div>
             <button className="csv-btn" onClick={() => setPinned([])}>Clear all</button>
           </div>
           <div className="table-wrapper">
