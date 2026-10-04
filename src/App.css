@@ -294,6 +294,19 @@ a.plain-link:hover {
   color: var(--accent);
 }
 
+/* Fixed-width slots so switching platforms (which changes the date) never
+   nudges the pills; tabular figures keep digits a constant width. */
+.update-entry-header .update-version {
+  min-width: 4.4em;
+  font-variant-numeric: tabular-nums;
+}
+
+.update-entry-header .update-date {
+  width: 6.9em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 .update-meta-sep {
   font-size: 13px;
   opacity: 0.35;
@@ -1447,7 +1460,7 @@ tr:hover .pin-btn,
   box-shadow: var(--shadow), 0 20px 40px -8px rgba(0, 0, 0, 0.18);
   z-index: 50;
   display: grid;
-  grid-template-columns: auto minmax(34px, auto) minmax(34px, auto);
+  grid-template-columns: auto 34px 34px;
   gap: 4px;
 }
 
@@ -1496,11 +1509,6 @@ tr:hover .pin-btn,
 .settings-theme-opt:hover {
   background: var(--code-bg);
   color: var(--text-h);
-}
-
-.settings-theme-opt.settings-text-opt {
-  font-size: 13px;
-  padding: 0 8px;
 }
 
 .settings-theme-opt.active {
