@@ -726,7 +726,7 @@ a.plain-link:hover {
 .planner-edge.is-clear,
 .planner-mark.is-clear    { color: var(--cell-max-text); }
 .planner-edge.is-mutation,
-.planner-mark.is-mutation { color: var(--cell-min-text); }
+.planner-mark.is-mutation { color: var(--warn-text); }
 
 .planner-edge {
   cursor: pointer;
@@ -776,6 +776,20 @@ a.plain-link:hover {
 
 .planner-mark.is-lit {
   transform: translate(-50%, -50%) scale(1.15);
+}
+
+/* Mutation marks are a warning triangle drawn by their SVG, not a ring */
+.planner-mark.is-mutation {
+  width: 26px;
+  border: none;
+  border-radius: 0;
+  background: none;
+}
+
+.planner-mark.is-mutation svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 /* Verified marks stay visible even where crowded frogs overlap their line */
@@ -904,6 +918,10 @@ a.planner-frog-name:hover {
     width: 18px;
     height: 18px;
     font-size: 11px;
+  }
+
+  .planner-mark.is-mutation {
+    width: 21px;
   }
 }
 

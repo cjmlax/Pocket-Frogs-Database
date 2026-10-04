@@ -17,6 +17,7 @@
   --cell-max-text: #15803d;
   --cell-min-bg: rgba(239, 68, 68, 0.18);
   --cell-min-text: #b91c1c;
+  --warn-text: #a16207;
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
@@ -56,6 +57,7 @@
     --cell-max-text: #4ade80;
     --cell-min-bg: rgba(239, 68, 68, 0.2);
     --cell-min-text: #f87171;
+    --warn-text: #fbbf24;
   }
 
   #social .button-icon {
@@ -92,6 +94,7 @@ html.dark-mode {
   --cell-max-text: #4ade80;
   --cell-min-bg: rgba(239, 68, 68, 0.2);
   --cell-min-text: #f87171;
+  --warn-text: #fbbf24;
 }
 
 body {

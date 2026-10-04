@@ -19,7 +19,19 @@ const STATUS_TEXT: Record<LineStatus, string> = {
   mutation: 'Verified, produces a mutation',
 };
 
-const STATUS_MARK: Record<LineStatus, string> = { unknown: '?', clear: '✓', mutation: '✗' };
+// Warning triangle for mutation pairs — a different shape from the round
+// ✓ / ? marks, so it doesn't lean on colour alone.
+function IconWarning() {
+  return (
+    <svg viewBox="0 0 24 22" aria-hidden="true">
+      <path d="M12 1.5 22.8 20.5H1.2Z" fill="var(--code-bg)" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
+      <line x1="12" y1="8" x2="12" y2="13.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+      <circle cx="12" cy="17" r="1.25" fill="currentColor"/>
+    </svg>
+  );
+}
+
+const STATUS_MARK: Record<LineStatus, React.ReactNode> = { unknown: '?', clear: '✓', mutation: <IconWarning /> };
 
 interface PlannedFrog {
   sel:  CompleteFrogSel;
