@@ -805,7 +805,6 @@ a.plain-link:hover {
 
 a.planner-frog-name:hover {
   color: var(--accent);
-  text-decoration: underline;
 }
 
 .planner-frog-name span {
