@@ -63,7 +63,7 @@ function IconMonitor() {
 function IconApple() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 7.5C10.5 6.3 8 6.3 6.6 7.8 4.8 9.7 5 13.3 6.5 16.2 7.6 18.4 9 20 10.3 20c.7 0 1-.4 1.7-.4s1 .4 1.7.4c1.5 0 3.1-2.2 4.1-4.6-1.5-.6-2.4-1.9-2.4-3.4 0-1.4.8-2.6 2-3.2-1.1-1.6-3.6-2.5-5.4-1.3Z"/>
+      <path d="M12 7.5C10.28 6.3 7.4 6.3 5.79 7.8C3.72 9.7 3.95 13.3 5.68 16.2C6.94 18.4 8.55 20 10.05 20C10.85 20 11.2 19.6 12 19.6C12.8 19.6 13.15 20 13.95 20C15.68 20 17.52 17.8 18.67 15.4C16.95 14.8 15.91 13.5 15.91 12C15.91 10.6 16.83 9.4 18.21 8.8C16.95 7.2 14.07 6.3 12 7.5Z"/>
       <path d="M12 7.5c0-2 1.2-3.7 3.2-4 0 2-1.2 3.7-3.2 4Z"/>
     </svg>
   );
@@ -72,10 +72,10 @@ function IconApple() {
 function IconAndroid() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 16a7 7 0 0 1 14 0Z"/>
-      <path d="M8 10.3 6.5 7.5M16 10.3l1.5-2.8"/>
-      <circle cx="9.4" cy="13" r="1" fill="currentColor" stroke="none"/>
-      <circle cx="14.6" cy="13" r="1" fill="currentColor" stroke="none"/>
+      <path d="M3.5 17a8.5 8.5 0 0 1 17 0Z"/>
+      <path d="M7.1 10 5.3 6.6M16.9 10l1.8-3.4"/>
+      <circle cx="8.9" cy="13.6" r="1.15" fill="currentColor" stroke="none"/>
+      <circle cx="15.1" cy="13.6" r="1.15" fill="currentColor" stroke="none"/>
     </svg>
   );
 }

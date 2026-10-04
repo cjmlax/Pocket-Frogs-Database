@@ -294,19 +294,6 @@ a.plain-link:hover {
   color: var(--accent);
 }
 
-/* Fixed-width slots so switching platforms (which changes the date) never
-   nudges the pills; tabular figures keep digits a constant width. */
-.update-entry-header .update-version {
-  min-width: 4.4em;
-  font-variant-numeric: tabular-nums;
-}
-
-.update-entry-header .update-date {
-  width: 6.9em;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
 .update-meta-sep {
   font-size: 13px;
   opacity: 0.35;
@@ -321,7 +308,6 @@ a.plain-link:hover {
 .update-platform-pills {
   display: inline-flex;
   gap: 4px;
-  margin-left: 4px;
   align-self: center;
 }
 

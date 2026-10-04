@@ -210,8 +210,6 @@ function UpdateEntry({ update, selected, onSelect, className }: {
     <div className={className}>
       <div className="update-entry-header">
         <span className="update-version">v{update.version}</span>
-        <span className="update-meta-sep">·</span>
-        <span className="update-date">{formatUpdateDate(entry.date)}</span>
         {update.split && (
           <span className="update-platform-pills" role="group" aria-label="Platform">
             {PLATFORMS.map(p => (
@@ -228,6 +226,8 @@ function UpdateEntry({ update, selected, onSelect, className }: {
             ))}
           </span>
         )}
+        <span className="update-meta-sep">·</span>
+        <span className="update-date">{formatUpdateDate(entry.date)}</span>
       </div>
       {entry.notes && <p className="update-notes">{entry.notes}</p>}
     </div>
