@@ -323,8 +323,9 @@ export default function MutationPlanner() {
     <div>
       <h1>Mutation Planner</h1>
       <p className="search-hint" style={{ marginTop: 0 }}>
-        Add up to {MAX_FROGS} frogs to see which pairs are verified and which are known to produce a mutation.
-        Select a line to open that pair in Breeding Pairs.
+        Add up to {MAX_FROGS} frogs to see which frog combinations have verified breeding results.
+        Select a line to open that pair in Breeding Pairs, or a frog name to open Frog Detail.
+        Add frogs at the bottom, edit or remove frogs from their bubble.
       </p>
 
       {!lookup ? (

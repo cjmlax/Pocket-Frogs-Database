@@ -6,12 +6,11 @@ import { fetchTable, fetchBreedFrogs, fetchMutations, fetchFrogById } from '../a
 import ComboBox, { type ComboOption } from '../components/ComboBox';
 import WeeklyTable, { type WeeklyFields, WEEKLY_FROG_FIELDS } from '../components/WeeklyTable';
 import { hasAttachment, imageProxyUrl, pairScreenshotUrls } from '../utils/attachments';
-import ImageLightbox from '../components/ImageLightbox';
+import CombinationsTable from '../components/CombinationsTable';
 import { formatNum } from '../utils/format';
 import { downloadCsv } from '../utils/csv';
 import { breedOptionsFrom } from '../utils/breeds';
 import { useBreedSort } from '../hooks/useBreedSort';
-import { frogPath } from '../utils/frogIds';
 import { useSpoilers } from '../hooks/useSpoilers';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
@@ -45,15 +44,6 @@ function linkId(val: unknown): string | null {
   const first = Array.isArray(val) ? val[0] : val;
   if (first && typeof first === 'object' && 'id' in first) return String((first as { id: unknown }).id);
   return null;
-}
-
-function IconCamera() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-      <circle cx="12" cy="13" r="4"/>
-    </svg>
-  );
 }
 
 // ── Stat icons ────────────────────────────────────────────────────────────────
@@ -240,10 +230,9 @@ export default function BreedOverview() {
   }, [weekly, breedFrogNames]);
 
   const [weeklySort, setWeeklySort] = useState<SortingState>([{ id: 'date', desc: true }]);
-  const [lightbox, setLightbox] = useState<string[] | null>(null);
   const { spoilers } = useSpoilers();
 
-  // ── Chroma / Glass combinations ───────────────────────────────────────────
+  // ── Known mutations (Chroma / Glass combinations) ─────────────────────────
   const { data: mutations } = useQuery({ queryKey: ['mutations'], queryFn: fetchMutations });
 
   const breedFrogIds = useMemo(() => {
@@ -469,7 +458,7 @@ export default function BreedOverview() {
       )}
 
       {breed === null ? (
-        <p className="search-hint">Select a breed above to generate the grid.</p>
+        <p className="search-hint">Select a breed above to display details.</p>
       ) : isFetching ? (
         <p className="search-hint">Loading frogs for {breed.label}…</p>
       ) : bases && secs ? (
@@ -582,72 +571,15 @@ export default function BreedOverview() {
 
       {breed !== null && spoilers && (
         <div className="frog-detail-specials">
-          {(['Chroma', 'Glass'] as const).map(type => {
-            const rows = specials
-              .map((s, i) => ({ ...s, thisFrogName: thisFrogNames[i], partnerName: partnerNames[i], resultName: resultNames[i] }))
-              .filter(s => s.type === type);
-            return (
-              <div key={type} className="special-combo-panel">
-                <h2 className="breed-weekly-title">
-                  {type} Combinations{' '}
-                  <span className="breed-weekly-count">({rows.length})</span>
-                </h2>
-                <div className="table-wrapper">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Breed Frog</th>
-                        <th>Partner</th>
-                        <th>Result</th>
-                        <th className="pin-cell"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.length === 0 ? (
-                        <tr><td colSpan={4} className="search-hint">No {type.toLowerCase()} combinations found.</td></tr>
-                      ) : rows.map((row, i) => (
-                        <tr key={i}>
-                          <td>
-                            {row.thisTitle
-                              ? <a href={frogPath(row.thisTitle)} className="plain-link">{row.thisFrogName}</a>
-                              : row.thisFrogName}
-                          </td>
-                          <td>
-                            {row.partnerTitle
-                              ? <a href={frogPath(row.partnerTitle)} className="plain-link">{row.partnerName}</a>
-                              : row.partnerName}
-                          </td>
-                          <td>
-                            {row.resultTitle
-                              ? <a href={frogPath(row.resultTitle)} className="plain-link">{row.resultName}</a>
-                              : row.resultName}
-                          </td>
-                          <td className="pin-cell">
-                            {row.screenshots.length > 0 && (
-                              <button
-                                className="screenshot-btn"
-                                onClick={() => setLightbox(row.screenshots)}
-                                aria-label={`View ${type} screenshot`}
-                                title="View screenshot"
-                              >
-                                <IconCamera />
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            );
-          })}
+          <CombinationsTable
+            thisHeader="Breed Frog"
+            rows={specials.map((s, i) => ({
+              ...s, thisName: thisFrogNames[i], partnerName: partnerNames[i], resultName: resultNames[i],
+            }))}
+          />
         </div>
       )}
 
-      {lightbox && (
-        <ImageLightbox images={lightbox} alt="Combination screenshot" onClose={() => setLightbox(null)} />
-      )}
     </div>
   );
 }
