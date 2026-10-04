@@ -846,9 +846,11 @@ a.planner-frog-name:hover {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+/* Edit / remove sit on the bubble's outer edge; the page places each one */
 .planner-frog-btn {
   position: absolute;
-  top: 4px;
+  z-index: 1;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -867,8 +869,10 @@ a.planner-frog-name:hover {
   color: var(--accent);
 }
 
-.planner-frog-edit   { left: 6px; }
-.planner-frog-remove { right: 6px; }
+/* Self-breeding mark between them, drawn like the line marks */
+.planner-mark.planner-self {
+  z-index: 1;
+}
 
 .planner-legend {
   display: flex;
@@ -906,13 +910,9 @@ a.planner-frog-name:hover {
   }
 
   .planner-frog-btn {
-    top: -6px;
     width: 22px;
     height: 22px;
   }
-
-  .planner-frog-edit   { left: -2px; }
-  .planner-frog-remove { right: -2px; }
 
   .planner-mark {
     width: 18px;

@@ -37,12 +37,33 @@ interface PlannedFrog {
   sel:  CompleteFrogSel;
   name: string;
   id:   string | null; // Frog_ID, e.g. "0:18:11"
-  key:  string;        // name plus copy number, since a frog may appear twice
 }
 
-// A frog can breed with itself, so a plan may hold two copies of it (the line
-// between them is its self-pair) but no more.
-const MAX_COPIES = 2;
+// A frog's own controls sit on the outer edge of its bubble, away from the
+// lines (which all head inward): the self-breeding mark points straight out
+// from the board's centre, flanked by edit and remove this many radians either side.
+const CONTROL_SPREAD = 0.73; // ≈ 42°
+
+type Offset = { x: number; y: number };
+
+// Point on an ellipse (half-axes a, b) in screen direction `angle`.
+function ellipseEdge(a: number, b: number, angle: number): Offset {
+  const t = Math.atan2(a * Math.sin(angle), b * Math.cos(angle));
+  return { x: a * Math.cos(t), y: b * Math.sin(t) };
+}
+
+// Offsets from a frog's centre for its three controls. Edit and remove follow
+// reading order — edit is the left slot (or the upper one when the two are
+// stacked), remove the right/lower one — so they never swap sides around the wheel.
+function frogControls(outward: number, a: number, b: number): { self: Offset; edit: Offset; remove: Offset } {
+  const self = ellipseEdge(a, b, outward);
+  const one = ellipseEdge(a, b, outward - CONTROL_SPREAD);
+  const two = ellipseEdge(a, b, outward + CONTROL_SPREAD);
+  const oneFirst = Math.abs(one.x - two.x) > 4 ? one.x < two.x : one.y < two.y;
+  return { self, edit: oneFirst ? one : two, remove: oneFirst ? two : one };
+}
+
+const at = (o: Offset) => ({ left: `calc(50% + ${o.x}px)`, top: `calc(50% + ${o.y}px)` });
 
 interface Edge {
   key:    string;
@@ -61,6 +82,14 @@ interface Editor {
 }
 
 const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+
+// Grey: no pair record, or one that isn't Verified. Green: Verified, no
+// mutations. Yellow: Verified and produces a mutation. A frog with itself is a
+// pair too (its record has the same frog as Frog A and Frog B).
+function pairStatus(pairByKey: Map<string, FrogPair>, fa: PlannedFrog, fb: PlannedFrog): LineStatus {
+  const pair = fa.id && fb.id ? pairByKey.get(pairKey(fa.id, fb.id)) : undefined;
+  return !pair?.verified ? 'unknown' : pair.mutationCount > 0 ? 'mutation' : 'clear';
+}
 
 // Mark placement, in board pixels. Each mark takes the spot along its own line
 // nearest the midpoint that keeps clear of other marks, every other line (so it
@@ -217,18 +246,17 @@ export default function MutationPlanner() {
   const [activeEdge, setActiveEdge] = useState<string | null>(null);
 
   // The plan lives in the URL as Frog_IDs (?frogs=0:18:11_0:18:4), so a plan
-  // can be shared as a link. Extra copies of a frog and anything past the cap
-  // are dropped.
+  // can be shared as a link. Duplicates and anything past the cap are dropped
+  // (a frog's pairing with itself is shown on its own bubble instead).
   const frogs = useMemo<PlannedFrog[]>(() => {
     if (!lookup) return [];
-    const copies = new Map<string, number>();
+    const seen = new Set<string>();
     return decodeFrogParam(searchParams.get('frogs'), lookup)
-      .flatMap(sel => {
-        const name = frogName(sel);
-        const copy = copies.get(name) ?? 0;
-        if (copy >= MAX_COPIES) return [];
-        copies.set(name, copy + 1);
-        return [{ sel, name, id: frogId(sel, lookup), key: `${name}#${copy}` }];
+      .map(sel => ({ sel, name: frogName(sel), id: frogId(sel, lookup) }))
+      .filter(f => {
+        if (seen.has(f.name)) return false;
+        seen.add(f.name);
+        return true;
       })
       .slice(0, MAX_FROGS);
   }, [lookup, searchParams]);
@@ -260,15 +288,23 @@ export default function MutationPlanner() {
     const list: Edge[] = [];
     for (let a = 0; a < n; a++) {
       for (let b = a + 1; b < n; b++) {
-        const fa = frogs[a], fb = frogs[b];
-        const pair = fa.id && fb.id ? pairByKey.get(pairKey(fa.id, fb.id)) : undefined;
-        const status: LineStatus = !pair?.verified ? 'unknown' : pair.mutationCount > 0 ? 'mutation' : 'clear';
-        list.push({ key: `${a}-${b}`, a, b, status, mark: { x: 0, y: 0 } });
+        list.push({ key: `${a}-${b}`, a, b, status: pairStatus(pairByKey, frogs[a], frogs[b]), mark: { x: 0, y: 0 } });
       }
     }
     placeMarks(list, positions, boardSize);
     return list;
   }, [frogs, pairByKey, positions, boardSize]);
+
+  // Each frog's controls, on the side of its bubble facing away from the
+  // board's centre (a lone frog, sitting at the centre, faces up).
+  const controls = useMemo(() => {
+    const r = boardSize.mobile ? GAPS.mobile : GAPS.desktop;
+    return positions.map(p => {
+      const dx = ((p.x - 50) / 100) * boardSize.width, dy = ((p.y - 50) / 100) * boardSize.height;
+      const outward = dx === 0 && dy === 0 ? -Math.PI / 2 : Math.atan2(dy, dx);
+      return frogControls(outward, r.frogX, r.frogY);
+    });
+  }, [positions, boardSize]);
 
   // Hovering a frog lights its lines; hovering a line lights just that one.
   const focusing = activeFrog !== null || activeEdge !== null;
@@ -276,15 +312,14 @@ export default function MutationPlanner() {
   const edgeClass = (e: Edge) =>
     `is-${e.status}${focusing ? (isLit(e) ? ' is-lit' : ' is-dim') : ''}`;
 
-  const pairHref = (e: Edge) =>
-    lookup ? `/breeding?pair=${encodeFrogParam([frogs[e.a].sel, frogs[e.b].sel], lookup)}` : '/breeding';
+  const pairHref = (fa: PlannedFrog, fb: PlannedFrog) =>
+    lookup ? `/breeding${frogSearch('pair', encodeFrogParam([fa.sel, fb.sel], lookup))}` : '/breeding';
 
   // ── Editing ───────────────────────────────────────────────────────────────
 
   const editName = editor && isComplete(editor.sel) ? frogName(editor.sel) : null;
-  const tooMany = !!editName
-    && frogs.filter((f, i) => i !== editor?.index && f.name === editName).length >= MAX_COPIES;
-  const canSave = !!editName && !tooMany;
+  const duplicate = !!editName && frogs.some((f, i) => i !== editor?.index && f.name === editName);
+  const canSave = !!editName && !duplicate;
 
   function openEditor(index: number | null) {
     setEditor(prev => ({
@@ -379,7 +414,7 @@ export default function MutationPlanner() {
                   className={`planner-edge ${edgeClass(e)}`}
                   onMouseEnter={() => setActiveEdge(e.key)}
                   onMouseLeave={() => setActiveEdge(null)}
-                  onClick={() => navigate(pairHref(e))}
+                  onClick={() => navigate(pairHref(frogs[e.a], frogs[e.b]))}
                 >
                   <line className="planner-line-hit" vectorEffect="non-scaling-stroke"
                     x1={positions[e.a].x} y1={positions[e.a].y} x2={positions[e.b].x} y2={positions[e.b].y} />
@@ -392,7 +427,7 @@ export default function MutationPlanner() {
             {edges.map(e => (
               <Link
                 key={e.key}
-                to={pairHref(e)}
+                to={pairHref(frogs[e.a], frogs[e.b])}
                 className={`planner-mark ${edgeClass(e)}`}
                 style={{ left: `${e.mark.x}%`, top: `${e.mark.y}%` }}
                 onMouseEnter={() => setActiveEdge(e.key)}
@@ -406,9 +441,11 @@ export default function MutationPlanner() {
               </Link>
             ))}
 
-            {frogs.map((f, i) => (
+            {frogs.map((f, i) => {
+              const self = pairStatus(pairByKey, f, f);
+              return (
               <div
-                key={f.key}
+                key={f.name}
                 className={`planner-frog${activeFrog === i ? ' is-active' : ''}${editor?.index === i ? ' is-editing' : ''}`}
                 style={{ left: `${positions[i].x}%`, top: `${positions[i].y}%` }}
                 onMouseEnter={() => setActiveFrog(i)}
@@ -416,11 +453,20 @@ export default function MutationPlanner() {
                 onFocus={() => setActiveFrog(i)}
                 onBlur={() => setActiveFrog(null)}
               >
-                <button type="button" className="planner-frog-btn planner-frog-edit" onClick={() => openEditor(i)}
+                <button type="button" className="planner-frog-btn" style={at(controls[i].edit)} onClick={() => openEditor(i)}
                   aria-label={`Edit ${f.name}`} title="Edit">
                   <IconPencil />
                 </button>
-                <button type="button" className="planner-frog-btn planner-frog-remove" onClick={() => removeFrog(i)}
+                <Link
+                  to={pairHref(f, f)}
+                  className={`planner-mark planner-self is-${self}`}
+                  style={at(controls[i].self)}
+                  aria-label={`${f.name} with itself: ${STATUS_TEXT[self]}. Open in Breeding Pairs.`}
+                  title={`Self-breeding: ${STATUS_TEXT[self]}. Open in Breeding Pairs.`}
+                >
+                  {STATUS_MARK[self]}
+                </Link>
+                <button type="button" className="planner-frog-btn" style={at(controls[i].remove)} onClick={() => removeFrog(i)}
                   aria-label={`Remove ${f.name}`} title="Remove">
                   <IconMinus />
                 </button>
@@ -438,7 +484,8 @@ export default function MutationPlanner() {
                   </span>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {editor && (
@@ -450,9 +497,9 @@ export default function MutationPlanner() {
                 onChange={sel => setEditor(prev => (prev ? { ...prev, sel } : prev))}
                 options={frogOptions}
               >
-                {tooMany && (
+                {duplicate && (
                   <p className="planner-duplicate" role="alert">
-                    {editName} is already in this plan twice. Choose a different frog or cancel.
+                    {editName} is already in this plan. Choose a different frog or cancel.
                   </p>
                 )}
                 <div className="crop-buttons">
