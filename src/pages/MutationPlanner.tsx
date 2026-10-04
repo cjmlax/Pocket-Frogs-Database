@@ -5,7 +5,7 @@ import { fetchFrogPairs, type FrogPair } from '../api/teable';
 import FrogInputs from '../components/FrogInputs';
 import { useFrogOptions } from '../hooks/useFrogOptions';
 import {
-  EMPTY_FROG, MAX_PLANNER_FROGS as MAX_FROGS, decodeFrogParam, encodeFrogParam, frogId, frogName, frogPath, isComplete,
+  EMPTY_FROG, MAX_PLANNER_FROGS as MAX_FROGS, decodeFrogParam, encodeFrogParam, frogId, frogName, frogPath, frogSearch, isComplete,
   type CompleteFrogSel, type FrogSel,
 } from '../utils/frogIds';
 
@@ -206,7 +206,7 @@ function useBoardSize(el: HTMLDivElement | null): BoardSize {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function MutationPlanner() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const frogOptions = useFrogOptions();
   const { lookup } = frogOptions;
@@ -216,7 +216,7 @@ export default function MutationPlanner() {
   const [activeFrog, setActiveFrog] = useState<number | null>(null);
   const [activeEdge, setActiveEdge] = useState<string | null>(null);
 
-  // The plan lives in the URL as Frog_IDs (?frogs=0-18-11_0-18-4), so a plan
+  // The plan lives in the URL as Frog_IDs (?frogs=0:18:11_0:18:4), so a plan
   // can be shared as a link. Extra copies of a frog and anything past the cap
   // are dropped.
   const frogs = useMemo<PlannedFrog[]>(() => {
@@ -235,11 +235,7 @@ export default function MutationPlanner() {
 
   function saveFrogs(list: CompleteFrogSel[]) {
     if (!lookup) return;
-    const value = encodeFrogParam(list, lookup);
-    setSearchParams(p => {
-      if (value) p.set('frogs', value); else p.delete('frogs');
-      return p;
-    }, { replace: true });
+    navigate({ search: frogSearch('frogs', encodeFrogParam(list, lookup)) }, { replace: true });
   }
 
   // Pair records keyed by both Frog_IDs (either order). If a pair was somehow

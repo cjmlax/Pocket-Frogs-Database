@@ -1,12 +1,12 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { fetchBreedFrogs, fetchFrogPairs, fetchMutations, fetchFrogById, type Mutation, type TeableRecord } from '../api/teable';
 import type { ComboOption } from '../components/ComboBox';
 import FrogInputs from '../components/FrogInputs';
 import { formatNum } from '../utils/format';
 import { pairScreenshotUrls } from '../utils/attachments';
-import { EMPTY_FROG, decodeFrogParam, encodeFrogParam, isComplete, type FrogSel } from '../utils/frogIds';
+import { EMPTY_FROG, decodeFrogParam, encodeFrogParam, frogSearch, isComplete, type FrogSel } from '../utils/frogIds';
 import ImageLightbox from '../components/ImageLightbox';
 import { useFrogOptions } from '../hooks/useFrogOptions';
 import { useSpoilers } from '../hooks/useSpoilers';
@@ -70,7 +70,8 @@ function IconVerified({ ok }: { ok: boolean }) {
 // ── Page ────────────────────────────────────────────────────────────────────────
 
 export default function BreedingPairs() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [pa, setPa] = useState<FrogSel>(EMPTY_FROG);
   const [pb, setPb] = useState<FrogSel>(EMPTY_FROG);
   const [lightbox, setLightbox] = useState<string[] | null>(null);
@@ -80,7 +81,7 @@ export default function BreedingPairs() {
   const { lookup } = frogOptions;
   const { spoilers } = useSpoilers();
 
-  // ?pair= holds both parents' Frog_IDs (e.g. "0-18-11_0-18-4", as linked from
+  // ?pair= holds both parents' Frog_IDs (e.g. "0:18:11_0:18:4", as linked from
   // the Mutation Planner). Read once the lookup tables load; the inputs are keyed
   // on this so they remount showing the restored parents.
   const [urlRead, setUrlRead] = useState(false);
@@ -96,11 +97,8 @@ export default function BreedingPairs() {
     if (!urlRead || !lookup) return;
     const next = isComplete(pa) && isComplete(pb) ? encodeFrogParam([pa, pb], lookup) : '';
     if ((searchParams.get('pair') ?? '') === next) return;
-    setSearchParams(p => {
-      if (next) p.set('pair', next); else p.delete('pair');
-      return p;
-    }, { replace: true });
-  }, [urlRead, lookup, pa, pb, searchParams, setSearchParams]);
+    navigate({ search: frogSearch('pair', next) }, { replace: true });
+  }, [urlRead, lookup, pa, pb, searchParams, navigate]);
 
   // Offspring only ever use the two parents' breeds, so fetching those two breed
   // sets covers every combination. If both breeds match, TanStack dedupes the query.

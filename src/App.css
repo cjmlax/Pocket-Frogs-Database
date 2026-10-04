@@ -1999,10 +1999,18 @@ main {
   cursor: default;
 }
 
-/* Star marking the database-wide highest-value frog */
+/* Star marking a frog with the highest value in its breed (accent), or in the
+   whole database (gold). Larger than the 10px label so the colours are clear. */
 .max-value-star {
   margin-left: 4px;
+  font-size: 14px;
+  line-height: 1;
+  vertical-align: -1px;
   color: var(--accent);
+}
+
+.max-value-star.is-gold {
+  color: var(--gold);
 }
 
 /* Account page — heading + action button in one row (Account/Sign out,

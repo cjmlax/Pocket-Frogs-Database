@@ -77,7 +77,7 @@ interface PickerSel {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function FrogDetail() {
-  // The URL carries the frog's Frog_ID with dashes: /frog/0-18-11.
+  // The URL carries the frog's Frog_ID: /frog/0:18:11 (dashes also accepted).
   const { frogId: segment } = useParams<{ frogId: string }>();
   const code = frogIdFromPath(segment);
   const navigate = useNavigate();
@@ -166,6 +166,21 @@ export default function FrogDetail() {
     staleTime: 60 * 60 * 1000,
   });
   const isMaxValue = value !== null && frogStats?.maxValue === value;
+
+  // The frog's own breed's frogs (the same 24h cache the pickers use) — for
+  // flagging the highest value within its breed.
+  const { data: ownBreedFrogs } = useQuery({
+    queryKey:  ['breed-frogs', frogBreed?.id],
+    queryFn:   () => fetchBreedFrogs<FrogFields>(frogBreed!.id),
+    enabled:   !!frogBreed,
+    staleTime: 1000 * 60 * 60 * 24,
+  });
+  const breedMaxValue = useMemo(() => {
+    const values = (ownBreedFrogs ?? []).map(f => f.fields.Value).filter((v): v is number => typeof v === 'number');
+    return values.length ? Math.max(...values) : null;
+  }, [ownBreedFrogs]);
+  // A database-wide max is necessarily its breed's max too; it gets only the gold star.
+  const isBreedMax = !isMaxValue && value !== null && breedMaxValue === value;
 
   // The frog's breed record — used for level resolution and the Promotional flag.
   const breedRec = useMemo(
@@ -283,7 +298,9 @@ export default function FrogDetail() {
           <div className="breed-info-stats frog-detail-stats">
             <div className="breed-info-stat">
               <span className="breed-info-stat-label">
-                Value{isMaxValue && <span className="max-value-star" title="Highest value in the database">★</span>}
+                Value
+                {isMaxValue && <span className="max-value-star is-gold" title="Highest value in the database">★</span>}
+                {isBreedMax && <span className="max-value-star" title="Highest value in its breed">★</span>}
               </span>
               <span className="breed-info-stat-value">{formatNum(value)}</span>
             </div>
