@@ -200,7 +200,7 @@ export default function SubmitCombo() {
           resultFrogId: frogR.id, resultFrogName: fullName(pResult)!,
           lostFrogId: frogL?.id, lostFrogName: frogL ? fullName(pLost)! : undefined,
           sourceLink: sourceTrim || undefined,
-          versionId: version?.id, versionName: version?.version,
+          versionName: version?.version,
         },
         screenshot,
         auth.user?.id_token,
