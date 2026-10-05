@@ -1662,7 +1662,8 @@ tr:hover .pin-btn,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  gap: 8px;
+  padding: 0 clamp(10px, 4vw, 24px);
   height: 52px;
   border-bottom: 1px solid var(--border);
   position: sticky;
@@ -1722,70 +1723,33 @@ tr:hover .pin-btn,
   border-bottom-color: color-mix(in srgb, #ef4444 40%, transparent);
 }
 
-.nav-scroll-wrap {
+/* The nav never scrolls: its text shrinks with the viewport so every item
+   fits on one line. Spacing is in em so it shrinks with the text. */
+.nav-links {
+  /* Full size until ~560px wide, then scales with the viewport (≈28em of
+     content must fit beside the settings button). */
+  --nav-fs: clamp(9px, calc(3.2vw - 2px), 15px);
   display: flex;
-  align-items: center;
   flex: 1;
   min-width: 0;
-  gap: 2px;
-}
-
-.nav-arrow {
-  display: flex;
+  gap: 0.25em;
   align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 20px;
-  height: 32px;
-  background: none;
-  border: none;
-  color: var(--text);
-  font-size: 18px;
-  line-height: 1;
-  border-radius: 4px;
-  cursor: pointer;
-  padding: 0;
-  transition: color 0.15s, background 0.15s;
-}
-
-.nav-arrow:hover {
-  color: var(--text-h);
-  background: var(--code-bg);
-}
-
-.nav-links {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
-}
-
-.nav-links.has-left-overflow {
-  mask-image: linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);
-}
-
-.nav-links::-webkit-scrollbar {
-  display: none;
+  font-size: var(--nav-fs);
+  white-space: nowrap;
 }
 
 .nav-brand {
   font-weight: 600;
-  font-size: 16px;
+  font-size: 1.07em;
   color: var(--text-h);
   text-decoration: none;
-  margin-right: 12px;
+  margin-right: 0.4em;
 }
 
 .nav-links a {
   color: var(--text);
   text-decoration: none;
-  font-size: 15px;
-  padding: 5px 10px;
+  padding: 0.33em 0.6em;
   border-radius: 4px;
   transition: color 0.15s, background 0.15s;
 }
@@ -1806,8 +1770,8 @@ tr:hover .pin-btn,
   color: var(--text);
   background: none;
   border: none;
-  font-size: 15px;
-  padding: 5px 10px;
+  font-size: 1em;
+  padding: 0.33em 0.6em;
   border-radius: 4px;
   cursor: pointer;
   transition: color 0.15s, background 0.15s;

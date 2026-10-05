@@ -352,61 +352,17 @@ function SettingsDropdown() {
   );
 }
 
-// ── Scrollable nav bar ────────────────────────────────────────────────────────
+// ── Nav bar ───────────────────────────────────────────────────────────────────
 
 function NavBar() {
-  const navRef = useRef<HTMLElement>(null);
-  const [showLeft, setShowLeft] = useState(false);
-  const [showRight, setShowRight] = useState(false);
-
-  function updateArrows() {
-    const el = navRef.current;
-    if (!el) return;
-    setShowLeft(el.scrollLeft > 0);
-    setShowRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
-  }
-
-  useEffect(() => {
-    const el = navRef.current;
-    if (!el) return;
-    updateArrows();
-    el.addEventListener('scroll', updateArrows, { passive: true });
-    const ro = new ResizeObserver(updateArrows);
-    ro.observe(el);
-    return () => {
-      el.removeEventListener('scroll', updateArrows);
-      ro.disconnect();
-    };
-  }, []);
-
-  function scrollNav(dir: 'left' | 'right') {
-    navRef.current?.scrollBy({ left: dir === 'right' ? 160 : -160, behavior: 'smooth' });
-  }
-
   return (
-    <div className="nav-scroll-wrap">
-      <button
-        className="nav-arrow"
-        style={{ visibility: showLeft ? 'visible' : 'hidden' }}
-        onClick={() => scrollNav('left')}
-        tabIndex={showLeft ? 0 : -1}
-        aria-label="Scroll navigation left"
-      >‹</button>
-      <nav className={`nav-links${showLeft ? ' has-left-overflow' : ''}`} ref={navRef}>
-        <NavLink to="/" className="nav-brand" end>Home</NavLink>
-        <NavDropdown label="View" links={VIEW_LINKS} />
-        <NavDropdown label="Calculate" links={CALCULATE_LINKS} />
-        <NavDropdown label="Submit" links={SUBMIT_LINKS} />
-        <NavLink to="/download">Download</NavLink>
-      </nav>
-      <button
-        className="nav-arrow"
-        style={{ visibility: showRight ? 'visible' : 'hidden' }}
-        onClick={() => scrollNav('right')}
-        tabIndex={showRight ? 0 : -1}
-        aria-label="Scroll navigation right"
-      >›</button>
-    </div>
+    <nav className="nav-links">
+      <NavLink to="/" className="nav-brand" end>Home</NavLink>
+      <NavDropdown label="View" links={VIEW_LINKS} />
+      <NavDropdown label="Calculate" links={CALCULATE_LINKS} />
+      <NavDropdown label="Submit" links={SUBMIT_LINKS} />
+      <NavLink to="/download">Download</NavLink>
+    </nav>
   );
 }
 
