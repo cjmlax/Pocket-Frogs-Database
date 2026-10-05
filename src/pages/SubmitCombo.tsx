@@ -220,27 +220,22 @@ export default function SubmitCombo() {
   // A field with only one possible value (parents share it) is pre-set.
   const only = (opts: ComboOption[]) => (opts.length === 1 ? opts[0] : null);
 
-  // Keeps outcome picks that are still valid for the (possibly edited) parents.
-  function prunedLost(): ParentSel {
-    const keep = (sel: ComboOption | null, opts: ComboOption[]) =>
-      (sel && opts.some(o => o.id === sel.id) ? sel : only(opts));
-    return {
-      base:  keep(pLost.base,  parentBaseOpts),
-      sec:   keep(pLost.sec,   parentSecOpts),
-      breed: keep(pLost.breed, parentBreedOpts),
-    };
-  }
-
-  // Lock in the verified parents and reveal the rest of the form.
+  // Lock in the verified parents and reveal the rest of the form, starting the
+  // outcome from the parents (any trait they share is pre-set).
   function handleProceed() {
     if (!canProceed) return;
-    setPLost(prunedLost());
+    setPLost({ base: only(parentBaseOpts), sec: only(parentSecOpts), breed: only(parentBreedOpts) });
     setChecked(true);
     setResult(null);
   }
 
   // Unlock the parents to correct an input error (re-check required to proceed).
+  // Everything after the parents is cleared: the outcome depends on them, and
+  // nothing entered for the old pair should carry into a new submission.
   function handleUnlock() {
+    setVariant(null); setPLost(EMPTY);
+    setSourceLink(''); setVersionSel(''); pickScreenshot(null); setFileError(null);
+    if (fileRef.current) fileRef.current.value = '';
     setChecked(false);
     setAttempted(false);
     setResult(null);

@@ -110,3 +110,29 @@ export function decodeFrogParam(param: string | null, lk: FrogIdLookup): Complet
     return breed && base && sec ? [{ base, sec, breed }] : [];
   });
 }
+
+// ── Text entry ──────────────────────────────────────────────────────────────
+// Every Base × Secondary × Breed is a frog (23 × 16 × 124 = the frogs table's
+// 45,632 rows), and Frog_ID / fullname are composed from those parts. So typed
+// text is checked by walking the combinations from the cached part tables and
+// comparing each whole Frog_ID or name — no frog fetches, and nothing kept.
+
+// The frog whose Frog_ID (text of digits and colons) is exactly the text, or
+// whose full name (anything else) is the text ignoring case; null if none.
+export function matchFrogText(text: string, lk: FrogIdLookup): CompleteFrogSel | null {
+  const byId = /^[\d:]+$/.test(text);
+  const want = byId ? text : text.toLowerCase();
+  const key = (code: string, opt: ComboOption) => (byId ? code : opt.label.toLowerCase());
+  const bases  = [...lk.base.byCode].map(([c, o]) => [key(c, o), o] as const);
+  const secs   = [...lk.sec.byCode].map(([c, o]) => [key(c, o), o] as const);
+  const breeds = [...lk.breed.byCode].map(([c, o]) => [key(c, o), o] as const);
+  const sep = byId ? ':' : ' ';
+  for (const [b, base] of bases) {
+    for (const [s, sec] of secs) {
+      for (const [r, breed] of breeds) {
+        if (b + sep + s + sep + r === want) return { base, sec, breed };
+      }
+    }
+  }
+  return null;
+}

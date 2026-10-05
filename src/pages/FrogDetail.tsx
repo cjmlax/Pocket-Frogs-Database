@@ -8,12 +8,9 @@ import {
 import ComboBox, { type ComboOption } from '../components/ComboBox';
 import FrogTextInput from '../components/FrogTextInput';
 import WeeklyTable, { type WeeklyFields, WEEKLY_FROG_FIELDS } from '../components/WeeklyTable';
-import { breedOptionsFrom } from '../utils/breeds';
-import { useBreedSort } from '../hooks/useBreedSort';
-import { useColorSort } from '../hooks/useColorSort';
 import { useSpoilers } from '../hooks/useSpoilers';
 import { useFrogEntry } from '../hooks/useFrogEntry';
-import { colorOptionsFrom } from '../utils/colors';
+import { useFrogOptions } from '../hooks/useFrogOptions';
 import { pairScreenshotUrls } from '../utils/attachments';
 import CombinationsTable from '../components/CombinationsTable';
 import { formatNum } from '../utils/format';
@@ -32,8 +29,6 @@ interface FrogFields extends Record<string, unknown> {
   Stamina?:   number;
 }
 interface BreedFields extends Record<string, unknown> { Breed?: string; Level?: unknown; Promotional?: boolean }
-interface BaseFields  extends Record<string, unknown> { BaseColors?: string }
-interface SecFields   extends Record<string, unknown> { Sec_Color?:  string }
 interface LevelFields extends Record<string, unknown> {
   Level_No?:   number;
   Hatch?:      string;
@@ -88,19 +83,14 @@ export default function FrogDetail() {
 
   // Lookup tables for the pickers + supporting data (small, ETag-cached).
   const { data: breeds } = useQuery({ queryKey: ['table', 'breeds'], queryFn: () => fetchTable<BreedFields>('breeds') });
-  const { data: bases  } = useQuery({ queryKey: ['table', 'bases'],  queryFn: () => fetchTable<BaseFields>('bases')  });
-  const { data: secs   } = useQuery({ queryKey: ['table', 'secs'],   queryFn: () => fetchTable<SecFields>('secs')    });
   const { data: levels } = useQuery({ queryKey: ['table', 'levels'], queryFn: () => fetchTable<LevelFields>('levels') });
   const { data: weekly } = useQuery({ queryKey: ['table', 'weekly'], queryFn: () => fetchTable<WeeklyFields>('weekly') });
   const { data: mutations } = useQuery({ queryKey: ['mutations'], queryFn: fetchMutations });
 
-  const breedSort = useBreedSort();
   const { spoilers } = useSpoilers();
   const { entry } = useFrogEntry();
-  const colorSort = useColorSort();
-  const breedOptions = useMemo<ComboOption[]>(() => breedOptionsFrom(breeds, breedSort), [breeds, breedSort]);
-  const baseOptions  = useMemo<ComboOption[]>(() => colorOptionsFrom(bases, 'BaseColors', colorSort), [bases, colorSort]);
-  const secOptions   = useMemo<ComboOption[]>(() => colorOptionsFrom(secs,  'Sec_Color',  colorSort), [secs,  colorSort]);
+  // Picker options and the Frog_ID lookup (bases / secs / breeds, shared cache).
+  const { baseOpts: baseOptions, secOpts: secOptions, breedOpts: breedOptions, lookup } = useFrogOptions();
 
   // The loaded frog's traits, used to prefill the pickers.
   const frogBase  = useMemo(() => optionFromLink(frog?.fields.Primary),   [frog]);
@@ -255,7 +245,7 @@ export default function FrogDetail() {
           <FrogTextInput
             sel={{ base: frogBase, sec: frogSec, breed: frogBreed }}
             onChange={setSel}
-            options={{ baseOpts: baseOptions, secOpts: secOptions, breedOpts: breedOptions }}
+            lookup={lookup}
           />
         </div>
       ) : (
@@ -285,7 +275,7 @@ export default function FrogDetail() {
       )}
 
       {!segment ? (
-        <p className="search-hint">Select a base color, secondary color, and breed to view a frog.</p>
+        <p className="search-hint">Please enter a complete, valid frog in order to display details.</p>
       ) : !code ? (
         <p className="search-hint">Frog not found.</p>
       ) : error ? (

@@ -336,44 +336,21 @@ export async function fetchBreedFrogs<T extends Record<string, unknown>>(
   return records;
 }
 
-const FROG_ID_FIELD       = 'fldXdFuyFj6NDz1qjMY'; // Frog_ID, e.g. "18:11:0"
-const FROG_FULLNAME_FIELD = 'fldYaxw2QNksOM7x79k'; // fullname, e.g. "Maroon Tingo Anura"
+// Fetches a single frog by its Frog_ID ("18:11:0"); null when there's no match.
+const FROG_ID_FIELD = 'fldXdFuyFj6NDz1qjMY';
 
-// Frogs whose field matches the value, as Teable's "is" filter judges it.
-async function fetchFrogsWhere<T extends Record<string, unknown>>(
-  fieldId: string,
-  value: string,
-  take: number,
-): Promise<TeableRecord<T>[]> {
+export async function fetchFrogByFrogId<T extends Record<string, unknown>>(
+  frogId: string,
+): Promise<TeableRecord<T> | null> {
   const params = new URLSearchParams({
     fieldKeyType: 'dbFieldName',
-    take: String(take),
-    filter: JSON.stringify({ conjunction: 'and', filterSet: [{ fieldId, operator: 'is', value }] }),
+    take: '1',
+    filter: JSON.stringify({ conjunction: 'and', filterSet: [{ fieldId: FROG_ID_FIELD, operator: 'is', value: frogId }] }),
   });
   const response = await fetch(`${BASE_URL}/${TABLES.frogs.id}/record?${params}`, { headers: { Accept: 'application/json' } });
   if (!response.ok) throw new Error(`API Error ${response.status}`);
   const data = (await response.json()) as { records: TeableRecord<T>[] };
-  return data.records;
-}
-
-// Fetches a single frog by its Frog_ID ("18:11:0"); null when there's no match.
-export async function fetchFrogByFrogId<T extends Record<string, unknown>>(
-  frogId: string,
-): Promise<TeableRecord<T> | null> {
-  return (await fetchFrogsWhere<T>(FROG_ID_FIELD, frogId, 1))[0] ?? null;
-}
-
-// The frog whose Frog_ID (all digits and colons, e.g. "18:11:0") or fullname
-// (anything else, e.g. "Maroon Tingo Anura") is exactly the text; null if none.
-// Teable's filter may be looser (e.g. ignore case), so the exact check is local.
-export async function fetchFrogByText<T extends Record<string, unknown>>(
-  text: string,
-): Promise<TeableRecord<T> | null> {
-  const byId = /^[\d:]+$/.test(text);
-  const records = await fetchFrogsWhere<T & { Frog_ID?: string; fullname?: string }>(
-    byId ? FROG_ID_FIELD : FROG_FULLNAME_FIELD, text, 5,
-  );
-  return records.find(r => (byId ? r.fields.Frog_ID : r.fields.fullname) === text) ?? null;
+  return data.records[0] ?? null;
 }
 
 // Fetches a single frog record by its Teable record ID

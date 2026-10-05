@@ -14,7 +14,7 @@ export default function FrogInputs({
   title: string;
   sel: FrogSel;
   onChange: (s: FrogSel) => void;
-  options: Pick<FrogOptions, 'baseOpts' | 'secOpts' | 'breedOpts'>;
+  options: Pick<FrogOptions, 'baseOpts' | 'secOpts' | 'breedOpts' | 'lookup'>;
   children?: ReactNode;
 }) {
   const { entry } = useFrogEntry();
@@ -22,7 +22,7 @@ export default function FrogInputs({
     <div className="parent-group">
       <h2 className="parent-title">{title}</h2>
       {entry === 'text' ? (
-        <FrogTextInput sel={sel} onChange={onChange} options={options} />
+        <FrogTextInput sel={sel} onChange={onChange} lookup={options.lookup} />
       ) : (
         <>
           <ComboBox
