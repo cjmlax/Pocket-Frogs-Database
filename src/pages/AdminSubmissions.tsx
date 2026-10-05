@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -7,8 +7,10 @@ import {
   type PendingSubmission, type FlairRequest,
 } from '../api/adminSubmissions';
 import { fetchMe } from '../api/profile';
+import { adminListUsers } from '../api/adminBadges';
 import AuthedImage from '../components/AuthedImage';
 import CropDialog from '../components/CropDialog';
+import { useComboEditor } from '../hooks/useComboEditor';
 
 // pfdb_groups arrives with the "pfdb-" prefix stripped, so "pfdb-admins" → "admins".
 const ADMIN_GROUP = 'admins';
@@ -418,28 +420,31 @@ function SubmissionCard({ sub, idToken }: { sub: PendingSubmission; idToken: str
   );
 }
 
-function EditForm({
-  sub, fields, idToken, onClose, onSaved,
-}: {
+interface EditFormProps {
   sub: PendingSubmission;
   fields: Record<string, unknown>;
   idToken: string;
   onClose: () => void;
   onSaved: () => void;
-}) {
+}
+
+// Combos get a structured editor (linked frog records, dropdowns); other types
+// fall back to one text box per payload field.
+function EditForm(props: EditFormProps) {
+  return props.sub.type === 'combo' ? <ComboEditForm {...props} /> : <GenericEditForm {...props} />;
+}
+
+function ComboEditForm({ fields, ...rest }: EditFormProps) {
+  const { node, payload, problem } = useComboEditor(fields);
+  return <EditShell {...rest} payload={payload} problem={problem}>{node}</EditShell>;
+}
+
+function GenericEditForm({ fields, ...rest }: EditFormProps) {
   const [values, setValues] = useState<Record<string, string>>(
     () => Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, String(v ?? '')])),
   );
-  const [file, setFile] = useState<File | null>(null);
-  const [clearShot, setClearShot] = useState(false);
-
-  const save = useMutation({
-    mutationFn: () => editSubmission(idToken, sub.id, values, file, clearShot),
-    onSuccess: onSaved,
-  });
-
   return (
-    <div className="submission-edit">
+    <EditShell {...rest} payload={values} problem={null}>
       <div className="submission-edit-fields">
         {Object.keys(values).map(key => (
           <label key={key} className="submission-edit-label">
@@ -452,6 +457,56 @@ function EditForm({
           </label>
         ))}
       </div>
+    </EditShell>
+  );
+}
+
+// What every edit shares: the submitter, the screenshot, and Save. Save stays
+// off while the payload is invalid (null), with the reason shown.
+function EditShell({
+  sub, idToken, onClose, onSaved, payload, problem, children,
+}: Omit<EditFormProps, 'fields'> & {
+  payload: Record<string, unknown> | null;
+  problem: string | null;
+  children: ReactNode;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [clearShot, setClearShot] = useState(false);
+  // '' = anonymous. Only sent when changed, so an untouched edit keeps the credit.
+  const original = sub.submitterSub ?? '';
+  const [submitter, setSubmitter] = useState(original);
+
+  // Everyone who has signed in (shared with the Admin Badges page).
+  const { data: users } = useQuery({ queryKey: ['admin-users'], queryFn: () => adminListUsers(idToken) });
+  const userOptions = useMemo(() => {
+    const list = (users ?? [])
+      .map(u => ({ sub: u.sub, name: u.username }))
+      .sort((a, b) => (a.name ?? a.sub).localeCompare(b.name ?? b.sub));
+    // Keep the current submitter selectable even if they've left the directory.
+    if (original && !list.some(u => u.sub === original)) list.unshift({ sub: original, name: sub.submitter });
+    return list;
+  }, [users, original, sub.submitter]);
+
+  const save = useMutation({
+    mutationFn: () => editSubmission(
+      idToken, sub.id, payload!, file, clearShot, submitter !== original ? submitter : undefined,
+    ),
+    onSuccess: onSaved,
+  });
+
+  return (
+    <div className="submission-edit">
+      {children}
+
+      <label className="submission-edit-label submission-edit-submitter">
+        Submitter
+        <select className="search-input" value={submitter} onChange={e => setSubmitter(e.target.value)}>
+          <option value="">Anonymous (no credit)</option>
+          {userOptions.map(u => (
+            <option key={u.sub} value={u.sub}>{u.name ?? '(no username)'} · {u.sub}</option>
+          ))}
+        </select>
+      </label>
 
       <div className="submission-edit-screenshot">
         {sub.screenshot && !clearShot && <AuthedImage url={sub.screenshot} className="submission-thumb" alt="current" />}
@@ -467,11 +522,12 @@ function EditForm({
       </div>
 
       <div className="submission-actions">
-        <button className="csv-btn" disabled={save.isPending} onClick={() => save.mutate()}>
+        <button className="csv-btn" disabled={save.isPending || !payload} onClick={() => save.mutate()}>
           {save.isPending ? 'Saving…' : 'Save'}
         </button>
         <button className="csv-btn" disabled={save.isPending} onClick={onClose}>Cancel</button>
       </div>
+      {problem && <p className="submission-result err">{problem}</p>}
       {save.isError && <p className="submission-result err">{(save.error as Error).message}</p>}
     </div>
   );

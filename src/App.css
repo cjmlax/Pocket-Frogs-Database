@@ -2583,6 +2583,20 @@ a.csv-btn {
   opacity: 0.8;
 }
 
+.submission-edit-wide {
+  grid-column: 1 / -1;
+}
+
+/* The frog a typed Frog_ID (or differently-cased name) resolved to. */
+.submission-edit-hint {
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.submission-edit-submitter {
+  max-width: 520px;
+}
+
 .submission-edit-screenshot {
   display: flex;
   align-items: center;

@@ -9,6 +9,7 @@ export interface PendingSubmission {
   summary: string;
   submitterNote: string | null;
   submitter: string | null;   // display name, or null for anonymous
+  submitterSub: string | null; // their Authentik subject (stable user id), or null
   screenshot: string | null;  // URL path, e.g. /api/admin/uploads/<file>
   createdAt: string;
   batchId: string | null;     // shared by every item from one batch submit
@@ -100,17 +101,21 @@ export async function rejectSubmission(idToken: string, id: string, note: string
   );
 }
 
+// `submitterSub` reassigns credit: undefined leaves it as is, '' makes the
+// submission anonymous, anything else must be a known user's sub.
 export async function editSubmission(
   idToken: string,
   id: string,
-  payload: Record<string, string>,
+  payload: Record<string, unknown>,
   screenshot: File | null,
   clearScreenshot: boolean,
+  submitterSub?: string,
 ) {
   const fd = new FormData();
   fd.append('payload', JSON.stringify(payload));
   if (screenshot) fd.append('screenshot', screenshot);
   if (clearScreenshot) fd.append('clearScreenshot', '1');
+  if (submitterSub !== undefined) fd.append('submitterSub', submitterSub);
   // No Content-Type header — the browser sets the multipart boundary.
   return asJson<{ ok: boolean; summary: string }>(
     await authed(idToken, `/api/admin/${id}`, { method: 'PATCH', body: fd }),
