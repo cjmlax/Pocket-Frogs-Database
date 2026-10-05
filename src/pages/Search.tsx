@@ -123,7 +123,7 @@ function cell(val: unknown): string {
 const col = createColumnHelper<TeableRecord<FrogFields>>();
 
 
-export default function FrogList() {
+export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Pending filter — updated as user makes ComboBox selections
@@ -249,7 +249,7 @@ export default function FrogList() {
 
   return (
     <div>
-      <h1>Frog Lookup</h1>
+      <h1>Search</h1>
 
       <div className="filter-grid">
         <ComboBox

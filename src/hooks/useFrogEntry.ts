@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-// How frogs are entered on the Breeding Pairs, Mutation Planner, Frog Detail and
+// How frogs are entered on the Breeding Pairs, Mutation Planner, Frog and
 // combo-submission parent inputs: three Base / Secondary / Breed dropdowns, or
 // one text box taking an exact Frog_ID or full name (an advanced option).
 export type FrogEntry = 'combo' | 'text';

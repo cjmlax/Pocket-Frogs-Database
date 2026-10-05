@@ -77,7 +77,7 @@ export function frogIdsParam(ids: (string | null | undefined)[]): string {
   return ids.filter((id): id is string => !!id).join('_');
 }
 
-// Frog Detail lives at /frog/<Frog_ID>, e.g. /frog/18:11:0.
+// The Frog page lives at /frog/<Frog_ID>, e.g. /frog/18:11:0.
 export function frogPath(frogId: string): string {
   return `/frog/${frogId}`;
 }

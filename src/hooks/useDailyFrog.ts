@@ -58,7 +58,7 @@ function computeSelection(
 }
 
 export function useDailyFrog() {
-  // Same query keys as FrogList — data is already cached if user visited that page
+  // Same query keys as the Search page — data is already cached if user visited that page
   const { data: breeds } = useQuery({ queryKey: ['table', 'breeds'], queryFn: () => fetchTable<BreedFields>('breeds') });
   const { data: bases  } = useQuery({ queryKey: ['table', 'bases'],  queryFn: () => fetchTable<BaseFields>('bases')  });
   const { data: secs   } = useQuery({ queryKey: ['table', 'secs'],   queryFn: () => fetchTable<SecFields>('secs')    });

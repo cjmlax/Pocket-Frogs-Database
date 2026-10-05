@@ -28,7 +28,7 @@ interface FrogFields extends Record<string, unknown> {
   Speed?:     number;
   Stamina?:   number;
 }
-interface BreedFields extends Record<string, unknown> { Breed?: string; Level?: unknown; Promotional?: boolean }
+interface BreedFields extends Record<string, unknown> { Breed?: string; Level?: unknown; Version?: string; Promotional?: boolean }
 interface LevelFields extends Record<string, unknown> {
   Level_No?:   number;
   Hatch?:      string;
@@ -64,7 +64,7 @@ interface PickerSel {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function FrogDetail() {
+export default function Frog() {
   // The URL carries the frog's Frog_ID: /frog/18:11:0 (dashes also accepted).
   const { frogId: segment } = useParams<{ frogId: string }>();
   const code = frogIdFromPath(segment);
@@ -103,8 +103,8 @@ export default function FrogDetail() {
     setSel({ base: frogBase, sec: frogSec, breed: frogBreed });
   }, [frogBase, frogSec, frogBreed]);
 
-  // The selected breed's frogs — shared 24h IndexedDB cache with the Breed
-  // Overview and Breeding Pairs pages, so this is usually served with no network
+  // The selected breed's frogs — shared 24h IndexedDB cache with the Breed and
+  // Breeding Pairs pages, so this is usually served with no network
   // request. Indexing these locally avoids a dedicated per-selection lookup.
   const allSelected = !!(sel.base && sel.sec && sel.breed);
   const { data: breedFrogs, isFetching: loadingBreed } = useQuery({
@@ -172,7 +172,7 @@ export default function FrogDetail() {
   );
 
   // Level / hatch / growth / flies / rarity / restricted come from the breed's
-  // linked Level record (frog → breed → Level), the same chain Breed Overview uses.
+  // linked Level record (frog → breed → Level), the same chain the Breed page uses.
   const level = useMemo(() => {
     if (!breedRec || !levels) return null;
     const levelId = linkId(breedRec.fields.Level);
@@ -238,7 +238,7 @@ export default function FrogDetail() {
 
   return (
     <div>
-      <h1>Frog Detail</h1>
+      <h1>Frog</h1>
 
       {entry === 'text' ? (
         <div className="filter-grid" key={frog?.id ?? 'none'}>
@@ -286,9 +286,9 @@ export default function FrogDetail() {
         <p className="search-hint">{isFetching ? 'Loading…' : 'Frog not found.'}</p>
       ) : (
         <>
-          <h2 className="frog-detail-name">{fullname ?? code}</h2>
+          <h2 className="frog-page-name">{fullname ?? code}</h2>
 
-          <div className="breed-info-stats frog-detail-stats">
+          <div className="breed-info-stats frog-page-stats">
             <div className="breed-info-stat">
               <span className="breed-info-stat-label">
                 Value
@@ -329,6 +329,10 @@ export default function FrogDetail() {
               <span className="breed-info-stat-label">Rarity</span>
               <span className="breed-info-stat-value">{level?.fields.Rarity ?? '—'}</span>
             </div>
+            <div className="breed-info-stat">
+              <span className="breed-info-stat-label">Release Version</span>
+              <span className="breed-info-stat-value">{breedRec?.fields.Version ?? '—'}</span>
+            </div>
           </div>
 
           {level?.fields.Restricted && (
@@ -357,7 +361,7 @@ export default function FrogDetail() {
           </div>
 
           {spoilers && (
-            <div className="frog-detail-specials">
+            <div className="frog-page-specials">
               <CombinationsTable
                 thisHeader="This Frog"
                 rows={specials.map((s, i) => ({

@@ -131,7 +131,7 @@ const HOVER_CLASSES = ['row-hover', 'col-hover', 'cell-hover'] as const;
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function BreedOverview() {
+export default function Breed() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tableRef = useRef<HTMLTableElement>(null);
 
@@ -181,7 +181,7 @@ export default function BreedOverview() {
   }, [breed, breeds, levels]);
 
   const { data: frogs, isFetching, error } = useQuery({
-    queryKey: ['breed-overview', breed?.id],
+    queryKey: ['breed-frogs', breed?.id],
     queryFn:  () => fetchBreedFrogs<FrogFields>(breed!.id),
     enabled:  breed !== null,
     staleTime: 1000 * 60 * 60 * 24,
@@ -379,7 +379,7 @@ export default function BreedOverview() {
 
   return (
     <div>
-      <h1>Breed Overview</h1>
+      <h1>Breed</h1>
 
       <div className="filter-grid">
         <ComboBox
@@ -570,7 +570,7 @@ export default function BreedOverview() {
       )}
 
       {breed !== null && spoilers && (
-        <div className="frog-detail-specials">
+        <div className="frog-page-specials">
           <CombinationsTable
             thisHeader="Breed Frog"
             rows={specials.map((s, i) => ({

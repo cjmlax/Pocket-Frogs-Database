@@ -120,15 +120,43 @@ function IconLogOut() {
   );
 }
 
-// ── Submit dropdown ───────────────────────────────────────────────────────────
+// ── Nav dropdown menus ────────────────────────────────────────────────────────
 
-function SubmitDropdown() {
+interface MenuLink {
+  to:    string;
+  label: string;
+  end?:  boolean; // match only this exact path, not its sub-paths
+}
+
+const VIEW_LINKS: MenuLink[] = [
+  { to: '/search', label: 'Search' },
+  { to: '/frog',   label: 'Frog' },
+  { to: '/breed',  label: 'Breed' },
+  { to: '/weekly', label: 'Weekly Sets' },
+];
+
+const CALCULATE_LINKS: MenuLink[] = [
+  { to: '/breeding', label: 'Breeding Pairs' },
+  { to: '/planner',  label: 'Mutation Planner' },
+];
+
+const SUBMIT_LINKS: MenuLink[] = [
+  { to: '/submit',       label: 'Mutations', end: true },
+  { to: '/submit/stats', label: 'Frog Stats' },
+];
+
+// Segment-aware, so /frog matches /frog/18:11:0 but not /frogs.
+function underPath(pathname: string, to: string) {
+  return pathname === to || pathname.startsWith(`${to}/`);
+}
+
+function NavDropdown({ label, links }: { label: string; links: MenuLink[] }) {
   const [open, setOpen] = useState(false);
   const [panelPos, setPanelPos] = useState({ top: 0, left: 0 });
   const btnRef   = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
-  const isActive = location.pathname.startsWith('/submit');
+  const isActive = links.some(l => underPath(location.pathname, l.to));
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -155,24 +183,23 @@ function SubmitDropdown() {
     <>
       <button
         ref={btnRef}
-        className={`submit-nav-btn${isActive ? ' active' : ''}`}
+        className={`nav-menu-btn${isActive ? ' active' : ''}`}
         onClick={handleOpen}
         aria-expanded={open}
       >
-        Submit ▾
+        {label} ▾
       </button>
       {open && createPortal(
         <div
           ref={panelRef}
-          className="submit-nav-panel"
+          className="nav-menu-panel"
           style={{ top: panelPos.top, left: panelPos.left }}
         >
-          <NavLink to="/submit" end className="submit-nav-link" onClick={() => setOpen(false)}>
-            Mutations
-          </NavLink>
-          <NavLink to="/submit/stats" className="submit-nav-link" onClick={() => setOpen(false)}>
-            Frog Stats
-          </NavLink>
+          {links.map(l => (
+            <NavLink key={l.to} to={l.to} end={l.end} className="nav-menu-link" onClick={() => setOpen(false)}>
+              {l.label}
+            </NavLink>
+          ))}
         </div>,
         document.body,
       )}
@@ -271,7 +298,7 @@ function SettingsDropdown() {
           </button>
 
           {/* Row 6: Frog entry — label (left), dropdowns (center), text box (right) */}
-          <span className="settings-row-label" title="How frogs are entered on Breeding Pairs, Mutation Planner, Frog Detail and Mutation Submissions">Input:</span>
+          <span className="settings-row-label" title="How frogs are entered on Breeding Pairs, Mutation Planner, Frog and Mutation Submissions">Input:</span>
           <button className={`settings-theme-opt${entry === 'combo' ? ' active' : ''}`} onClick={() => setEntry('combo')} aria-label="Enter frogs with dropdowns" title="Base / Secondary / Breed dropdowns">
             <IconDropdowns />
           </button>
@@ -367,14 +394,10 @@ function NavBar() {
       >‹</button>
       <nav className={`nav-links${showLeft ? ' has-left-overflow' : ''}`} ref={navRef}>
         <NavLink to="/" className="nav-brand" end>Home</NavLink>
-        <NavLink to="/frogs">Frog Lookup</NavLink>
-        <NavLink to="/frog">Frog Detail</NavLink>
-        <NavLink to="/weekly">Weekly Sets</NavLink>
-        <NavLink to="/breeds">Breed Overview</NavLink>
-        <NavLink to="/breeding">Breeding Pairs</NavLink>
-        <NavLink to="/planner">Mutation Planner</NavLink>
-        <SubmitDropdown />
-        <NavLink to="/downloads">Downloads</NavLink>
+        <NavDropdown label="View" links={VIEW_LINKS} />
+        <NavDropdown label="Calculate" links={CALCULATE_LINKS} />
+        <NavDropdown label="Submit" links={SUBMIT_LINKS} />
+        <NavLink to="/download">Download</NavLink>
       </nav>
       <button
         className="nav-arrow"

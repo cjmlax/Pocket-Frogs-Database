@@ -1,15 +1,15 @@
-import { createBrowserRouter, RouterProvider } from 'react-router';
+import { createBrowserRouter, RouterProvider, Navigate, useLocation } from 'react-router';
 import Layout from './components/Layout';
 import Home from './pages/Home';
-import FrogList from './pages/FrogList';
-import FrogDetail from './pages/FrogDetail';
+import Search from './pages/Search';
+import Frog from './pages/Frog';
 import WeeklyList from './pages/WeeklyList';
-import BreedOverview from './pages/BreedOverview';
+import Breed from './pages/Breed';
 import BreedingPairs from './pages/BreedingPairs';
 import MutationPlanner from './pages/MutationPlanner';
 import SubmitCombo from './pages/SubmitCombo';
 import SubmitFrogStats from './pages/SubmitFrogStats';
-import Downloads from './pages/Downloads';
+import Download from './pages/Download';
 import Account from './pages/Account';
 import AuthCallback from './pages/AuthCallback';
 import AdminHome from './pages/AdminHome';
@@ -17,22 +17,32 @@ import AdminBadges from './pages/AdminBadges';
 import AdminAlerts from './pages/AdminAlerts';
 import AdminSubmissions from './pages/AdminSubmissions';
 
+// Sends a retired path to its new name, keeping any query string and hash so
+// old bookmarks and shared links still land on the same view.
+function Moved({ to }: { to: string }) {
+  const { search, hash } = useLocation();
+  return <Navigate to={`${to}${search}${hash}`} replace />;
+}
+
 const router = createBrowserRouter([
   {
     path: '/',
     element: <Layout />,
     children: [
       { index: true, element: <Home /> },
-      { path: 'frogs', element: <FrogList /> },
-      { path: 'frog', element: <FrogDetail /> },
-      { path: 'frog/:frogId', element: <FrogDetail /> },
+      { path: 'search', element: <Search /> },
+      { path: 'frog', element: <Frog /> },
+      { path: 'frog/:frogId', element: <Frog /> },
       { path: 'weekly', element: <WeeklyList /> },
-      { path: 'breeds', element: <BreedOverview /> },
+      { path: 'breed', element: <Breed /> },
       { path: 'breeding', element: <BreedingPairs /> },
       { path: 'planner', element: <MutationPlanner /> },
       { path: 'submit', element: <SubmitCombo /> },
       { path: 'submit/stats', element: <SubmitFrogStats /> },
-      { path: 'downloads', element: <Downloads /> },
+      { path: 'download', element: <Download /> },
+      { path: 'frogs', element: <Moved to="/search" /> },
+      { path: 'breeds', element: <Moved to="/breed" /> },
+      { path: 'downloads', element: <Moved to="/download" /> },
       { path: 'account', element: <Account /> },
       { path: 'admin', element: <AdminHome /> },
       { path: 'admin/badges', element: <AdminBadges /> },

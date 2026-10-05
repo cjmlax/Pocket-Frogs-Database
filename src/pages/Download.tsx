@@ -42,7 +42,7 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-export default function Downloads() {
+export default function Download() {
   const [tables, setTables] = useState<TableMeta[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [downloading, setDownloading] = useState<Record<string, boolean>>({});

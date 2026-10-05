@@ -164,7 +164,7 @@ export default function BreedingPairs() {
   const pairScreenshots = specialMatches[0]?.screenshots ?? [];
 
   // Resolve each Result Frog's record (stats + fullname) for the swapped slot.
-  // Shares the ['frog', id] cache with the Frog Detail page.
+  // Shares the ['frog', id] cache with the Frog page.
   const resultIds = useMemo(
     () => Array.from(new Set(specialMatches.map(s => s.resultId).filter(Boolean))) as string[],
     [specialMatches],
@@ -285,7 +285,7 @@ export default function BreedingPairs() {
 
   const shownOffspring = spoilers ? displayedOffspring : (result?.offspring ?? []);
 
-  // ── Crosshair hover (mirrors the Breed Overview grid) ─────────────────────
+  // ── Crosshair hover (mirrors the Breed page grid) ─────────────────────────
   function clearHover() {
     tableRef.current?.querySelectorAll<HTMLElement>('.row-hover,.col-hover,.cell-hover')
       .forEach(el => el.classList.remove(...HOVER_CLASSES));

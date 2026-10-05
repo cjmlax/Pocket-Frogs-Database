@@ -27,6 +27,32 @@
   gap: 16px;
 }
 
+/* Small screens: drop the sidebar into the main column. .home-main's box is
+   removed so its children and .home-cards become siblings that can be ordered:
+   title > summary > updates > cards > description. */
+@media (max-width: 768px) {
+  .home {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .home-main {
+    display: contents;
+  }
+
+  .home-main > h1             { order: 1; }
+  .home-main > .summary-panel { order: 2; }
+  .home-main > .updates-panel { order: 3; }
+  .home-cards                 { order: 4; max-width: 680px; margin-bottom: 20px; }
+  .home-main > .home-text     { order: 5; }
+
+  .home-cards .frog-card {
+    width: auto;
+    position: static;
+  }
+}
+
 /* Link that looks like plain text — used for navigable cards/labels */
 a.plain-link,
 a.plain-link:hover {
@@ -1362,7 +1388,7 @@ a.planner-frog-name:hover {
   background: var(--code-bg);
 }
 
-/* Crosshair hover — mirrors the Breed Overview grid. Uses accent-bg so the
+/* Crosshair hover — mirrors the Breed page grid. Uses accent-bg so the
    highlight is visible over both the plain and zebra-shaded columns. */
 .breeding-results .row-hover,
 .breeding-results .col-hover {
@@ -1774,9 +1800,9 @@ tr:hover .pin-btn,
   color: var(--accent);
 }
 
-/* ─── Submit dropdown nav ────────────────────────────────────────────────── */
+/* ─── Nav dropdown menus ─────────────────────────────────────────────────── */
 
-.submit-nav-btn {
+.nav-menu-btn {
   color: var(--text);
   background: none;
   border: none;
@@ -1789,10 +1815,10 @@ tr:hover .pin-btn,
   font-family: var(--sans);
 }
 
-.submit-nav-btn:hover { color: var(--text-h); background: var(--code-bg); }
-.submit-nav-btn.active { color: var(--accent); }
+.nav-menu-btn:hover { color: var(--text-h); background: var(--code-bg); }
+.nav-menu-btn.active { color: var(--accent); }
 
-.submit-nav-panel {
+.nav-menu-panel {
   position: fixed;
   z-index: 200;
   background: var(--bg);
@@ -1805,7 +1831,7 @@ tr:hover .pin-btn,
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-.submit-nav-link {
+.nav-menu-link {
   color: var(--text);
   text-decoration: none;
   font-size: 14px;
@@ -1814,8 +1840,8 @@ tr:hover .pin-btn,
   transition: color 0.15s, background 0.15s;
 }
 
-.submit-nav-link:hover { color: var(--text-h); background: var(--code-bg); }
-.submit-nav-link.active { color: var(--accent); }
+.nav-menu-link:hover { color: var(--text-h); background: var(--code-bg); }
+.nav-menu-link.active { color: var(--accent); }
 
 
 .settings-wrap {
@@ -1955,7 +1981,7 @@ main {
   padding: 32px 24px;
 }
 
-/* ─── Breed Overview ─────────────────────────────────────────────────────── */
+/* ─── Breed page ─────────────────────────────────────────────────────────── */
 
 .breed-stat-select {
   width: 100%;
@@ -2022,7 +2048,7 @@ main {
   max-height: none;
 }
 
-/* Weekly Sets box at the bottom of the Breed Overview page */
+/* Weekly Sets box at the bottom of the Breed page */
 .breed-weekly {
   margin-top: 40px;
 }
@@ -2640,7 +2666,7 @@ a.csv-btn {
   gap: 8px;
 }
 
-/* ─── Downloads page ─────────────────────────────────────────────────────── */
+/* ─── Download page ──────────────────────────────────────────────────────── */
 
 .refresh-btn {
   background: none;
@@ -2767,18 +2793,18 @@ a.csv-btn {
   }
 }
 
-/* Frog Detail page */
-.frog-detail-name {
+/* Frog page */
+.frog-page-name {
   font-size: 22px;
   margin: 20px 0 8px;
 }
 
-.frog-detail-stats {
+.frog-page-stats {
   margin: 12px 0 24px;
 }
 
-/* Special-combination callouts on the Frog Detail page */
-.frog-detail-specials {
+/* Special-combination callouts on the Frog page */
+.frog-page-specials {
   display: flex;
   gap: 20px;
   flex-wrap: wrap;

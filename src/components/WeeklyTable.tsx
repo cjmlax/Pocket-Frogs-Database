@@ -106,7 +106,7 @@ interface WeeklyTableProps {
 }
 
 // Shared weekly-sets table — column layout and rendering live here so the
-// Weekly Sets page and the Breed Overview box stay in sync.
+// Weekly Sets page and the Breed page box stay in sync.
 export default function WeeklyTable({
   data,
   sorting,

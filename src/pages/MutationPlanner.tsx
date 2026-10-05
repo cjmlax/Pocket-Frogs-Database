@@ -359,7 +359,7 @@ export default function MutationPlanner() {
       <h1>Mutation Planner</h1>
       <p className="search-hint" style={{ marginTop: 0 }}>
         Add up to {MAX_FROGS} frogs to see which frog combinations have verified breeding results.
-        Select a line to open that pair in Breeding Pairs, or a frog name to open Frog Detail.
+        Select a line to open that pair in Breeding Pairs, or a frog name to open its Frog page.
         Add frogs at the bottom, edit or remove frogs from their bubble.
       </p>
 

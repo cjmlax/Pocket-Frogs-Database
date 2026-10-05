@@ -50,7 +50,7 @@ async function getTableMeta(): Promise<Map<string, string>> {
   return metaFlight;
 }
 
-// Exported so other pages (e.g. Downloads) can display per-table freshness
+// Exported so other pages (e.g. Download) can display per-table freshness
 // without triggering a separate fetch — the same cached result is shared.
 export const fetchTableMeta = getTableMeta;
 
