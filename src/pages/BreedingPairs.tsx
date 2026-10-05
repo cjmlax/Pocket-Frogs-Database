@@ -8,6 +8,7 @@ import { formatNum } from '../utils/format';
 import { pairScreenshotUrls } from '../utils/attachments';
 import { EMPTY_FROG, decodeFrogParam, encodeFrogParam, frogSearch, isComplete, type FrogSel } from '../utils/frogIds';
 import ImageLightbox from '../components/ImageLightbox';
+import IconVerified from '../components/IconVerified';
 import { useFrogOptions } from '../hooks/useFrogOptions';
 import { useSpoilers } from '../hooks/useSpoilers';
 
@@ -55,18 +56,6 @@ function IconSwap() {
   );
 }
 
-// Circled check / X marking whether the pair's results are verified.
-function IconVerified({ ok }: { ok: boolean }) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10"/>
-      {ok
-        ? <polyline points="8 12 11 15 16 9"/>
-        : <><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></>}
-    </svg>
-  );
-}
-
 // ── Page ────────────────────────────────────────────────────────────────────────
 
 export default function BreedingPairs() {
@@ -81,7 +70,7 @@ export default function BreedingPairs() {
   const { lookup } = frogOptions;
   const { spoilers } = useSpoilers();
 
-  // ?pair= holds both parents' Frog_IDs (e.g. "0:18:11_0:18:4", as linked from
+  // ?pair= holds both parents' Frog_IDs (e.g. "18:11:0_18:4:0", as linked from
   // the Mutation Planner). Read once the lookup tables load; the inputs are keyed
   // on this so they remount showing the restored parents.
   const [urlRead, setUrlRead] = useState(false);

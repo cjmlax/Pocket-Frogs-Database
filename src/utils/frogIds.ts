@@ -25,13 +25,13 @@ export function frogName(s: CompleteFrogSel): string {
 }
 
 // ── Frog_ID codes ───────────────────────────────────────────────────────────
-// A frog's Frog_ID is "Breed_ID:Base_Color_ID:Sec_Color_ID" (e.g. Maroon Tingo
-// Anura = "0:18:11"), and it's the frogs table's primary field, so pair links
-// carry it as their title. URLs use the codes as-is, joining frogs with
-// underscores: /frog/0:18:11, ?frogs=0:18:11_0:18:4. Reading also accepts
-// dashes in place of the colons (0-18-11).
+// A frog's Frog_ID is "Base_Color_ID:Sec_Color_ID:Breed_ID", the same order the
+// game uses (e.g. Maroon Tingo Anura = "18:11:0"), and it's the frogs table's
+// primary field, so pair links carry it as their title. URLs use the codes
+// as-is, joining frogs with underscores: /frog/18:11:0, ?frogs=18:11:0_18:4:0.
+// Reading also accepts dashes in place of the colons (18-11-0).
 
-// Normalises a Frog_ID written with colons or dashes to "0:18:11"; null if the
+// Normalises a Frog_ID written with colons or dashes to "18:11:0"; null if the
 // text isn't one.
 export function parseFrogId(text: string): string | null {
   const m = /^(\d+)[:-](\d+)[:-](\d+)$/.exec(text);
@@ -69,15 +69,15 @@ export function frogId(s: CompleteFrogSel, lk: FrogIdLookup): string | null {
   const breed = lk.breed.code.get(s.breed.id);
   const base  = lk.base.code.get(s.base.id);
   const sec   = lk.sec.code.get(s.sec.id);
-  return breed != null && base != null && sec != null ? `${breed}:${base}:${sec}` : null;
+  return breed != null && base != null && sec != null ? `${base}:${sec}:${breed}` : null;
 }
 
-// Frog_IDs → URL value ("0:18:11_0:18:4").
+// Frog_IDs → URL value ("18:11:0_18:4:0").
 export function frogIdsParam(ids: (string | null | undefined)[]): string {
   return ids.filter((id): id is string => !!id).join('_');
 }
 
-// Frog Detail lives at /frog/<Frog_ID>, e.g. /frog/0:18:11.
+// Frog Detail lives at /frog/<Frog_ID>, e.g. /frog/18:11:0.
 export function frogPath(frogId: string): string {
   return `/frog/${frogId}`;
 }
@@ -88,7 +88,7 @@ export function frogIdFromPath(segment: string | undefined): string | null {
 }
 
 // A one-parameter query string written by hand, because URLSearchParams would
-// escape the colons (0%3A18%3A11) and the codes would no longer read as Frog_IDs.
+// escape the colons (18%3A11%3A0) and the codes would no longer read as Frog_IDs.
 export function frogSearch(key: string, value: string): string {
   return value ? `?${key}=${value}` : '';
 }
@@ -103,7 +103,7 @@ export function decodeFrogParam(param: string | null, lk: FrogIdLookup): Complet
   return param.split('_').flatMap(text => {
     const code = parseFrogId(text);
     if (!code) return [];
-    const [breedC, baseC, secC] = code.split(':');
+    const [baseC, secC, breedC] = code.split(':');
     const breed = lk.breed.byCode.get(breedC);
     const base  = lk.base.byCode.get(baseC);
     const sec   = lk.sec.byCode.get(secC);

@@ -36,7 +36,7 @@ const STATUS_MARK: Record<LineStatus, React.ReactNode> = { unknown: '?', clear: 
 interface PlannedFrog {
   sel:  CompleteFrogSel;
   name: string;
-  id:   string | null; // Frog_ID, e.g. "0:18:11"
+  id:   string | null; // Frog_ID, e.g. "18:11:0"
 }
 
 // A frog's own controls sit on the outer edge of its bubble, away from the
@@ -245,7 +245,7 @@ export default function MutationPlanner() {
   const [activeFrog, setActiveFrog] = useState<number | null>(null);
   const [activeEdge, setActiveEdge] = useState<string | null>(null);
 
-  // The plan lives in the URL as Frog_IDs (?frogs=0:18:11_0:18:4), so a plan
+  // The plan lives in the URL as Frog_IDs (?frogs=18:11:0_18:4:0), so a plan
   // can be shared as a link. Duplicates and anything past the cap are dropped
   // (a frog's pairing with itself is shown on its own bubble instead).
   const frogs = useMemo<PlannedFrog[]>(() => {

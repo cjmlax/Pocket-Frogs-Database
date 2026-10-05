@@ -6,11 +6,13 @@ import {
   fetchFrogById, fetchFrogByFrogId, fetchTable, fetchMutations, fetchBreedFrogs, fetchFrogStats,
 } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
+import FrogTextInput from '../components/FrogTextInput';
 import WeeklyTable, { type WeeklyFields, WEEKLY_FROG_FIELDS } from '../components/WeeklyTable';
 import { breedOptionsFrom } from '../utils/breeds';
 import { useBreedSort } from '../hooks/useBreedSort';
 import { useColorSort } from '../hooks/useColorSort';
 import { useSpoilers } from '../hooks/useSpoilers';
+import { useFrogEntry } from '../hooks/useFrogEntry';
 import { colorOptionsFrom } from '../utils/colors';
 import { pairScreenshotUrls } from '../utils/attachments';
 import CombinationsTable from '../components/CombinationsTable';
@@ -68,7 +70,7 @@ interface PickerSel {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function FrogDetail() {
-  // The URL carries the frog's Frog_ID: /frog/0:18:11 (dashes also accepted).
+  // The URL carries the frog's Frog_ID: /frog/18:11:0 (dashes also accepted).
   const { frogId: segment } = useParams<{ frogId: string }>();
   const code = frogIdFromPath(segment);
   const navigate = useNavigate();
@@ -94,6 +96,7 @@ export default function FrogDetail() {
 
   const breedSort = useBreedSort();
   const { spoilers } = useSpoilers();
+  const { entry } = useFrogEntry();
   const colorSort = useColorSort();
   const breedOptions = useMemo<ComboOption[]>(() => breedOptionsFrom(breeds, breedSort), [breeds, breedSort]);
   const baseOptions  = useMemo<ComboOption[]>(() => colorOptionsFrom(bases, 'BaseColors', colorSort), [bases, colorSort]);
@@ -247,29 +250,39 @@ export default function FrogDetail() {
     <div>
       <h1>Frog Detail</h1>
 
-      <div className="filter-grid" key={frog?.id ?? 'none'}>
-        <ComboBox
-          label="Base Color"
-          options={baseOptions}
-          presorted
-          initialSelection={frogBase}
-          onSelect={opt => setSel(s => ({ ...s, base: opt }))}
-        />
-        <ComboBox
-          label="Secondary Color"
-          options={secOptions}
-          presorted
-          initialSelection={frogSec}
-          onSelect={opt => setSel(s => ({ ...s, sec: opt }))}
-        />
-        <ComboBox
-          label="Breed"
-          options={breedOptions}
-          presorted
-          initialSelection={frogBreed}
-          onSelect={opt => setSel(s => ({ ...s, breed: opt }))}
-        />
-      </div>
+      {entry === 'text' ? (
+        <div className="filter-grid" key={frog?.id ?? 'none'}>
+          <FrogTextInput
+            sel={{ base: frogBase, sec: frogSec, breed: frogBreed }}
+            onChange={setSel}
+            options={{ baseOpts: baseOptions, secOpts: secOptions, breedOpts: breedOptions }}
+          />
+        </div>
+      ) : (
+        <div className="filter-grid" key={frog?.id ?? 'none'}>
+          <ComboBox
+            label="Base Color"
+            options={baseOptions}
+            presorted
+            initialSelection={frogBase}
+            onSelect={opt => setSel(s => ({ ...s, base: opt }))}
+          />
+          <ComboBox
+            label="Secondary Color"
+            options={secOptions}
+            presorted
+            initialSelection={frogSec}
+            onSelect={opt => setSel(s => ({ ...s, sec: opt }))}
+          />
+          <ComboBox
+            label="Breed"
+            options={breedOptions}
+            presorted
+            initialSelection={frogBreed}
+            onSelect={opt => setSel(s => ({ ...s, breed: opt }))}
+          />
+        </div>
+      )}
 
       {!segment ? (
         <p className="search-hint">Select a base color, secondary color, and breed to view a frog.</p>

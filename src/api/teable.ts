@@ -59,6 +59,11 @@ export const fetchTableMeta = getTableMeta;
 // A cache hit costs only the shared meta call; a miss fetches all pages and
 // stores the new records alongside the timestamp for next time.
 
+// Bump to discard every cached record set, for data changes the per-table
+// timestamps can miss — e.g. link titles in other tables after the Frog_ID
+// reorder (v2: Base:Sec:Breed).
+const CACHE_VERSION = 'v2';
+
 export async function apiFetch<T extends Record<string, unknown>>(
   tableId: string,
   tableKey: string,
@@ -67,8 +72,9 @@ export async function apiFetch<T extends Record<string, unknown>>(
 ): Promise<TeableRecord<T>[]> {
   const meta     = await getTableMeta();
   const serverTs = meta.get(tableId);
+  const cacheKey = `${CACHE_VERSION}:${tableKey}`;
 
-  const cached = (await get(tableKey)) as
+  const cached = (await get(cacheKey)) as
     | { records: TeableRecord<T>[]; lastModifiedTime: string }
     | undefined;
 
@@ -92,7 +98,7 @@ export async function apiFetch<T extends Record<string, unknown>>(
     else skip += take;
   }
 
-  await set(tableKey, { records: allRecords, lastModifiedTime: serverTs ?? '' });
+  await set(cacheKey, { records: allRecords, lastModifiedTime: serverTs ?? '' });
   return allRecords;
 }
 
@@ -124,7 +130,7 @@ interface MutationFields extends Record<string, unknown> {
   'Lost Frog'?:       unknown;
 }
 
-// Titles are the frogs' Frog_ID codes (e.g. "0:18:11").
+// Titles are the frogs' Frog_ID codes (e.g. "18:11:0").
 export interface FrogPair {
   id: string;
   frogAId: string | null;
@@ -319,7 +325,7 @@ async function fetchFrogPages<T extends Record<string, unknown>>(
 export async function fetchBreedFrogs<T extends Record<string, unknown>>(
   breedId: string,
 ): Promise<TeableRecord<T>[]> {
-  const cacheKey = `breed-frogs-${breedId}`;
+  const cacheKey = `${CACHE_VERSION}:breed-frogs-${breedId}`;
   const cached = (await get(cacheKey)) as { records: TeableRecord<T>[]; ts: number } | undefined;
   if (cached && Date.now() - cached.ts < 86_400_000) {
     console.log(`%c breed-frogs-${breedId} cache hit`, 'color: #4CAF50');
@@ -330,21 +336,44 @@ export async function fetchBreedFrogs<T extends Record<string, unknown>>(
   return records;
 }
 
-// Fetches a single frog by its Frog_ID ("0:18:11"); null when there's no match.
-const FROG_ID_FIELD = 'fldXdFuyFj6NDz1qjMY';
+const FROG_ID_FIELD       = 'fldXdFuyFj6NDz1qjMY'; // Frog_ID, e.g. "18:11:0"
+const FROG_FULLNAME_FIELD = 'fldYaxw2QNksOM7x79k'; // fullname, e.g. "Maroon Tingo Anura"
 
-export async function fetchFrogByFrogId<T extends Record<string, unknown>>(
-  frogId: string,
-): Promise<TeableRecord<T> | null> {
+// Frogs whose field matches the value, as Teable's "is" filter judges it.
+async function fetchFrogsWhere<T extends Record<string, unknown>>(
+  fieldId: string,
+  value: string,
+  take: number,
+): Promise<TeableRecord<T>[]> {
   const params = new URLSearchParams({
     fieldKeyType: 'dbFieldName',
-    take: '1',
-    filter: JSON.stringify({ conjunction: 'and', filterSet: [{ fieldId: FROG_ID_FIELD, operator: 'is', value: frogId }] }),
+    take: String(take),
+    filter: JSON.stringify({ conjunction: 'and', filterSet: [{ fieldId, operator: 'is', value }] }),
   });
   const response = await fetch(`${BASE_URL}/${TABLES.frogs.id}/record?${params}`, { headers: { Accept: 'application/json' } });
   if (!response.ok) throw new Error(`API Error ${response.status}`);
   const data = (await response.json()) as { records: TeableRecord<T>[] };
-  return data.records[0] ?? null;
+  return data.records;
+}
+
+// Fetches a single frog by its Frog_ID ("18:11:0"); null when there's no match.
+export async function fetchFrogByFrogId<T extends Record<string, unknown>>(
+  frogId: string,
+): Promise<TeableRecord<T> | null> {
+  return (await fetchFrogsWhere<T>(FROG_ID_FIELD, frogId, 1))[0] ?? null;
+}
+
+// The frog whose Frog_ID (all digits and colons, e.g. "18:11:0") or fullname
+// (anything else, e.g. "Maroon Tingo Anura") is exactly the text; null if none.
+// Teable's filter may be looser (e.g. ignore case), so the exact check is local.
+export async function fetchFrogByText<T extends Record<string, unknown>>(
+  text: string,
+): Promise<TeableRecord<T> | null> {
+  const byId = /^[\d:]+$/.test(text);
+  const records = await fetchFrogsWhere<T & { Frog_ID?: string; fullname?: string }>(
+    byId ? FROG_ID_FIELD : FROG_FULLNAME_FIELD, text, 5,
+  );
+  return records.find(r => (byId ? r.fields.Frog_ID : r.fields.fullname) === text) ?? null;
 }
 
 // Fetches a single frog record by its Teable record ID

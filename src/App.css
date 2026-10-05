@@ -547,6 +547,29 @@ a.plain-link:hover {
   white-space: nowrap;
 }
 
+/* Text-entry alternative to the dropdowns (site setting): a circled check or X
+   sits where ComboBox's clear button would. */
+.frog-text-status {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  pointer-events: none;
+}
+
+.frog-text-status.is-ok {
+  color: var(--accent);
+}
+
+.frog-text-status.is-bad {
+  color: var(--cell-min-text);
+}
+
+.filter-grid > .frog-text-field {
+  max-width: 480px;
+}
+
 /* ─── Breeding Pairs page ─────────────────────────────────────────────────── */
 
 .breeding-parents {
@@ -642,7 +665,8 @@ a.plain-link:hover {
     column-gap: 18px;
   }
 
-  .planner-editor .parent-group > :not(.combobox-field) {
+  .planner-editor .parent-group > :not(.combobox-field),
+  .planner-editor .parent-group > .frog-text-field {
     grid-column: 1 / -1;
   }
 }
@@ -995,29 +1019,80 @@ a.planner-frog-name:hover {
   font-weight: 400;
 }
 
-.submit-file {
-  font-family: var(--sans);
-  font-size: 14px;
-  color: var(--text);
+/* Combo form's Mutation Outcome card: pickers stay greyed until a variant is
+   chosen, then the mutated color's picker shares its row with a fixed tag. */
+.outcome-group .combobox-input:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
-/* Make the native file-picker button read as a clear, on-theme button */
-.submit-file::file-selector-button {
-  font-family: var(--sans);
+.combobox-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.combobox-row > .combobox {
+  flex: 1;
+  min-width: 0;
+}
+
+.mutation-tag {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid var(--accent-border);
+  border-radius: 4px;
+  background: var(--accent-bg);
+  color: var(--accent);
   font-size: 14px;
   font-weight: 600;
-  color: var(--accent);
-  background: var(--accent-bg);
-  border: 1px solid var(--accent-border);
+  white-space: nowrap;
+}
+
+/* Screenshot card: a dashed drop box that becomes a preview once a file is set */
+.screenshot-drop {
+  position: relative;
+  flex: 1;
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  border: 2px dashed var(--border);
   border-radius: 6px;
-  padding: 7px 16px;
-  margin-right: 12px;
+  color: var(--text);
+  font-size: 14px;
+  text-align: center;
   cursor: pointer;
 }
 
-.submit-file::file-selector-button:hover {
-  background: var(--accent);
-  color: var(--bg);
+.screenshot-drop:hover,
+.screenshot-drop:focus-within {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.screenshot-drop.has-image {
+  border-style: solid;
+  padding: 4px;
+}
+
+.screenshot-drop img {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+/* Kept focusable (and so keyboard-operable) while the box stands in for it */
+.screenshot-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
 }
 
 .submit-actions {

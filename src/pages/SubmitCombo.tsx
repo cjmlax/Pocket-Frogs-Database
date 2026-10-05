@@ -1,19 +1,14 @@
-import { useState, useMemo, useRef, type ReactNode } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchTable, fetchBreedFrogs, fetchFrogPairs, fetchChangelog, type TeableRecord } from '../api/teable';
+import { fetchBreedFrogs, fetchFrogPairs, fetchChangelog, type TeableRecord } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
-import { breedOptionsFrom } from '../utils/breeds';
-import { useBreedSort } from '../hooks/useBreedSort';
-import { useColorSort } from '../hooks/useColorSort';
-import { colorOptionsFrom } from '../utils/colors';
+import FrogInputs from '../components/FrogInputs';
+import { useFrogOptions } from '../hooks/useFrogOptions';
 import { submitCombo } from '../api/submit';
 import { useAuth } from 'react-oidc-context';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
-interface BreedFields extends Record<string, unknown> { Breed?: string }
-interface BaseFields  extends Record<string, unknown> { BaseColors?: string }
-interface SecFields   extends Record<string, unknown> { Sec_Color?:  string }
 interface FrogFields  extends Record<string, unknown> { fullname?: string }
 
 interface ParentSel { base: ComboOption | null; sec: ComboOption | null; breed: ComboOption | null }
@@ -21,9 +16,9 @@ const EMPTY: ParentSel = { base: null, sec: null, breed: null };
 
 type Variant = 'chroma' | 'glass';
 const DAY = 1000 * 60 * 60 * 24;
+const SCREENSHOT_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 
 const picked = (p: ParentSel) => !!(p.base && p.sec && p.breed);
-const touched = (p: ParentSel) => !!(p.base || p.sec || p.breed);
 function fullName(p: ParentSel): string | null {
   return p.base && p.sec && p.breed ? `${p.base.label} ${p.sec.label} ${p.breed.label}` : null;
 }
@@ -36,46 +31,25 @@ function isUrl(s: string): boolean {
   return /^https:\/\/[^\s/?#]+\.[a-z]{2,}(?:[/?#]\S*)?$/i.test(s);
 }
 
-// ── Frog selector column (mirrors the Breeding Pairs inputs) ────────────────────
-
-function FrogInputs({
-  title, hint, control, sel, onChange, baseOpts, secOpts, breedOpts,
-}: {
-  title: string;
-  hint?: string;
-  control?: ReactNode;
-  sel: ParentSel;
-  onChange: (s: ParentSel) => void;
-  baseOpts: ComboOption[];
-  secOpts: ComboOption[];
-  breedOpts: ComboOption[];
-}) {
-  return (
-    <div className="parent-group">
-      <div className="parent-title-row">
-        <h2 className="parent-title">{title}{hint && <span className="submit-optional"> {hint}</span>}</h2>
-        {control}
-      </div>
-      <ComboBox label="Base Color"      options={baseOpts}  presorted initialSelection={sel.base}  onSelect={o => onChange({ ...sel, base: o })} />
-      <ComboBox label="Secondary Color" options={secOpts}   presorted initialSelection={sel.sec}   onSelect={o => onChange({ ...sel, sec: o })} />
-      <ComboBox label="Breed"           options={breedOpts} presorted initialSelection={sel.breed} onSelect={o => onChange({ ...sel, breed: o })} />
-    </div>
-  );
-}
-
 // ── Page ────────────────────────────────────────────────────────────────────────
 
 export default function SubmitCombo() {
   const auth = useAuth();
-  const [variant, setVariant] = useState<Variant>('glass');
+  // No variant until one is picked; the outcome pickers stay locked until then.
+  const [variant, setVariant] = useState<Variant | null>(null);
   const [p1, setP1] = useState<ParentSel>(EMPTY);
   const [p2, setP2] = useState<ParentSel>(EMPTY);
-  const [pResult, setPResult] = useState<ParentSel>(EMPTY);
+  // The mutation changes only one color, so the result and lost frogs share the
+  // other two traits. One picker holds the lost frog; the result frog is the
+  // same with the mutated color swapped for Glass (base) or Chroma (secondary).
   const [pLost, setPLost] = useState<ParentSel>(EMPTY);
   const [sourceLink, setSourceLink] = useState('');
   // Changelog record id of the game version; '' means the latest.
   const [versionSel, setVersionSel] = useState('');
   const [screenshot, setScreenshot] = useState<File | null>(null);
+  // Object URL for the screenshot preview, swapped (and the old one revoked)
+  // together with the file in pickScreenshot.
+  const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -85,52 +59,42 @@ export default function SubmitCombo() {
   const [attempted, setAttempted] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Lookup tables for the pickers (small, ETag-cached, shared with other pages)
-  const { data: breeds } = useQuery({ queryKey: ['table', 'breeds'], queryFn: () => fetchTable<BreedFields>('breeds') });
-  const { data: bases  } = useQuery({ queryKey: ['table', 'bases'],  queryFn: () => fetchTable<BaseFields>('bases')  });
-  const { data: secs   } = useQuery({ queryKey: ['table', 'secs'],   queryFn: () => fetchTable<SecFields>('secs')    });
-
-  const breedSort = useBreedSort();
-  const colorSort = useColorSort();
-  const breedOpts = useMemo<ComboOption[]>(() => breedOptionsFrom(breeds, breedSort), [breeds, breedSort]);
-  const baseOpts  = useMemo<ComboOption[]>(() => colorOptionsFrom(bases, 'BaseColors', colorSort), [bases, colorSort]);
-  const secOpts   = useMemo<ComboOption[]>(() => colorOptionsFrom(secs,  'Sec_Color',  colorSort), [secs,  colorSort]);
+  // Picker options (small, ETag-cached tables shared with other pages)
+  const frogOptions = useFrogOptions();
+  const { baseOpts, secOpts, breedOpts } = frogOptions;
 
   // The single valid choice for each variant's required color on the result frog.
   // Glass requires Base Color = "Glass"; Chroma requires Secondary Color = "Chroma".
   const glassBaseOpt  = useMemo(() => baseOpts.find(o => o.label === 'Glass')  ?? null, [baseOpts]);
   const chromaSecOpt  = useMemo(() => secOpts.find(o => o.label === 'Chroma')  ?? null, [secOpts]);
 
-  // Offspring traits come from the parents, so the result/lost pickers only offer
+  // Offspring traits come from the parents, so the outcome pickers only offer
   // the parents' values (filtered from the full lists to keep their sort order).
+  // That includes the mutated color's picker, which holds the lost frog's color.
   const parentBaseOpts  = useMemo(() => fromParents(baseOpts,  p1.base,  p2.base),  [baseOpts,  p1.base,  p2.base]);
   const parentSecOpts   = useMemo(() => fromParents(secOpts,   p1.sec,   p2.sec),   [secOpts,   p1.sec,   p2.sec]);
   const parentBreedOpts = useMemo(() => fromParents(breedOpts, p1.breed, p2.breed), [breedOpts, p1.breed, p2.breed]);
 
-  // The mutated color is the exception: it's narrowed to the one valid option for
-  // the active variant instead.
-  const resultBaseOpts = useMemo(
-    () => variant === 'glass'  && glassBaseOpt  ? [glassBaseOpt]  : parentBaseOpts,
-    [variant, glassBaseOpt, parentBaseOpts],
-  );
-  const resultSecOpts  = useMemo(
-    () => variant === 'chroma' && chromaSecOpt  ? [chromaSecOpt]  : parentSecOpts,
-    [variant, chromaSecOpt, parentSecOpts],
+  const pResult = useMemo<ParentSel>(
+    () => variant === 'glass'  ? { ...pLost, base: glassBaseOpt }
+        : variant === 'chroma' ? { ...pLost, sec:  chromaSecOpt }
+        : EMPTY,
+    [variant, pLost, glassBaseOpt, chromaSecOpt],
   );
 
   // Resolve each picked frog via its breed's frogs (shared 24h cache, deduped).
-  const q1 = useQuery({ queryKey: ['breed-frogs', p1.breed?.id],      queryFn: () => fetchBreedFrogs<FrogFields>(p1.breed!.id),      enabled: !!p1.breed,      staleTime: DAY });
-  const q2 = useQuery({ queryKey: ['breed-frogs', p2.breed?.id],      queryFn: () => fetchBreedFrogs<FrogFields>(p2.breed!.id),      enabled: !!p2.breed,      staleTime: DAY });
-  const qR = useQuery({ queryKey: ['breed-frogs', pResult.breed?.id], queryFn: () => fetchBreedFrogs<FrogFields>(pResult.breed!.id), enabled: !!pResult.breed, staleTime: DAY });
-  const qL = useQuery({ queryKey: ['breed-frogs', pLost.breed?.id],   queryFn: () => fetchBreedFrogs<FrogFields>(pLost.breed!.id),   enabled: !!pLost.breed,   staleTime: DAY });
+  // The result and lost frogs share a breed, so one query covers both.
+  const q1 = useQuery({ queryKey: ['breed-frogs', p1.breed?.id],    queryFn: () => fetchBreedFrogs<FrogFields>(p1.breed!.id),    enabled: !!p1.breed,    staleTime: DAY });
+  const q2 = useQuery({ queryKey: ['breed-frogs', p2.breed?.id],    queryFn: () => fetchBreedFrogs<FrogFields>(p2.breed!.id),    enabled: !!p2.breed,    staleTime: DAY });
+  const qO = useQuery({ queryKey: ['breed-frogs', pLost.breed?.id], queryFn: () => fetchBreedFrogs<FrogFields>(pLost.breed!.id), enabled: !!pLost.breed, staleTime: DAY });
 
   const index = useMemo(() => {
     const m = new Map<string, TeableRecord<FrogFields>>();
-    for (const f of [...(q1.data ?? []), ...(q2.data ?? []), ...(qR.data ?? []), ...(qL.data ?? [])]) {
+    for (const f of [...(q1.data ?? []), ...(q2.data ?? []), ...(qO.data ?? [])]) {
       if (f.fields.fullname) m.set(f.fields.fullname, f);
     }
     return m;
-  }, [q1.data, q2.data, qR.data, qL.data]);
+  }, [q1.data, q2.data, qO.data]);
 
   const resolve = (p: ParentSel) => (picked(p) ? index.get(fullName(p)!) ?? null : null);
   const frog1 = useMemo(() => resolve(p1),      [p1, index]);
@@ -140,23 +104,16 @@ export default function SubmitCombo() {
 
   const resolving =
     (!!p1.breed && q1.isFetching) || (!!p2.breed && q2.isFetching) ||
-    (!!pResult.breed && qR.isFetching) || (!!pLost.breed && qL.isFetching);
+    (!!pLost.breed && qO.isFetching);
 
   // A fully-picked frog that doesn't resolve to a record can't be submitted.
   const unknownFrog = !resolving && (
     (picked(p1) && !frog1) || (picked(p2) && !frog2) ||
     (picked(pResult) && !frogR) || (picked(pLost) && !frogL)
   );
-  // Lost frog is optional, but a half-filled picker is ambiguous.
-  const lostPartial = touched(pLost) && !picked(pLost);
 
   const sourceTrim = sourceLink.trim();
   const sourceValid = sourceTrim === '' || isUrl(sourceTrim);
-
-  const colorConstraintMet =
-    variant === 'glass'  ? pResult.base?.id === glassBaseOpt?.id :
-    variant === 'chroma' ? pResult.sec?.id  === chromaSecOpt?.id :
-    true;
 
   // Existing pairs, to catch verified ones before submitting.
   const { data: pairs } = useQuery({ queryKey: ['pairs'], queryFn: fetchFrogPairs });
@@ -195,15 +152,43 @@ export default function SubmitCombo() {
     : 'Proceed →';
 
   // ── Phase 2: the rest of the submission (only after a successful check) ─────
+  // pResult is only complete once a variant is picked and its color exists.
   const resultReady =
     picked(pResult) && !!frogR &&
     picked(pLost) && !!frogL &&
-    !resolving && !unknownFrog && !lostPartial && sourceValid &&
-    colorConstraintMet && !!screenshot;
+    !resolving && !unknownFrog && sourceValid && !!screenshot;
   const canSubmit = checked && resultReady && !submitting;
 
+  // Explains a blocked submit, first missing thing first.
+  const missingMessage =
+    !variant ? 'Choose Glass or Chroma'
+    : !picked(pLost) ? 'Complete the mutation outcome'
+    : unknownFrog ? 'That mutation outcome isn’t a known frog'
+    : !screenshot ? 'A screenshot is required'
+    : 'Still checking the frogs…';
+
+  // Swaps the screenshot and its preview URL, releasing the previous URL.
+  function pickScreenshot(file: File | null) {
+    if (screenshotUrl) URL.revokeObjectURL(screenshotUrl);
+    setScreenshot(file);
+    setScreenshotUrl(file ? URL.createObjectURL(file) : null);
+  }
+
+  // A picked or dropped file. Nothing (a cancelled picker) keeps the current one.
+  function acceptScreenshot(file: File | null) {
+    if (!file) return;
+    if (!SCREENSHOT_TYPES.includes(file.type)) {
+      if (fileRef.current) fileRef.current.value = '';
+      pickScreenshot(null);
+      setFileError('Only PNG, JPEG, WebP, or GIF images are allowed.');
+    } else {
+      pickScreenshot(file);
+      setFileError(null);
+    }
+  }
+
   async function handleSubmit() {
-    if (!canSubmit || !frog1 || !frog2 || !frogR) return;
+    if (!canSubmit || !frog1 || !frog2 || !frogR || !variant) return;
     setSubmitting(true);
     setResult(null);
     try {
@@ -222,8 +207,8 @@ export default function SubmitCombo() {
       );
       setResult({ ok: true, message: 'Thanks! Your submission was received and is pending review.' });
       setTimeout(() => setResult(null), 3000);
-      setP1(EMPTY); setP2(EMPTY); setPResult(EMPTY); setPLost(EMPTY);
-      setSourceLink(''); setVersionSel(''); setScreenshot(null); setFileError(null); setChecked(false); setAttempted(false);
+      setP1(EMPTY); setP2(EMPTY); setPLost(EMPTY); setVariant(null);
+      setSourceLink(''); setVersionSel(''); pickScreenshot(null); setFileError(null); setChecked(false); setAttempted(false);
       if (fileRef.current) fileRef.current.value = '';
     } catch (e) {
       setResult({ ok: false, message: e instanceof Error ? e.message : 'Something went wrong.' });
@@ -235,16 +220,7 @@ export default function SubmitCombo() {
   // A field with only one possible value (parents share it) is pre-set.
   const only = (opts: ComboOption[]) => (opts.length === 1 ? opts[0] : null);
 
-  // Returns the pResult state with the active variant's required color pre-set.
-  function constrainedResult(v: Variant): ParentSel {
-    return {
-      base:  v === 'glass'  ? glassBaseOpt  : only(parentBaseOpts),
-      sec:   v === 'chroma' ? chromaSecOpt  : only(parentSecOpts),
-      breed: only(parentBreedOpts),
-    };
-  }
-
-  // Keeps lost-frog picks that are still valid for the (possibly edited) parents.
+  // Keeps outcome picks that are still valid for the (possibly edited) parents.
   function prunedLost(): ParentSel {
     const keep = (sel: ComboOption | null, opts: ComboOption[]) =>
       (sel && opts.some(o => o.id === sel.id) ? sel : only(opts));
@@ -258,16 +234,9 @@ export default function SubmitCombo() {
   // Lock in the verified parents and reveal the rest of the form.
   function handleProceed() {
     if (!canProceed) return;
-    setPResult(constrainedResult(variant));
     setPLost(prunedLost());
     setChecked(true);
     setResult(null);
-  }
-
-  // Switching variants resets the result frog so the constrained color updates.
-  function handleVariantChange(v: Variant) {
-    setVariant(v);
-    setPResult(constrainedResult(v));
   }
 
   // Unlock the parents to correct an input error (re-check required to proceed).
@@ -291,8 +260,8 @@ export default function SubmitCombo() {
       {!checked ? (
         <>
           <div className="breeding-parents">
-            <FrogInputs title="Parent Frog 1" sel={p1} onChange={setP1} baseOpts={baseOpts} secOpts={secOpts} breedOpts={breedOpts} />
-            <FrogInputs title="Parent Frog 2" sel={p2} onChange={setP2} baseOpts={baseOpts} secOpts={secOpts} breedOpts={breedOpts} />
+            <FrogInputs title="Parent Frog 1" sel={p1} onChange={setP1} options={frogOptions} />
+            <FrogInputs title="Parent Frog 2" sel={p2} onChange={setP2} options={frogOptions} />
           </div>
 
           <div className="submit-actions">
@@ -317,59 +286,86 @@ export default function SubmitCombo() {
           )}
 
           <div className="breeding-parents">
-            <FrogInputs
-              key={variant}
-              title="Result Frog"
-              sel={pResult}
-              onChange={setPResult}
-              baseOpts={resultBaseOpts}
-              secOpts={resultSecOpts}
-              breedOpts={parentBreedOpts}
-              control={
+            <div className="parent-group outcome-group">
+              <div className="parent-title-row">
+                <h2 className="parent-title">Mutation Outcome</h2>
                 <div className="settings-row type-toggle">
                   {(['glass', 'chroma'] as const).map(v => (
                     <button
                       key={v}
                       type="button"
                       className={`settings-theme-opt${variant === v ? ' active' : ''}`}
-                      onClick={() => handleVariantChange(v)}
+                      onClick={() => setVariant(v)}
                     >
                       {v === 'chroma' ? 'Chroma' : 'Glass'}
                     </button>
                   ))}
                 </div>
-              }
-            />
-            <FrogInputs title="Lost Frog" sel={pLost} onChange={setPLost} baseOpts={parentBaseOpts} secOpts={parentSecOpts} breedOpts={parentBreedOpts} />
+              </div>
+              <p className="search-hint" style={{ margin: 0 }}>
+                {variant
+                  ? `Pick the ${variant === 'glass' ? 'base' : 'secondary'} color the mutated frog had before it turned ${variant === 'glass' ? 'Glass' : 'Chroma'}.`
+                  : 'Choose Glass or Chroma to begin.'}
+              </p>
+              {/* The mutated color's picker holds the lost frog's color, with the
+                  fixed Glass/Chroma result shown beside it. */}
+              <ComboBox
+                label="Base Color"
+                options={parentBaseOpts}
+                presorted
+                disabled={!variant}
+                initialSelection={pLost.base}
+                placeholder={variant === 'glass' ? 'Lost base color…' : undefined}
+                prefix={variant === 'glass' && <span className="mutation-tag">Glass</span>}
+                onSelect={o => setPLost(s => ({ ...s, base: o }))}
+              />
+              <ComboBox
+                label="Secondary Color"
+                options={parentSecOpts}
+                presorted
+                disabled={!variant}
+                initialSelection={pLost.sec}
+                placeholder={variant === 'chroma' ? 'Lost secondary color…' : undefined}
+                prefix={variant === 'chroma' && <span className="mutation-tag">Chroma</span>}
+                onSelect={o => setPLost(s => ({ ...s, sec: o }))}
+              />
+              <ComboBox
+                label="Breed"
+                options={parentBreedOpts}
+                presorted
+                disabled={!variant}
+                initialSelection={pLost.breed}
+                onSelect={o => setPLost(s => ({ ...s, breed: o }))}
+              />
+            </div>
+
+            <div className="parent-group">
+              <h2 className="parent-title">Screenshot</h2>
+              <label
+                className={`screenshot-drop${screenshotUrl ? ' has-image' : ''}`}
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => { e.preventDefault(); acceptScreenshot(e.dataTransfer.files[0] ?? null); }}
+              >
+                <input
+                  id="combo-shot"
+                  ref={fileRef}
+                  className="screenshot-input"
+                  type="file"
+                  accept={SCREENSHOT_TYPES.join(',')}
+                  onChange={e => acceptScreenshot(e.target.files?.[0] ?? null)}
+                />
+                {screenshotUrl
+                  ? <img src={screenshotUrl} alt="Selected screenshot" />
+                  : <span>Click or drop a screenshot here</span>}
+              </label>
+              <p className="search-hint" style={{ margin: 0 }}>
+                Please use original, uncropped images. Preferably tap the mutation to show its name.
+              </p>
+              {fileError && <p className="search-error" style={{ margin: 0 }}>{fileError}</p>}
+            </div>
           </div>
 
           <div className="submit-extras">
-            <div className="combobox-field">
-              <label className="combobox-label" htmlFor="combo-shot">Screenshot</label>
-              <input
-                id="combo-shot"
-                ref={fileRef}
-                className="submit-file"
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
-                onChange={e => {
-                  const file = e.target.files?.[0] ?? null;
-                  const allowed = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
-                  if (file && !allowed.has(file.type)) {
-                    e.target.value = '';
-                    setScreenshot(null);
-                    setFileError('Only PNG, JPEG, WebP, or GIF images are allowed.');
-                  } else {
-                    setScreenshot(file);
-                    setFileError(null);
-                  }
-                }}
-              />
-              <p className="search-hint" style={{ marginTop: 4 }}>
-                Please use original, uncropped images. Preferably tap the mutation to show its name.
-              </p>
-              {fileError && <p className="search-error" style={{ marginTop: 4 }}>{fileError}</p>}
-            </div>
             <div className="combobox-field">
               <label className="combobox-label" htmlFor="combo-source">Attribution link <span className="submit-optional">(optional)</span></label>
               <input
@@ -406,7 +402,7 @@ export default function SubmitCombo() {
           {!sourceValid ? (
             <p className="search-error">Attribution link is not a valid URL</p>
           ) : attempted && !resultReady ? (
-            <p className="search-error">Both frogs and a screenshot are required</p>
+            <p className="search-error">{missingMessage}</p>
           ) : null}
 
           <div className="submit-actions">

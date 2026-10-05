@@ -7,6 +7,7 @@ import { useBreedSort, selectBreedSort } from '../hooks/useBreedSort';
 import { useColorSort, selectColorSort } from '../hooks/useColorSort';
 import { useSpoilers } from '../hooks/useSpoilers';
 import { usePlatform } from '../hooks/usePlatform';
+import { useFrogEntry } from '../hooks/useFrogEntry';
 import { useDisplayName } from '../hooks/useDisplayName';
 import AlertBanner from './AlertBanner';
 import '../App.css';
@@ -76,6 +77,27 @@ function IconAndroid() {
       <path d="M7.1 10 5.3 6.6M16.9 10l1.8-3.4"/>
       <circle cx="8.9" cy="13.6" r="1.15" fill="currentColor" stroke="none"/>
       <circle cx="15.1" cy="13.6" r="1.15" fill="currentColor" stroke="none"/>
+    </svg>
+  );
+}
+
+// Frog entry: three stacked dropdowns, or a single text box with a cursor.
+function IconDropdowns() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="2.5" width="18" height="5" rx="1"/>
+      <rect x="3" y="9.5" width="18" height="5" rx="1"/>
+      <rect x="3" y="16.5" width="18" height="5" rx="1"/>
+      <path d="M15.5 4.2h3l-1.5 1.6Z M15.5 11.2h3l-1.5 1.6Z M15.5 18.2h3l-1.5 1.6Z" fill="currentColor" strokeWidth="1"/>
+    </svg>
+  );
+}
+
+function IconTextBox() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="10" rx="2"/>
+      <line x1="6" y1="10" x2="6" y2="14"/>
     </svg>
   );
 }
@@ -169,6 +191,7 @@ function SettingsDropdown() {
   const colorSort = useColorSort();
   const { spoilers, set: setSpoilers } = useSpoilers();
   const { platform, set: setPlatform } = usePlatform();
+  const { entry, set: setEntry } = useFrogEntry();
   const auth = useAuth();
   const { displayName, current } = useDisplayName();
   const navigate = useNavigate();
@@ -245,6 +268,15 @@ function SettingsDropdown() {
           </button>
           <button className={`settings-theme-opt${platform === 'Android' ? ' active' : ''}`} onClick={() => setPlatform('Android')} aria-label="Default platform Android" title="Show Android updates by default">
             <IconAndroid />
+          </button>
+
+          {/* Row 6: Frog entry — label (left), dropdowns (center), text box (right) */}
+          <span className="settings-row-label" title="How frogs are entered on Breeding Pairs, Mutation Planner, Frog Detail and Mutation Submissions">Input:</span>
+          <button className={`settings-theme-opt${entry === 'combo' ? ' active' : ''}`} onClick={() => setEntry('combo')} aria-label="Enter frogs with dropdowns" title="Base / Secondary / Breed dropdowns">
+            <IconDropdowns />
+          </button>
+          <button className={`settings-theme-opt${entry === 'text' ? ' active' : ''}`} onClick={() => setEntry('text')} aria-label="Enter frogs by exact ID or name" title="Text box: exact Frog_ID or full name (advanced)">
+            <IconTextBox />
           </button>
 
           {/* Account — username (→ account page) when signed in, else "Log In" */}

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useId, useMemo } from 'react';
+import { useState, useRef, useEffect, useId, useMemo, type ReactNode } from 'react';
 
 export interface ComboOption {
   id: string;
@@ -19,6 +19,9 @@ interface ComboBoxProps {
   presorted?: boolean;
   /** Locks the input (e.g. until an earlier filter in a sequence is chosen) */
   disabled?: boolean;
+  /** Shown inline to the left of the input, which shrinks to make room
+   *  (e.g. the fixed "Glass" color on the combo form's outcome picker) */
+  prefix?: ReactNode;
 }
 
 export default function ComboBox({
@@ -29,6 +32,7 @@ export default function ComboBox({
   initialSelection = null,
   presorted = false,
   disabled = false,
+  prefix,
 }: ComboBoxProps) {
   const inputId = useId();
   const [inputValue, setInputValue] = useState(initialSelection?.label ?? '');
@@ -113,52 +117,56 @@ export default function ComboBox({
     }
   }
 
+  const box = (
+    <div className="combobox" ref={containerRef}>
+      <input
+        id={inputId}
+        className={`search-input combobox-input${selected ? ' combobox-confirmed' : ''}`}
+        type="text"
+        value={inputValue}
+        placeholder={placeholder}
+        autoComplete="off"
+        disabled={disabled}
+        onChange={e => handleInput(e.target.value)}
+        onFocus={() => { if (!selected) setIsOpen(true); }}
+        onBlur={e => {
+          // Close when focus leaves the combo box entirely (e.g. Tab). Focus
+          // staying inside (e.g. the clear button) keeps the dropdown open.
+          if (!containerRef.current?.contains(e.relatedTarget as Node)) {
+            setIsOpen(false);
+            setActiveIndex(-1);
+          }
+        }}
+        onKeyDown={handleKeyDown}
+      />
+      {inputValue && !disabled && (
+        <button className="combobox-clear" type="button" onClick={handleClear} aria-label="Clear">
+          ×
+        </button>
+      )}
+      {isOpen && !disabled && suggestions.length > 0 && (
+        <ul className="combobox-suggestions" role="listbox" ref={listRef}>
+          {suggestions.map((opt, i) => (
+            <li
+              key={opt.id}
+              className={`combobox-option${i === activeIndex ? ' combobox-option--active' : ''}`}
+              role="option"
+              aria-selected={i === activeIndex}
+              onMouseDown={e => { e.preventDefault(); handlePick(opt); }}
+            >
+              <span className="combobox-option-label">{opt.label}</span>
+              {opt.detail && <span className="combobox-option-detail">{opt.detail}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
   return (
     <div className="combobox-field">
       <label className="combobox-label" htmlFor={inputId}>{label}</label>
-      <div className="combobox" ref={containerRef}>
-        <input
-          id={inputId}
-          className={`search-input combobox-input${selected ? ' combobox-confirmed' : ''}`}
-          type="text"
-          value={inputValue}
-          placeholder={placeholder}
-          autoComplete="off"
-          disabled={disabled}
-          onChange={e => handleInput(e.target.value)}
-          onFocus={() => { if (!selected) setIsOpen(true); }}
-          onBlur={e => {
-            // Close when focus leaves the combo box entirely (e.g. Tab). Focus
-            // staying inside (e.g. the clear button) keeps the dropdown open.
-            if (!containerRef.current?.contains(e.relatedTarget as Node)) {
-              setIsOpen(false);
-              setActiveIndex(-1);
-            }
-          }}
-          onKeyDown={handleKeyDown}
-        />
-        {inputValue && !disabled && (
-          <button className="combobox-clear" type="button" onClick={handleClear} aria-label="Clear">
-            ×
-          </button>
-        )}
-        {isOpen && !disabled && suggestions.length > 0 && (
-          <ul className="combobox-suggestions" role="listbox" ref={listRef}>
-            {suggestions.map((opt, i) => (
-              <li
-                key={opt.id}
-                className={`combobox-option${i === activeIndex ? ' combobox-option--active' : ''}`}
-                role="option"
-                aria-selected={i === activeIndex}
-                onMouseDown={e => { e.preventDefault(); handlePick(opt); }}
-              >
-                <span className="combobox-option-label">{opt.label}</span>
-                {opt.detail && <span className="combobox-option-detail">{opt.detail}</span>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {prefix ? <div className="combobox-row">{prefix}{box}</div> : box}
     </div>
   );
 }
