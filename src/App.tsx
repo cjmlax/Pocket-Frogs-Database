@@ -7,6 +7,7 @@ import WeeklyList from './pages/WeeklyList';
 import Breed from './pages/Breed';
 import BreedingPairs from './pages/BreedingPairs';
 import MutationPlanner from './pages/MutationPlanner';
+import NoMuWheels from './pages/NoMuWheels';
 import SubmitCombo from './pages/SubmitCombo';
 import SubmitFrogStats from './pages/SubmitFrogStats';
 import Download from './pages/Download';
@@ -37,6 +38,7 @@ const router = createBrowserRouter([
       { path: 'breed', element: <Breed /> },
       { path: 'breeding', element: <BreedingPairs /> },
       { path: 'planner', element: <MutationPlanner /> },
+      { path: 'nomu', element: <NoMuWheels /> },
       { path: 'submit', element: <SubmitCombo /> },
       { path: 'submit/stats', element: <SubmitFrogStats /> },
       { path: 'download', element: <Download /> },

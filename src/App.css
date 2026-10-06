@@ -1520,6 +1520,206 @@ button.planner-mark {
   outline-offset: -1px;
 }
 
+/* ─── NoMu Wheels page ─────────────────────────────────────────────────────── */
+
+.nomu-mode-btn {
+  width: auto;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+.nomu-results {
+  display: grid;
+  gap: 4px 24px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  margin-bottom: 8px;
+}
+
+.nomu-result-group h2,
+.nomu-section-head h2 {
+  margin: 16px 0 10px;
+  font-size: 18px;
+}
+
+.nomu-result-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.nomu-result {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nomu-result strong {
+  color: var(--text-h);
+  font-size: 14px;
+}
+
+.nomu-result:hover {
+  background: var(--accent-bg);
+}
+
+.nomu-result.active {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.nomu-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.nomu-habitats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.nomu-habitat {
+  padding: 12px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.nomu-habitat-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.nomu-habitat-head h3 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-h);
+}
+
+.nomu-habitat-head .csv-btn {
+  margin-left: auto;
+  text-decoration: none;
+}
+
+.nomu-slots {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nomu-frog,
+.nomu-slot-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.nomu-frog {
+  background: var(--bg);
+  border: 2px solid var(--text-h);
+  color: var(--text-h);
+  font-weight: 600;
+  cursor: grab;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.nomu-frog:hover,
+.nomu-frog.is-held {
+  border-color: var(--accent);
+}
+
+.nomu-frog.is-held {
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.nomu-frog span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nomu-slot-empty {
+  background: transparent;
+  border: 2px dashed var(--border);
+  color: var(--text);
+}
+
+.nomu-slot-empty:not(:disabled) {
+  border-color: var(--accent-border);
+  cursor: pointer;
+}
+
+.nomu-slot-empty:not(:disabled):hover {
+  background: var(--accent-bg);
+}
+
+.nomu-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+.nomu-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.nomu-status { font-weight: 600; }
+.nomu-status.is-wheel    { color: var(--text-h); }
+.nomu-status.is-clear    { color: var(--cell-max-text); }
+.nomu-status.is-mutation { color: var(--warn-text); }
+.nomu-status.is-unknown  { color: var(--text); }
+.nomu-status.is-missing  { color: var(--cell-min-text); }
+
+.nomu-hidden {
+  color: var(--text);
+  font-style: italic;
+}
+
+/* The pair view's frog lists wrap instead of stretching the table */
+td.nomu-gives {
+  white-space: normal;
+  min-width: 260px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nomu-frog { transition: none; }
+}
+
 /* ─── Frog lookup page ────────────────────────────────────────────────────── */
 
 .filter-grid {
