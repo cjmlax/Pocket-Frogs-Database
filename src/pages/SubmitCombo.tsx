@@ -1,9 +1,11 @@
 import { useState, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { fetchBreedFrogs, fetchFrogPairs, fetchChangelog, type TeableRecord } from '../api/teable';
 import ComboBox, { type ComboOption } from '../components/ComboBox';
 import FrogInputs from '../components/FrogInputs';
 import { useFrogOptions } from '../hooks/useFrogOptions';
+import { decodeFrogParam } from '../utils/frogIds';
 import { submitCombo } from '../api/submit';
 import { useAuth } from 'react-oidc-context';
 
@@ -61,7 +63,20 @@ export default function SubmitCombo() {
 
   // Picker options (small, ETag-cached tables shared with other pages)
   const frogOptions = useFrogOptions();
-  const { baseOpts, secOpts, breedOpts } = frogOptions;
+  const { baseOpts, secOpts, breedOpts, lookup } = frogOptions;
+
+  // ?pair= holds both parents' Frog_IDs (e.g. "18:11:0_18:4:0", as linked from
+  // Breeding Pairs). It only fills the parent pickers — the pair still has to
+  // pass the Proceed check — and is read once the lookup tables load. The
+  // inputs are keyed on this so they remount showing the restored parents.
+  const [searchParams] = useSearchParams();
+  const [urlRead, setUrlRead] = useState(false);
+  if (lookup && !urlRead) {
+    const [a, b] = decodeFrogParam(searchParams.get('pair'), lookup);
+    if (a) setP1(a);
+    if (b) setP2(b);
+    setUrlRead(true);
+  }
 
   // The single valid choice for each variant's required color on the result frog.
   // Glass requires Base Color = "Glass"; Chroma requires Secondary Color = "Chroma".
@@ -255,8 +270,8 @@ export default function SubmitCombo() {
       {!checked ? (
         <>
           <div className="breeding-parents">
-            <FrogInputs title="Parent Frog 1" sel={p1} onChange={setP1} options={frogOptions} />
-            <FrogInputs title="Parent Frog 2" sel={p2} onChange={setP2} options={frogOptions} />
+            <FrogInputs key={`1-${urlRead}`} title="Parent Frog 1" sel={p1} onChange={setP1} options={frogOptions} />
+            <FrogInputs key={`2-${urlRead}`} title="Parent Frog 2" sel={p2} onChange={setP2} options={frogOptions} />
           </div>
 
           <div className="submit-actions">

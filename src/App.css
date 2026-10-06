@@ -656,6 +656,32 @@ a.plain-link:hover {
   color: var(--text-h);
 }
 
+/* Pair actions, right-aligned in the cost bar; the tray slides out leftward */
+.breeding-actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  padding: 0 8px;
+}
+
+.breeding-actions .screenshot-btn {
+  margin-left: 4px;
+}
+
+.breeding-actions-tray {
+  display: flex;
+  align-items: center;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-width 0.2s ease, opacity 0.2s ease;
+}
+
+.breeding-actions.open .breeding-actions-tray {
+  max-width: 120px;
+  opacity: 1;
+}
+
 /* Square off the table's top corners so it joins the cost bar seamlessly */
 .breeding-cost-bar + .table-wrapper {
   border-top-left-radius: 0;

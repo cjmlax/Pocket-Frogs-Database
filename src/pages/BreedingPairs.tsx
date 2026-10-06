@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { fetchBreedFrogs, fetchFrogPairs, fetchMutations, fetchFrogById, type Mutation, type TeableRecord } from '../api/teable';
 import type { ComboOption } from '../components/ComboBox';
@@ -56,6 +56,39 @@ function IconSwap() {
   );
 }
 
+// Exclamation in a circle — opens the pair's action tray.
+function IconAlert() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="7" x2="12" y2="13"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  );
+}
+
+// Flag on a pole — report a problem with the pair's data.
+function IconFlag() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+      <line x1="4" y1="22" x2="4" y2="15"/>
+    </svg>
+  );
+}
+
+// Opposing arrows — hand the pair over to another page.
+function IconTrade() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="17 1 21 5 17 9"/>
+      <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+      <polyline points="7 23 3 19 7 15"/>
+      <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+    </svg>
+  );
+}
+
 // ── Page ────────────────────────────────────────────────────────────────────────
 
 export default function BreedingPairs() {
@@ -64,6 +97,7 @@ export default function BreedingPairs() {
   const [pa, setPa] = useState<FrogSel>(EMPTY_FROG);
   const [pb, setPb] = useState<FrogSel>(EMPTY_FROG);
   const [lightbox, setLightbox] = useState<string[] | null>(null);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const tableRef = useRef<HTMLTableElement>(null);
 
   const frogOptions = useFrogOptions();
@@ -362,6 +396,43 @@ export default function BreedingPairs() {
             <p className="breeding-cost">
               Breeding Cost: <strong>{formatNum(result.cost)}</strong>
             </p>
+            {/* Right-aligned tray: the ! button slides the pair's actions out to its left. */}
+            <div className={`breeding-actions${actionsOpen ? ' open' : ''}`}>
+              <div className="breeding-actions-tray" id="breeding-actions-tray" inert={!actionsOpen}>
+                {/* Fills the submission page's parent pickers; its own check still runs.
+                    Hidden for verified pairs (and until that's known), which refuse submissions. */}
+                {pairVerified === false && (
+                  <Link
+                    to={`/submit${frogSearch('pair', searchParams.get('pair') ?? '')}`}
+                    className="screenshot-btn"
+                    aria-label="Submit a Glass/Chroma mutation for this pair"
+                    title="Submit a Glass/Chroma mutation for this pair"
+                  >
+                    <IconTrade />
+                  </Link>
+                )}
+                {/* TODO: wire up once issue reporting exists. */}
+                <button
+                  type="button"
+                  className="screenshot-btn"
+                  aria-label="Report an issue with this pair's data"
+                  title="Click to report issue"
+                >
+                  <IconFlag />
+                </button>
+              </div>
+              <button
+                type="button"
+                className="screenshot-btn"
+                onClick={() => setActionsOpen(o => !o)}
+                aria-expanded={actionsOpen}
+                aria-controls="breeding-actions-tray"
+                aria-label={actionsOpen ? 'Hide pair actions' : 'Show pair actions'}
+                title={actionsOpen ? 'Hide pair actions' : 'Show pair actions'}
+              >
+                <IconAlert />
+              </button>
+            </div>
           </div>
 
           <div className="table-wrapper">
