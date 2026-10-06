@@ -1,8 +1,10 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { useQuery } from '@tanstack/react-query';
+import { useAuth } from 'react-oidc-context';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchFrogPairs, type FrogPair } from '../api/teable';
 import FrogInputs from '../components/FrogInputs';
+import VerifyPairsDialog, { type VerifyPairItem } from '../components/VerifyPairsDialog';
 import { useFrogOptions } from '../hooks/useFrogOptions';
 import {
   EMPTY_FROG, MAX_PLANNER_FROGS as MAX_FROGS, decodeFrogParam, encodeFrogParam, frogId, frogName, frogPath, frogSearch, isComplete,
@@ -32,6 +34,10 @@ function IconWarning() {
 }
 
 const STATUS_MARK: Record<LineStatus, React.ReactNode> = { unknown: '?', clear: '✓', mutation: <IconWarning /> };
+
+// pfdb_groups arrives with the "pfdb-" prefix stripped, so "pfdb-mods" → "mods".
+// Verify mode is for mods only (not admins, unless they're also mods).
+const MOD_GROUP = 'mods';
 
 interface PlannedFrog {
   sel:  CompleteFrogSel;
@@ -232,6 +238,37 @@ function useBoardSize(el: HTMLDivElement | null): BoardSize {
   return size;
 }
 
+// A line's mark (or a frog's self-breeding mark) in Verify mode: a toggle for
+// pairs not yet verified, inert for the rest.
+function VerifyMark({ status, pickable, picked, label, onToggle, ...rest }: {
+  status:    LineStatus;
+  pickable:  boolean;
+  picked:    boolean;
+  label:     string;
+  onToggle:  () => void;
+  className: string;
+  style:     React.CSSProperties;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+  onFocus?:      () => void;
+  onBlur?:       () => void;
+}) {
+  if (!pickable) {
+    return (
+      <span {...rest} role="img" aria-label={`${label}: ${STATUS_TEXT[status]}`} title={STATUS_TEXT[status]}>
+        {STATUS_MARK[status]}
+      </span>
+    );
+  }
+  return (
+    <button type="button" {...rest} onClick={onToggle} aria-pressed={picked}
+      aria-label={`${label}: ${picked ? 'marked as no mutations' : 'not verified'}. Toggle.`}
+      title={picked ? 'Marked as no mutations. Select to undo.' : 'Select to mark as no mutations.'}>
+      {STATUS_MARK[status]}
+    </button>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function MutationPlanner() {
@@ -240,6 +277,23 @@ export default function MutationPlanner() {
   const frogOptions = useFrogOptions();
   const { lookup } = frogOptions;
   const { data: pairs } = useQuery({ queryKey: ['pairs'], queryFn: fetchFrogPairs });
+  const queryClient = useQueryClient();
+
+  const auth = useAuth();
+  const idToken = auth.user?.id_token;
+  const groups = (auth.user?.profile?.pfdb_groups as string[] | undefined) ?? [];
+  const isMod = auth.isAuthenticated && !!idToken && groups.includes(MOD_GROUP);
+
+  // Verify mode (mods): unverified pairs are picked as having no mutations, and
+  // everything else on the board is locked. `picked` holds pair keys of Frog_IDs.
+  // It's tied to the plan it was started on: any change to the plan's URL
+  // (back/forward, a pasted link) leaves it, so the page always opens in the
+  // normal view. Verify mode itself never edits the plan.
+  const frogsParam = searchParams.get('frogs') ?? '';
+  const [verifyPlan, setVerifyPlan] = useState<string | null>(null);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [confirming, setConfirming] = useState(false);
+  const verifyMode = isMod && verifyPlan === frogsParam;
 
   const [editor, setEditor] = useState<Editor | null>(null);
   const [activeFrog, setActiveFrog] = useState<number | null>(null);
@@ -309,8 +363,69 @@ export default function MutationPlanner() {
   // Hovering a frog lights its lines; hovering a line lights just that one.
   const focusing = activeFrog !== null || activeEdge !== null;
   const isLit = (e: Edge) => e.a === activeFrog || e.b === activeFrog || e.key === activeEdge;
-  const edgeClass = (e: Edge) =>
-    `is-${e.status}${focusing ? (isLit(e) ? ' is-lit' : ' is-dim') : ''}`;
+  const focusClass = (e: Edge) => (focusing ? (isLit(e) ? ' is-lit' : ' is-dim') : '');
+
+  // ── Verify mode ───────────────────────────────────────────────────────────
+  // Only pairs not yet Verified can be picked. A picked pair shows as clear.
+
+  const pickKey = (fa: PlannedFrog, fb: PlannedFrog) => (fa.id && fb.id ? pairKey(fa.id, fb.id) : null);
+  const pickable = (fa: PlannedFrog, fb: PlannedFrog, status: LineStatus) =>
+    verifyMode && status === 'unknown' && !!pickKey(fa, fb);
+  const isPicked = (fa: PlannedFrog, fb: PlannedFrog, status: LineStatus) =>
+    pickable(fa, fb, status) && picked.has(pickKey(fa, fb)!);
+  const shownStatus = (fa: PlannedFrog, fb: PlannedFrog, status: LineStatus): LineStatus =>
+    isPicked(fa, fb, status) ? 'clear' : status;
+  const verifyClass = (fa: PlannedFrog, fb: PlannedFrog, status: LineStatus) =>
+    !verifyMode ? '' : isPicked(fa, fb, status) ? ' is-picked' : pickable(fa, fb, status) ? '' : ' is-locked';
+
+  function togglePick(fa: PlannedFrog, fb: PlannedFrog, status: LineStatus) {
+    const key = pickKey(fa, fb);
+    if (!key || !pickable(fa, fb, status)) return;
+    setPicked(prev => {
+      const next = new Set(prev);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+  }
+
+  const edgeClass = (e: Edge) => {
+    const fa = frogs[e.a], fb = frogs[e.b];
+    return `is-${shownStatus(fa, fb, e.status)}${verifyClass(fa, fb, e.status)}${focusClass(e)}`;
+  };
+
+  // Every picked pair on the board, self-pairs included, for the confirmation.
+  const pickedItems = useMemo<VerifyPairItem[]>(() => {
+    if (!verifyMode) return [];
+    const list: VerifyPairItem[] = [];
+    for (let a = 0; a < frogs.length; a++) {
+      for (let b = a; b < frogs.length; b++) {
+        const fa = frogs[a], fb = frogs[b];
+        const key = fa.id && fb.id ? pairKey(fa.id, fb.id) : null;
+        if (!key || !picked.has(key) || pairStatus(pairByKey, fa, fb) !== 'unknown') continue;
+        list.push({ key, frogA: fa.id!, frogB: fb.id!, label: `${fa.name} × ${fb.name}` });
+      }
+    }
+    return list;
+  }, [verifyMode, frogs, picked, pairByKey]);
+
+  function startVerify() {
+    setEditor(null);
+    setPicked(new Set());
+    setConfirming(false);
+    setVerifyPlan(frogsParam);
+  }
+
+  const finishVerify = useCallback(() => {
+    setVerifyPlan(null);
+    setPicked(new Set());
+    setConfirming(false);
+  }, []);
+  const unpick = useCallback((key: string) => setPicked(prev => {
+    const next = new Set(prev);
+    next.delete(key);
+    return next;
+  }), []);
+  const refreshPairs = useCallback(() => queryClient.invalidateQueries({ queryKey: ['pairs'] }), [queryClient]);
 
   const pairHref = (fa: PlannedFrog, fb: PlannedFrog) =>
     lookup ? `/breeding${frogSearch('pair', encodeFrogParam([fa.sel, fb.sel], lookup))}` : '/breeding';
@@ -358,27 +473,64 @@ export default function MutationPlanner() {
     <div>
       <h1>Mutation Planner</h1>
       <p className="search-hint" style={{ marginTop: 0 }}>
-        Add up to {MAX_FROGS} frogs to see which frog combinations have verified breeding results.
-        Select a line to open that pair in Breeding Pairs, or a frog name to open its Frog page.
-        Add frogs at the bottom, edit or remove frogs from their bubble.
+        {verifyMode ? (
+          <>
+            Verify mode: select each unverified line, or a frog's self-breeding mark, whose pair produces
+            no mutations, then Confirm. Pairs that produce a mutation are submitted as a combination instead.
+          </>
+        ) : (
+          <>
+            Add up to {MAX_FROGS} frogs to see which frog combinations have verified breeding results.
+            Select a line to open that pair in Breeding Pairs, or a frog name to open its Frog page.
+            Add frogs at the bottom, edit or remove frogs from their bubble.
+          </>
+        )}
       </p>
 
       {!lookup ? (
         <p className="search-hint">Loading frog data…</p>
       ) : (
         <>
-          <ul className="planner-legend">
-            {(['clear', 'mutation', 'unknown'] as const).map(s => (
-              <li key={s}>
-                <span className={`planner-mark is-${s}`} aria-hidden="true">{STATUS_MARK[s]}</span>
-                {STATUS_TEXT[s]}
-              </li>
-            ))}
-          </ul>
+          <div className="planner-header">
+            <ul className="planner-legend">
+              {(['clear', 'mutation', 'unknown'] as const).map(s => (
+                <li key={s}>
+                  <span className={`planner-mark is-${s}`} aria-hidden="true">{STATUS_MARK[s]}</span>
+                  {STATUS_TEXT[s]}
+                </li>
+              ))}
+            </ul>
+            {isMod && (
+              <div className="planner-verify-actions">
+                {verifyMode ? (
+                  <>
+                    <button type="button" className="csv-btn" onClick={() => setConfirming(true)} disabled={pickedItems.length === 0}>
+                      Confirm{pickedItems.length > 0 && ` (${pickedItems.length})`}
+                    </button>
+                    <button type="button" className="csv-btn" onClick={finishVerify}>Cancel</button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="csv-btn"
+                    onClick={startVerify}
+                    disabled={!pairs || frogs.length === 0}
+                    title="Mark unverified pairs as producing no mutations"
+                  >
+                    Verify
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
-          <div className="planner-canvas" ref={setBoard} style={{ height: boardSize.mobile ? undefined : boardSize.height }}>
+          <div
+            className={`planner-canvas${verifyMode ? ' is-verifying' : ''}`}
+            ref={setBoard}
+            style={{ height: boardSize.mobile ? undefined : boardSize.height }}
+          >
             <div className="planner-toolbar">
-              {editor ? (
+              {verifyMode ? null : editor ? (
                 <button
                   type="button"
                   className="planner-add"
@@ -400,7 +552,7 @@ export default function MutationPlanner() {
                   <IconPlus />
                 </button>
               )}
-              <span className="planner-count">{frogs.length} / {MAX_FROGS}</span>
+              {!verifyMode && <span className="planner-count">{frogs.length} / {MAX_FROGS}</span>}
             </div>
 
             {frogs.length === 0 && (
@@ -414,7 +566,9 @@ export default function MutationPlanner() {
                   className={`planner-edge ${edgeClass(e)}`}
                   onMouseEnter={() => setActiveEdge(e.key)}
                   onMouseLeave={() => setActiveEdge(null)}
-                  onClick={() => navigate(pairHref(frogs[e.a], frogs[e.b]))}
+                  onClick={() => (verifyMode
+                    ? togglePick(frogs[e.a], frogs[e.b], e.status)
+                    : navigate(pairHref(frogs[e.a], frogs[e.b])))}
                 >
                   <line className="planner-line-hit" vectorEffect="non-scaling-stroke"
                     x1={positions[e.a].x} y1={positions[e.a].y} x2={positions[e.b].x} y2={positions[e.b].y} />
@@ -424,22 +578,29 @@ export default function MutationPlanner() {
               ))}
             </svg>
 
-            {edges.map(e => (
-              <Link
-                key={e.key}
-                to={pairHref(frogs[e.a], frogs[e.b])}
-                className={`planner-mark ${edgeClass(e)}`}
-                style={{ left: `${e.mark.x}%`, top: `${e.mark.y}%` }}
-                onMouseEnter={() => setActiveEdge(e.key)}
-                onMouseLeave={() => setActiveEdge(null)}
-                onFocus={() => setActiveEdge(e.key)}
-                onBlur={() => setActiveEdge(null)}
-                aria-label={`${frogs[e.a].name} × ${frogs[e.b].name}: ${STATUS_TEXT[e.status]}. Open in Breeding Pairs.`}
-                title={`${STATUS_TEXT[e.status]}. Open in Breeding Pairs.`}
-              >
-                {STATUS_MARK[e.status]}
-              </Link>
-            ))}
+            {edges.map(e => {
+              const fa = frogs[e.a], fb = frogs[e.b];
+              const hover = {
+                onMouseEnter: () => setActiveEdge(e.key),
+                onMouseLeave: () => setActiveEdge(null),
+                onFocus:      () => setActiveEdge(e.key),
+                onBlur:       () => setActiveEdge(null),
+              };
+              const className = `planner-mark ${edgeClass(e)}`;
+              const style = { left: `${e.mark.x}%`, top: `${e.mark.y}%` };
+              return verifyMode ? (
+                <VerifyMark key={e.key} className={className} style={style} {...hover}
+                  status={shownStatus(fa, fb, e.status)} pickable={pickable(fa, fb, e.status)} picked={isPicked(fa, fb, e.status)}
+                  label={`${fa.name} × ${fb.name}`} onToggle={() => togglePick(fa, fb, e.status)} />
+              ) : (
+                <Link key={e.key} to={pairHref(fa, fb)} className={className} style={style} {...hover}
+                  aria-label={`${fa.name} × ${fb.name}: ${STATUS_TEXT[e.status]}. Open in Breeding Pairs.`}
+                  title={`${STATUS_TEXT[e.status]}. Open in Breeding Pairs.`}
+                >
+                  {STATUS_MARK[e.status]}
+                </Link>
+              );
+            })}
 
             {frogs.map((f, i) => {
               const self = pairStatus(pairByKey, f, f);
@@ -453,24 +614,37 @@ export default function MutationPlanner() {
                 onFocus={() => setActiveFrog(i)}
                 onBlur={() => setActiveFrog(null)}
               >
-                <button type="button" className="planner-frog-btn" style={at(controls[i].edit)} onClick={() => openEditor(i)}
-                  aria-label={`Edit ${f.name}`} title="Edit">
-                  <IconPencil />
-                </button>
-                <Link
-                  to={pairHref(f, f)}
-                  className={`planner-mark planner-self is-${self}`}
-                  style={at(controls[i].self)}
-                  aria-label={`${f.name} with itself: ${STATUS_TEXT[self]}. Open in Breeding Pairs.`}
-                  title={`Self-breeding: ${STATUS_TEXT[self]}. Open in Breeding Pairs.`}
-                >
-                  {STATUS_MARK[self]}
-                </Link>
-                <button type="button" className="planner-frog-btn" style={at(controls[i].remove)} onClick={() => removeFrog(i)}
-                  aria-label={`Remove ${f.name}`} title="Remove">
-                  <IconMinus />
-                </button>
-                {f.id ? (
+                {!verifyMode && (
+                  <button type="button" className="planner-frog-btn" style={at(controls[i].edit)} onClick={() => openEditor(i)}
+                    aria-label={`Edit ${f.name}`} title="Edit">
+                    <IconPencil />
+                  </button>
+                )}
+                {verifyMode ? (
+                  <VerifyMark
+                    className={`planner-mark planner-self is-${shownStatus(f, f, self)}${verifyClass(f, f, self)}`}
+                    style={at(controls[i].self)}
+                    status={shownStatus(f, f, self)} pickable={pickable(f, f, self)} picked={isPicked(f, f, self)}
+                    label={`${f.name} with itself`} onToggle={() => togglePick(f, f, self)}
+                  />
+                ) : (
+                  <Link
+                    to={pairHref(f, f)}
+                    className={`planner-mark planner-self is-${self}`}
+                    style={at(controls[i].self)}
+                    aria-label={`${f.name} with itself: ${STATUS_TEXT[self]}. Open in Breeding Pairs.`}
+                    title={`Self-breeding: ${STATUS_TEXT[self]}. Open in Breeding Pairs.`}
+                  >
+                    {STATUS_MARK[self]}
+                  </Link>
+                )}
+                {!verifyMode && (
+                  <button type="button" className="planner-frog-btn" style={at(controls[i].remove)} onClick={() => removeFrog(i)}
+                    aria-label={`Remove ${f.name}`} title="Remove">
+                    <IconMinus />
+                  </button>
+                )}
+                {f.id && !verifyMode ? (
                   <Link to={frogPath(f.id)} className="planner-frog-name" title={`View ${f.name}`}>
                     <span>{f.sel.base.label}</span>
                     <span>{f.sel.sec.label}</span>
@@ -488,7 +662,18 @@ export default function MutationPlanner() {
             })}
           </div>
 
-          {editor && (
+          {confirming && verifyMode && idToken && (
+            <VerifyPairsDialog
+              items={pickedItems}
+              idToken={idToken}
+              onClose={() => setConfirming(false)}
+              onVerified={unpick}
+              onSent={refreshPairs}
+              onEmpty={finishVerify}
+            />
+          )}
+
+          {editor && !verifyMode && (
             <div className="planner-editor">
               <FrogInputs
                 key={editor.key}

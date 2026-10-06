@@ -981,6 +981,98 @@ a.planner-frog-name:hover {
   .planner-frog { transition: none; }
 }
 
+/* Legend on the left, mods' Verify / Confirm / Cancel on the right */
+.planner-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 0 0 12px;
+}
+
+.planner-header .planner-legend { margin: 0; }
+
+.planner-verify-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Verify mode: the board is outlined, verified pairs fade back and can't be
+   picked, and picked pairs read as clear with a solid, heavier line */
+.planner-canvas.is-verifying {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+button.planner-mark {
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.planner-edge.is-locked { cursor: default; }
+.planner-edge.is-locked:not(.is-dim),
+.planner-mark.is-locked:not(.is-dim) { opacity: 0.35; }
+
+.planner-edge.is-picked .planner-line { stroke-width: 3; }
+.planner-mark.is-picked { background: var(--cell-max-bg); }
+
+/* Verify confirmation */
+.verify-modal {
+  width: min(560px, 100%);
+}
+
+.verify-modal h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+
+.verify-modal .search-hint { margin: 0; }
+
+.verify-flag-note {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--warn-text);
+}
+
+.verify-list {
+  max-height: 50vh;
+  overflow-y: auto;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.verify-row {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  gap: 2px 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.verify-status {
+  font-weight: 700;
+  text-align: center;
+}
+
+.verify-row.is-done .verify-status,
+.verify-ok { color: #4caf50; }
+
+.verify-row.is-flagged .verify-status,
+.verify-row.is-failed .verify-status { color: #e06666; }
+
+.verify-row.is-flagged .verify-label { opacity: 0.6; }
+
+.verify-error {
+  grid-column: 2 / -1;
+  font-size: 13px;
+  color: #e06666;
+}
+
 /* ─── Submit a Combination page ─────────────────────────────────────────────── */
 /* Verified, locked-in parent pairing shown above the rest of the form */
 .locked-parents {
