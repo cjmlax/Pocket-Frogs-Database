@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
+import { fetchTable } from '../api/teable';
 import ImageLightbox from './ImageLightbox';
 import { frogIdsParam, frogPath, frogSearch } from '../utils/frogIds';
 
@@ -13,6 +15,46 @@ export interface CombinationRow {
   resultTitle:  string | null;
   resultName:   string;
   screenshots:  string[];
+}
+
+interface BreedFields extends Record<string, unknown> {
+  Breed_ID?: string;
+  Level?:    unknown;   // link → { id, title } where title is the level number
+}
+
+// Pulls the linked record's id from a Teable link field ({ id, title } or array).
+function linkId(val: unknown): string | null {
+  const first = Array.isArray(val) ? val[0] : val;
+  if (first && typeof first === 'object' && 'id' in first) return String((first as { id: unknown }).id);
+  return null;
+}
+
+// The breed code from a Frog_ID ("Base:Sec:Breed" → "Breed").
+function breedCode(frogId: string | null): string | null {
+  return frogId?.split(':')[2] ?? null;
+}
+
+// Cycles All → Same Breed → Same Level, comparing each partner to this frog.
+const partnerFilters = ['all', 'breed', 'level'] as const;
+type PartnerFilter = (typeof partnerFilters)[number];
+const partnerFilterLabels: Record<PartnerFilter, string> = {
+  all:   'All Mutations',
+  breed: 'Same Breed',
+  level: 'Same Level',
+};
+
+type SortKey = 'thisName' | 'partnerName' | 'resultName';
+interface Sort { key: SortKey; desc: boolean }
+
+function SortHeader({ sort, k, onSort, children }: {
+  sort: Sort | null; k: SortKey; onSort: (k: SortKey) => void; children: string;
+}) {
+  return (
+    <th className="sortable" onClick={() => onSort(k)}>
+      {children}
+      {sort?.key === k && (sort.desc ? ' ↓' : ' ↑')}
+    </th>
+  );
 }
 
 function IconCamera() {
@@ -56,28 +98,72 @@ export default function CombinationsTable({ rows, thisHeader }: {
   thisHeader: string;
 }) {
   const [lightbox, setLightbox] = useState<string[] | null>(null);
+  const [filter, setFilter] = useState<PartnerFilter>('all');
+  const [sort, setSort] = useState<Sort | null>(null);
+
+  // Breed code → level record id, for the Same Level filter (shared, ETag-cached).
+  const { data: breeds } = useQuery({ queryKey: ['table', 'breeds'], queryFn: () => fetchTable<BreedFields>('breeds') });
+  const levelByBreed = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const b of breeds ?? []) {
+      const level = linkId(b.fields.Level);
+      if (b.fields.Breed_ID != null && level) map.set(String(b.fields.Breed_ID), level);
+    }
+    return map;
+  }, [breeds]);
+
+  const visibleRows = useMemo(() => {
+    const filtered = filter === 'all' ? rows : rows.filter(row => {
+      const thisBreed = breedCode(row.thisTitle), partnerBreed = breedCode(row.partnerTitle);
+      if (thisBreed == null || partnerBreed == null) return false;
+      if (filter === 'breed') return thisBreed === partnerBreed;
+      const thisLevel = levelByBreed.get(thisBreed);
+      return thisLevel != null && thisLevel === levelByBreed.get(partnerBreed);
+    });
+    if (!sort) return filtered;
+    return [...filtered].sort((a, b) => {
+      const cmp = a[sort.key].localeCompare(b[sort.key]);
+      return sort.desc ? -cmp : cmp;
+    });
+  }, [rows, filter, sort, levelByBreed]);
+
+  // Header clicks cycle ascending → descending → unsorted, like Weekly Sets.
+  function toggleSort(key: SortKey) {
+    setSort(prev =>
+      prev?.key !== key ? { key, desc: false }
+        : !prev.desc     ? { key, desc: true }
+        : null,
+    );
+  }
 
   return (
     <div className="special-combo-panel">
       <h2 className="breed-weekly-title">
         Known Mutations{' '}
-        <span className="breed-weekly-count">({rows.length})</span>
+        <span className="breed-weekly-count">({visibleRows.length})</span>
       </h2>
+      <button
+        type="button"
+        className={`weekly-hide-completed-btn${filter === 'all' ? '' : ' active'}`}
+        onClick={() => setFilter(partnerFilters[(partnerFilters.indexOf(filter) + 1) % partnerFilters.length])}
+      >
+        {partnerFilterLabels[filter]}
+      </button>
       <div className="table-wrapper">
         <table>
           <thead>
             <tr>
-              <th>{thisHeader}</th>
-              <th>Partner</th>
-              <th>Result</th>
+              <SortHeader sort={sort} onSort={toggleSort} k="thisName">{thisHeader}</SortHeader>
+              <SortHeader sort={sort} onSort={toggleSort} k="partnerName">Partner</SortHeader>
+              <SortHeader sort={sort} onSort={toggleSort} k="resultName">Result</SortHeader>
               <th className="pin-cell"></th>
               <th className="pin-cell"></th>
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {visibleRows.length === 0 ? (
               <tr><td colSpan={5} className="search-hint">No known mutations.</td></tr>
-            ) : rows.map((row, i) => (
+            ) : visibleRows.map((row, i) => (
               <tr key={i}>
                 <td><FrogLink title={row.thisTitle} name={row.thisName} /></td>
                 <td><FrogLink title={row.partnerTitle} name={row.partnerName} /></td>
