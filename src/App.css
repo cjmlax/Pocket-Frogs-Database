@@ -1751,27 +1751,6 @@ button.planner-mark {
   color: var(--accent);
 }
 
-.nomu-editor {
-  margin: 16px 0 8px;
-  padding: 12px 16px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-
-.nomu-editor h3 {
-  margin: 0 0 12px;
-  font-size: 15px;
-  color: var(--text-h);
-}
-
-.nomu-editor .filter-grid {
-  margin-bottom: 12px;
-}
-
-.nomu-editor .planner-duplicate {
-  margin-bottom: 12px;
-}
-
 .nomu-summary {
   display: flex;
   flex-wrap: wrap;

@@ -2,11 +2,15 @@ import { useState, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { fetchFrogPairs, fetchMutations } from '../api/teable';
-import ComboBox, { type ComboOption } from '../components/ComboBox';
+import ComboBox from '../components/ComboBox';
+import FrogInputs from '../components/FrogInputs';
 import { useFrogOptions } from '../hooks/useFrogOptions';
 import { useSpoilers } from '../hooks/useSpoilers';
 import { downloadCsv } from '../utils/csv';
-import { MAX_PLANNER_FROGS as HABITAT_SIZE, frogIdsParam, frogPath, frogSearch, parseFrogId } from '../utils/frogIds';
+import {
+  MAX_PLANNER_FROGS as HABITAT_SIZE, frogId, frogIdsParam, frogName, frogPath, frogSearch, isComplete, parseFrogId,
+  type FrogSel,
+} from '../utils/frogIds';
 import { createWheelSolver, type PlanRow, type WheelMode, type WheelResult } from '../utils/nomuWheel';
 
 // Wheels are laid out over three habitats of up to 8 frogs (a habitat's cap,
@@ -132,11 +136,10 @@ function IconPencil() {
 }
 
 // An editor open on one habitat slot. `key` bumps whenever it opens so the
-// ComboBoxes remount with the right selection.
+// inputs remount with the right selection.
 interface Editor {
   slot: Slot;
-  base: ComboOption | null;
-  sec:  ComboOption | null;
+  sel:  FrogSel;
   key:  number;
 }
 
@@ -145,7 +148,8 @@ interface Editor {
 export default function NoMuWheels() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { lookup, breedOpts, baseOpts, secOpts } = useFrogOptions();
+  const frogOptions = useFrogOptions();
+  const { lookup, breedOpts, baseOpts, secOpts } = frogOptions;
   const { spoilers } = useSpoilers();
   const { data: pairs }     = useQuery({ queryKey: ['pairs'],     queryFn: fetchFrogPairs });
   const { data: mutations } = useQuery({ queryKey: ['mutations'], queryFn: fetchMutations });
@@ -260,24 +264,29 @@ export default function NoMuWheels() {
       key: boardKey,
       editor: {
         slot,
-        base: (b && lookup?.base.byCode.get(b)) || null,
-        sec:  (s && lookup?.sec.byCode.get(s)) || null,
-        key:  (prev?.editor.key ?? 0) + 1,
+        // The breed is the page's; the dropdowns only pick the colours.
+        sel: {
+          base:  (b && lookup?.base.byCode.get(b)) || null,
+          sec:   (s && lookup?.sec.byCode.get(s)) || null,
+          breed: breedOpt,
+        },
+        key: (prev?.editor.key ?? 0) + 1,
       },
     }));
   }
 
-  const editId = editor?.base && editor.sec && lookup
-    ? `${lookup.base.code.get(editor.base.id)}:${lookup.sec.code.get(editor.sec.id)}:${breedCode}`
-    : null;
+  // The text box takes a whole frog, so it can name another breed.
+  const editSel = editor && isComplete(editor.sel) ? editor.sel : null;
+  const editId = editSel && lookup ? frogId(editSel, lookup) : null;
+  const wrongBreed = !!editId && editId.split(':')[2] !== breedCode;
   const editingId = editor ? layout[editor.slot.h][editor.slot.i] ?? null : null;
-  const baseClash = editId
+  const baseClash = editId && !wrongBreed
     ? boardFrogs.find(f => f !== editingId && baseCodeOf(f) === baseCodeOf(editId)) ?? null
     : null;
 
   // Frogs you enter are ones you have, so they're locked in.
   function saveEditor() {
-    if (!editor || !editId || baseClash) return;
+    if (!editor || !editId || wrongBreed || baseClash) return;
     const next = layout.map(h => [...h]);
     const { h, i } = editor.slot;
     if (i < next[h].length) next[h][i] = editId; else next[h].push(editId);
@@ -545,30 +554,33 @@ export default function NoMuWheels() {
           </div>
 
           {editor && (
-            <div className="nomu-editor">
-              <h3>
-                {editingId ? `Change ${nameOf(editingId)}` : `Add a ${breedLabel} frog`} · Habitat {editor.slot.h + 1}
-              </h3>
-              <div className="filter-grid">
-                <ComboBox key={`base-${editor.key}`} label="Base Color" options={baseOpts} presorted
-                  initialSelection={editor.base}
-                  onSelect={o => setEditor(prev => (prev ? { ...prev, editor: { ...prev.editor, base: o } } : prev))} />
-                <ComboBox key={`sec-${editor.key}`} label="Secondary Color" options={secOpts} presorted
-                  initialSelection={editor.sec}
-                  onSelect={o => setEditor(prev => (prev ? { ...prev, editor: { ...prev.editor, sec: o } } : prev))} />
-              </div>
-              {baseClash && (
-                <p className="planner-duplicate" role="alert">
-                  {nameOf(baseClash)} already holds this base colour. A wheel has one frog per base colour.
-                </p>
-              )}
-              <div className="crop-buttons">
-                <button type="button" className="csv-btn" onClick={saveEditor} disabled={!editId || !!baseClash}>
-                  {editingId ? 'Save' : 'Add'}
-                </button>
-                {editingId && <button type="button" className="csv-btn" onClick={removeEditing}>Remove</button>}
-                <button type="button" className="csv-btn" onClick={() => setEditor(null)}>Cancel</button>
-              </div>
+            <div className="planner-editor">
+              <FrogInputs
+                key={editor.key}
+                title={`${editingId ? `Edit ${nameOf(editingId)}` : `Add a ${breedLabel} Frog`} · Habitat ${editor.slot.h + 1}`}
+                sel={editor.sel}
+                onChange={sel => setEditor(prev => (prev ? { ...prev, editor: { ...prev.editor, sel } } : prev))}
+                options={frogOptions}
+                hideBreed
+              >
+                {wrongBreed && editSel && (
+                  <p className="planner-duplicate" role="alert">
+                    {frogName(editSel)} is a {editSel.breed.label} frog. Choose a {breedLabel} frog for this wheel.
+                  </p>
+                )}
+                {baseClash && (
+                  <p className="planner-duplicate" role="alert">
+                    {nameOf(baseClash)} already holds this base colour. A wheel has one frog per base colour.
+                  </p>
+                )}
+                <div className="crop-buttons">
+                  <button type="button" className="csv-btn" onClick={saveEditor} disabled={!editId || wrongBreed || !!baseClash}>
+                    {editingId ? 'Save' : 'Add'}
+                  </button>
+                  {editingId && <button type="button" className="csv-btn" onClick={removeEditing}>Remove</button>}
+                  <button type="button" className="csv-btn" onClick={() => setEditor(null)}>Cancel</button>
+                </div>
+              </FrogInputs>
             </div>
           )}
 
