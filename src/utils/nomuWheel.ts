@@ -55,10 +55,18 @@ export interface WheelResult {
 }
 
 export interface WheelAnalysis {
+  complete:   WheelResult[];
+  nearMisses: WheelResult[];
+  truncated:  boolean;              // the complete-wheel search stopped at its limits
+}
+
+// Built once per breed, mode and data set; analyze and plan reuse its indexes.
+export interface WheelSolver {
   recordedPairs: number;            // Verified pairs within the breed
-  complete:      WheelResult[];
-  nearMisses:    WheelResult[];
-  truncated:     boolean;           // the complete-wheel search stopped at its limits
+  // Wheels containing every locked frog (Frog_IDs, at most one per base).
+  analyze(locked: string[]): WheelAnalysis;
+  // The breeding plan for exactly these frogs, a full wheel or not.
+  plan(frogs: string[]): WheelResult;
 }
 
 const MAX_COMPLETE = 10;
@@ -71,7 +79,7 @@ const UNKNOWN = 0, GOOD = 1, BAD = 2;
 
 interface MutationSource { a: number; b: number; result: number; type: 'Glass' | 'Chroma' }
 
-export function analyzeBreed(input: WheelInput): WheelAnalysis {
+export function createWheelSolver(input: WheelInput): WheelSolver {
   const { breed, bases, secs, mode } = input;
   const NB = bases.length, NS = secs.length, NF = NB * NS;
   const NONE = NS; // "no frog" for the optional Glass base
@@ -147,7 +155,6 @@ export function analyzeBreed(input: WheelInput): WheelAnalysis {
   }
 
   const recordedPairs = lostBy.size;
-  if (recordedPairs === 0) return { recordedPairs, complete: [], nearMisses: [], truncated: false };
 
   // ── Complete wheels: backtracking with constraint propagation ─────────────
   // dom[b] is a bitmask of the secondaries base b can still take (bit NONE:
@@ -193,30 +200,36 @@ export function analyzeBreed(input: WheelInput): WheelAnalysis {
   }
 
   const allSecs = bit(NS) - 1;
-  const start = new Int32Array(NB).fill(allSecs);
-  if (optional >= 0) start[optional] |= bit(NONE);
-
-  const found: Int8Array[] = [];
-  let nodes = 0, truncated = false;
   const popcount = (v: number) => { let c = 0; for (; v; v &= v - 1) c++; return c; };
-  (function search(dom: Int32Array) {
-    if (found.length >= MAX_COMPLETE * 2) { truncated = true; return; }
-    if (++nodes > NODE_BUDGET) { truncated = true; return; }
-    if (!propagate(dom)) return;
-    let pick = -1;
-    for (let b = 0; b < NB; b++) {
-      const c = popcount(dom[b]);
-      if (c > 1 && (pick < 0 || c < popcount(dom[pick]))) pick = b;
-    }
-    if (pick < 0) { found.push(Int8Array.from(dom, d => 31 - Math.clz32(d))); return; }
-    // Try going without the Glass frog first, for the smallest wheels.
-    for (const s of [NONE, ...Array.from({ length: NS }, (_, i) => i)]) {
-      if (!(dom[pick] & bit(s))) continue;
-      const child = dom.slice();
-      child[pick] = bit(s);
-      search(child);
-    }
-  })(start);
+
+  // Locked frogs fix their base's secondary; -1 leaves a base free.
+  function completeWheels(fixed: Int8Array): { found: Int8Array[]; truncated: boolean } {
+    const start = new Int32Array(NB).fill(allSecs);
+    if (optional >= 0) start[optional] |= bit(NONE);
+    for (let b = 0; b < NB; b++) if (fixed[b] >= 0) start[b] = bit(fixed[b]);
+
+    const found: Int8Array[] = [];
+    let nodes = 0, truncated = false;
+    (function search(dom: Int32Array) {
+      if (found.length >= MAX_COMPLETE * 2) { truncated = true; return; }
+      if (++nodes > NODE_BUDGET) { truncated = true; return; }
+      if (!propagate(dom)) return;
+      let pick = -1;
+      for (let b = 0; b < NB; b++) {
+        const c = popcount(dom[b]);
+        if (c > 1 && (pick < 0 || c < popcount(dom[pick]))) pick = b;
+      }
+      if (pick < 0) { found.push(Int8Array.from(dom, d => 31 - Math.clz32(d))); return; }
+      // Try going without the Glass frog first, for the smallest wheels.
+      for (const s of [NONE, ...Array.from({ length: NS }, (_, i) => i)]) {
+        if (!(dom[pick] & bit(s))) continue;
+        const child = dom.slice();
+        child[pick] = bit(s);
+        search(child);
+      }
+    })(start);
+    return { found, truncated };
+  }
 
   // ── Scoring and near misses ───────────────────────────────────────────────
   // Optimistically, an unknown pair produces what it should with no mutation.
@@ -252,11 +265,12 @@ export function analyzeBreed(input: WheelInput): WheelAnalysis {
   }
 
   const valuesFor = (b: number) => (b === optional ? NS + 1 : NS);
-  function climb(sig: Int8Array): Int8Array {
+  function climb(sig: Int8Array, fixed: Int8Array): Int8Array {
     let cur = score(sig);
     for (;;) {
       let best = cur, bestB = -1, bestS = -1;
       for (let b = 0; b < NB; b++) {
+        if (fixed[b] >= 0) continue;
         const keep = sig[b];
         for (let s = 0; s < valuesFor(b); s++) {
           if (s === keep) continue;
@@ -272,29 +286,26 @@ export function analyzeBreed(input: WheelInput): WheelAnalysis {
     }
   }
 
-  // Seeded by breed and mode, so the same data always gives the same results.
-  const rand = mulberry32(hashString(`${breed}|${mode}`));
-  const starts: Int8Array[] = [];
-  // Greedy: each base's frog with the most recorded partners.
-  starts.push(Int8Array.from({ length: NB }, (_, b) => {
-    let best = 0;
-    for (let s = 1; s < NS; s++) if (knownDegree[b * NS + s] > knownDegree[b * NS + best]) best = s;
-    return best;
-  }));
-  for (let r = 0; r < RESTARTS; r++) {
+  // Seeded by breed, mode and locks, so the same data always gives the same results.
+  function nearMissStarts(fixed: Int8Array): Int8Array[] {
+    const rand = mulberry32(hashString(`${breed}|${mode}|${fixed.join(',')}`));
+    const starts: Int8Array[] = [];
+    // Greedy: each base's frog with the most recorded partners.
     starts.push(Int8Array.from({ length: NB }, (_, b) => {
-      const recorded = Array.from({ length: NS }, (_, s) => s).filter(s => knownDegree[b * NS + s] > 0);
-      const pool = recorded.length && rand() < 0.8 ? recorded : Array.from({ length: valuesFor(b) }, (_, s) => s);
-      return pool[Math.floor(rand() * pool.length)];
+      if (fixed[b] >= 0) return fixed[b];
+      let best = 0;
+      for (let s = 1; s < NS; s++) if (knownDegree[b * NS + s] > knownDegree[b * NS + best]) best = s;
+      return best;
     }));
-  }
-
-  const keyOf = (sig: Int8Array) => sig.join(',');
-  const candidates = new Map<string, { sig: Int8Array; score: number }>();
-  for (const sig of found) candidates.set(keyOf(sig), { sig, score: score(sig) });
-  for (const s of starts) {
-    const sig = climb(s);
-    if (!candidates.has(keyOf(sig))) candidates.set(keyOf(sig), { sig, score: score(sig) });
+    for (let r = 0; r < RESTARTS; r++) {
+      starts.push(Int8Array.from({ length: NB }, (_, b) => {
+        if (fixed[b] >= 0) return fixed[b];
+        const recorded = Array.from({ length: NS }, (_, s) => s).filter(s => knownDegree[b * NS + s] > 0);
+        const pool = recorded.length && rand() < 0.8 ? recorded : Array.from({ length: valuesFor(b) }, (_, s) => s);
+        return pool[Math.floor(rand() * pool.length)];
+      }));
+    }
+    return starts;
   }
 
   // ── Breeding plans ────────────────────────────────────────────────────────
@@ -371,20 +382,45 @@ export function analyzeBreed(input: WheelInput): WheelAnalysis {
     };
   }
 
-  const results = [...candidates.values()]
-    .sort((x, y) => x.score - y.score)
-    .slice(0, MAX_COMPLETE * 2 + MAX_NEAR)
-    .map(c => plan(c.sig));
-  const byFrogsThenPairs = (x: WheelResult, y: WheelResult) =>
-    x.frogs.length - y.frogs.length || x.pairCount - y.pairCount;
-  return {
-    recordedPairs,
-    complete: results.filter(r => r.complete).sort(byFrogsThenPairs).slice(0, MAX_COMPLETE),
-    nearMisses: results.filter(r => !r.complete)
-      .sort((x, y) => x.unobtainable - y.unobtainable || x.toRecord.length - y.toRecord.length || byFrogsThenPairs(x, y))
-      .slice(0, MAX_NEAR),
-    truncated,
+  const toSig = (frogs: string[], empty: number) => {
+    const sig = new Int8Array(NB).fill(empty);
+    for (const id of frogs) {
+      const f = frogOf(id);
+      if (f >= 0) sig[baseOf(f)] = secOf(f);
+    }
+    return sig;
   };
+
+  function analyze(locked: string[]): WheelAnalysis {
+    // Nothing recorded means nothing to build or rank wheels from.
+    if (recordedPairs === 0) return { complete: [], nearMisses: [], truncated: false };
+    const fixed = toSig(locked, -1);
+    const { found, truncated } = completeWheels(fixed);
+    const keyOf = (sig: Int8Array) => sig.join(',');
+    const candidates = new Map<string, { sig: Int8Array; score: number }>();
+    for (const sig of found) candidates.set(keyOf(sig), { sig, score: score(sig) });
+    for (const s of nearMissStarts(fixed)) {
+      const sig = climb(s, fixed);
+      if (!candidates.has(keyOf(sig))) candidates.set(keyOf(sig), { sig, score: score(sig) });
+    }
+
+    const results = [...candidates.values()]
+      .sort((x, y) => x.score - y.score)
+      .slice(0, MAX_COMPLETE * 2 + MAX_NEAR)
+      .map(c => plan(c.sig));
+    const byFrogsThenPairs = (x: WheelResult, y: WheelResult) =>
+      x.frogs.length - y.frogs.length || x.pairCount - y.pairCount;
+    return {
+      complete: results.filter(r => r.complete).sort(byFrogsThenPairs).slice(0, MAX_COMPLETE),
+      nearMisses: results.filter(r => !r.complete)
+        .sort((x, y) => x.unobtainable - y.unobtainable || x.toRecord.length - y.toRecord.length || byFrogsThenPairs(x, y))
+        .slice(0, MAX_NEAR),
+      truncated,
+    };
+  }
+
+  // Bases with no frog are simply missing: their frogs can only come from mutations.
+  return { recordedPairs, analyze, plan: frogs => plan(toSig(frogs, NONE)) };
 }
 
 // ── Minimum set cover ───────────────────────────────────────────────────────

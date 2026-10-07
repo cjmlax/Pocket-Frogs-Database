@@ -2,12 +2,12 @@ import { useState, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { fetchFrogPairs, fetchMutations } from '../api/teable';
-import ComboBox from '../components/ComboBox';
+import ComboBox, { type ComboOption } from '../components/ComboBox';
 import { useFrogOptions } from '../hooks/useFrogOptions';
 import { useSpoilers } from '../hooks/useSpoilers';
 import { downloadCsv } from '../utils/csv';
-import { MAX_PLANNER_FROGS as HABITAT_SIZE, frogIdsParam, frogPath, frogSearch } from '../utils/frogIds';
-import { analyzeBreed, type PlanRow, type WheelMode, type WheelResult } from '../utils/nomuWheel';
+import { MAX_PLANNER_FROGS as HABITAT_SIZE, frogIdsParam, frogPath, frogSearch, parseFrogId } from '../utils/frogIds';
+import { createWheelSolver, type PlanRow, type WheelMode, type WheelResult } from '../utils/nomuWheel';
 
 // Wheels are laid out over three habitats of up to 8 frogs (a habitat's cap,
 // and the Mutation Planner's), so each habitat can be opened in the Planner.
@@ -52,30 +52,35 @@ function buildSearch(params: Record<string, string | null | undefined>): string 
   return parts.length ? `?${parts.join('&')}` : '';
 }
 
+const baseCodeOf = (id: string) => id.split(':')[0];
+const sameFrogs = (a: string[], b: string[]) => a.length === b.length && [...a].sort().join() === [...b].sort().join();
+
 // ── Habitat layout ───────────────────────────────────────────────────────────
 // Three ordered lists of Frog_IDs, kept in the URL (?h=, habitats split by
-// "." and frogs by "_") so a layout survives a trip to the Planner and back.
+// "." and frogs by "_") so a layout survives a trip to the Planner and back
+// and can be shared. Locks stay on the page, so shared links are the same for
+// everyone.
 
 type Layout = string[][];
 type Slot = { h: number; i: number };
 
-const defaultLayout = (frogs: string[]): Layout =>
-  Array.from({ length: HABITATS }, (_, h) => frogs.slice(h * HABITAT_SIZE, (h + 1) * HABITAT_SIZE));
+const EMPTY_LAYOUT: Layout = Array.from({ length: HABITATS }, () => []);
 
-const encodeLayout = (layout: Layout) => layout.map(h => h.join('_')).join('.');
+const encodeLayout = (layout: Layout) =>
+  (layout.some(h => h.length) ? layout.map(h => h.join('_')).join('.') : null);
 
-// The layout in the URL if it holds exactly this wheel's frogs; null otherwise.
-function parseLayout(param: string | null, frogs: string[]): Layout | null {
-  if (!param) return null;
-  const layout = param.split('.').map(h => (h ? h.split('_') : []));
-  const flat = layout.flat();
-  const wheel = new Set(frogs);
-  const ok = layout.length === HABITATS
-    && layout.every(h => h.length <= HABITAT_SIZE)
-    && flat.length === frogs.length
-    && new Set(flat).size === flat.length
-    && flat.every(f => wheel.has(f));
-  return ok ? layout : null;
+// Keeps what's valid: frogs of this breed, one per base, up to 8 a habitat.
+function parseLayout(param: string | null, breed: string | null): Layout {
+  if (!param || !breed) return EMPTY_LAYOUT;
+  const bases = new Set<string>();
+  const habitats = param.split('.').slice(0, HABITATS).map(h => (h ? h.split('_') : []).flatMap(text => {
+    const id = parseFrogId(text);
+    if (!id || id.split(':')[2] !== breed || bases.has(baseCodeOf(id))) return [];
+    bases.add(baseCodeOf(id));
+    return [id];
+  }).slice(0, HABITAT_SIZE));
+  while (habitats.length < HABITATS) habitats.push([]);
+  return habitats;
 }
 
 // Swaps two frogs, or moves a frog to the end of a habitat with room.
@@ -95,6 +100,46 @@ function moveFrog(layout: Layout, from: Slot, to: Slot): Layout | null {
   return next;
 }
 
+// Fills the habitats with a wheel: locked frogs stay put (every result keeps
+// them), unlocked frogs stay only if the wheel uses them, and the wheel's
+// other frogs fill the remaining slots in order.
+function applyWheel(layout: Layout, locked: Set<string>, frogs: string[]): Layout {
+  const wanted = new Set(frogs);
+  const next = layout.map(h => h.filter(f => locked.has(f) || wanted.has(f)));
+  const placed = new Set(next.flat());
+  const rest = frogs.filter(f => !placed.has(f));
+  for (const h of next) while (h.length < HABITAT_SIZE && rest.length) h.push(rest.shift()!);
+  return next;
+}
+
+// ── Icons ────────────────────────────────────────────────────────────────────
+
+function IconLock({ open }: { open: boolean }) {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="4" y="11" width="16" height="10" rx="2"/>
+      <path d={open ? 'M8 11V7a4 4 0 0 1 7.5-2' : 'M8 11V7a4 4 0 0 1 8 0v4'}/>
+    </svg>
+  );
+}
+
+function IconPencil() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+    </svg>
+  );
+}
+
+// An editor open on one habitat slot. `key` bumps whenever it opens so the
+// ComboBoxes remount with the right selection.
+interface Editor {
+  slot: Slot;
+  base: ComboOption | null;
+  sec:  ComboOption | null;
+  key:  number;
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NoMuWheels() {
@@ -107,47 +152,56 @@ export default function NoMuWheels() {
 
   const breedCode = searchParams.get('breed');
   const mode: WheelMode = searchParams.get('mode') === 'mutation' ? 'mutation' : 'nomu';
-  const wheelParam = searchParams.get('wheel');
   const layoutParam = searchParams.get('h');
 
-  function update(next: Partial<Record<'breed' | 'mode' | 'wheel' | 'h', string | null>>) {
-    const keys = ['breed', 'mode', 'wheel', 'h'] as const;
+  function update(next: Partial<Record<'breed' | 'mode' | 'h', string | null>>) {
+    const keys = ['breed', 'mode', 'h'] as const;
     const params = Object.fromEntries(keys.map(k => [k, k in next ? next[k] : searchParams.get(k)]));
     navigate({ search: buildSearch(params) }, { replace: true });
   }
 
   const breedOpt = (breedCode && lookup?.breed.byCode.get(breedCode)) || null;
+  const breedLabel = breedOpt?.label ?? '';
+
+  const layout = useMemo(() => parseLayout(layoutParam, breedCode), [layoutParam, breedCode]);
+  const boardFrogs = useMemo(() => layout.flat(), [layout]);
+  // Locked Frog_IDs, tied to the breed they were set on. Locks only count for
+  // frogs on the board.
+  const [lockState, setLockState] = useState<{ breed: string | null; ids: Set<string> } | null>(null);
+  const locked = useMemo(() => {
+    const onBoard = new Set(boardFrogs);
+    const ids = lockState?.breed === breedCode ? lockState.ids : new Set<string>();
+    return new Set([...ids].filter(id => onBoard.has(id)));
+  }, [lockState, breedCode, boardFrogs]);
+
+  function save(nextLayout: Layout, nextLocked: Set<string>) {
+    const onBoard = new Set(nextLayout.flat());
+    setLockState({ breed: breedCode, ids: new Set([...nextLocked].filter(id => onBoard.has(id))) });
+    update({ h: encodeLayout(nextLayout) });
+  }
 
   // Bases and secondaries go in in table order (rainbow), so results don't
   // depend on the viewer's sort settings.
-  const analysis = useMemo(() => {
-    if (!lookup || !pairs || !mutations || !breedOpt || !breedCode) return null;
+  const solver = useMemo(() => {
+    if (!lookup || !pairs || !mutations || !breedCode || !lookup.breed.byCode.has(breedCode)) return null;
     const bases = [...lookup.base.byCode.keys()];
     const secs  = [...lookup.sec.byCode.keys()];
     const glassBase = [...lookup.base.byCode].find(([, o]) => o.label === 'Glass')?.[0] ?? null;
-    return analyzeBreed({ breed: breedCode, bases, secs, glassBase, mode, pairs, mutations });
-  }, [lookup, pairs, mutations, breedOpt, breedCode, mode]);
+    return createWheelSolver({ breed: breedCode, bases, secs, glassBase, mode, pairs, mutations });
+  }, [lookup, pairs, mutations, breedCode, mode]);
 
-  const results = useMemo<WheelResult[]>(
-    () => (analysis ? [...analysis.complete, ...analysis.nearMisses] : []),
-    [analysis],
-  );
-  const wheelIndex = Math.min(Math.max(0, parseInt(wheelParam ?? '0', 10) || 0), Math.max(0, results.length - 1));
-  const wheel = results[wheelIndex] ?? null;
+  const analysis = useMemo(() => solver?.analyze([...locked]) ?? null, [solver, locked]);
+  const plan = useMemo(() => (solver && boardFrogs.length ? solver.plan(boardFrogs) : null), [solver, boardFrogs]);
   const completeCount = analysis?.complete.length ?? 0;
+  const activeResult = analysis
+    ? [...analysis.complete, ...analysis.nearMisses].findIndex(w => sameFrogs(w.frogs, boardFrogs))
+    : -1;
 
-  const savedLayout = useMemo(() => (wheel ? parseLayout(layoutParam, wheel.frogs) : null), [layoutParam, wheel]);
-  const layout = useMemo(() => savedLayout ?? (wheel ? defaultLayout(wheel.frogs) : []), [savedLayout, wheel]);
   const habitatOf = useMemo(() => {
     const m = new Map<string, number>();
     layout.forEach((frogs, h) => frogs.forEach(f => m.set(f, h)));
     return m;
   }, [layout]);
-
-  // A frog picked up by tapping, tied to the wheel and layout it was picked from.
-  const wheelKey = wheel ? `${breedCode}|${mode}|${wheelIndex}|${layoutParam ?? ''}` : '';
-  const [heldState, setHeld] = useState<{ key: string; slot: Slot } | null>(null);
-  const held = heldState?.key === wheelKey ? heldState.slot : null;
 
   const partsOf = (id: string) => {
     const [b, s] = id.split(':');
@@ -157,24 +211,20 @@ export default function NoMuWheels() {
     const { base, sec } = partsOf(id);
     return `${base} ${sec}`;
   };
-  const breedLabel = breedOpt?.label ?? '';
   const habitatText = (...ids: string[]) =>
     [...new Set(ids.map(id => habitatOf.get(id)).filter((h): h is number => h != null))]
       .sort((x, y) => x - y).map(h => h + 1).join(' + ');
 
+  // ── Moving frogs ──────────────────────────────────────────────────────────
+  // A frog picked up by tapping, tied to the layout it was picked from.
+  const boardKey = `${breedCode}|${layoutParam ?? ''}`;
+  const [heldState, setHeld] = useState<{ key: string; slot: Slot } | null>(null);
+  const held = heldState?.key === boardKey ? heldState.slot : null;
+
   function applyMove(from: Slot, to: Slot) {
     const next = moveFrog(layout, from, to);
     setHeld(null);
-    if (next) update({ h: encodeLayout(next) });
-  }
-
-  function tapSlot(slot: Slot, hasFrog: boolean) {
-    if (!held) {
-      if (hasFrog) setHeld({ key: wheelKey, slot });
-      return;
-    }
-    if (held.h === slot.h && held.i === slot.i) setHeld(null);
-    else applyMove(held, slot);
+    if (next) save(next, locked);
   }
 
   const dragProps = (slot: Slot) => ({
@@ -186,6 +236,64 @@ export default function NoMuWheels() {
     },
   });
 
+  function tapFrog(slot: Slot) {
+    if (!held) setHeld({ key: boardKey, slot });
+    else if (held.h === slot.h && held.i === slot.i) setHeld(null);
+    else applyMove(held, slot);
+  }
+
+  function toggleLock(id: string) {
+    const next = new Set(locked);
+    if (!next.delete(id)) next.add(id);
+    save(layout, next);
+  }
+
+  // ── Editing frogs ─────────────────────────────────────────────────────────
+  const [editorState, setEditor] = useState<{ key: string; editor: Editor } | null>(null);
+  const editor = editorState?.key === boardKey ? editorState.editor : null;
+
+  function openEditor(slot: Slot) {
+    setHeld(null);
+    const id = layout[slot.h][slot.i];
+    const [b, s] = id ? id.split(':') : [];
+    setEditor(prev => ({
+      key: boardKey,
+      editor: {
+        slot,
+        base: (b && lookup?.base.byCode.get(b)) || null,
+        sec:  (s && lookup?.sec.byCode.get(s)) || null,
+        key:  (prev?.editor.key ?? 0) + 1,
+      },
+    }));
+  }
+
+  const editId = editor?.base && editor.sec && lookup
+    ? `${lookup.base.code.get(editor.base.id)}:${lookup.sec.code.get(editor.sec.id)}:${breedCode}`
+    : null;
+  const editingId = editor ? layout[editor.slot.h][editor.slot.i] ?? null : null;
+  const baseClash = editId
+    ? boardFrogs.find(f => f !== editingId && baseCodeOf(f) === baseCodeOf(editId)) ?? null
+    : null;
+
+  // Frogs you enter are ones you have, so they're locked in.
+  function saveEditor() {
+    if (!editor || !editId || baseClash) return;
+    const next = layout.map(h => [...h]);
+    const { h, i } = editor.slot;
+    if (i < next[h].length) next[h][i] = editId; else next[h].push(editId);
+    const nextLocked = new Set(locked);
+    if (editingId) nextLocked.delete(editingId);
+    nextLocked.add(editId);
+    setEditor(null);
+    save(next, nextLocked);
+  }
+
+  function removeEditing() {
+    if (!editor || !editingId) return;
+    setEditor(null);
+    save(layout.map((frogs, h) => (h === editor.slot.h ? frogs.filter(f => f !== editingId) : frogs)), locked);
+  }
+
   // ── Breeding plan views ───────────────────────────────────────────────────
   const [view, setView] = useState<'frog' | 'pair'>('frog');
   const [onlyToRecord, setOnlyToRecord] = useState(false);
@@ -194,8 +302,8 @@ export default function NoMuWheels() {
 
   // Rows in the viewer's colour order, by base then secondary.
   const frogRows = useMemo(() => {
-    if (!wheel || !lookup) return [];
-    const byFrog = new Map(wheel.rows.map(r => [r.frog, r]));
+    if (!plan || !lookup) return [];
+    const byFrog = new Map(plan.rows.map(r => [r.frog, r]));
     const rows: PlanRow[] = [];
     for (const b of baseOpts) {
       for (const s of secOpts) {
@@ -204,7 +312,7 @@ export default function NoMuWheels() {
       }
     }
     return rows;
-  }, [wheel, lookup, baseOpts, secOpts, breedCode]);
+  }, [plan, lookup, baseOpts, secOpts, breedCode]);
 
   const pairGroups = useMemo(() => {
     const groups = new Map<string, { a: string; b: string; verified: boolean; frogs: PlanRow[] }>();
@@ -227,7 +335,6 @@ export default function NoMuWheels() {
   }, [frogRows, habitatOf, spoilers]);
 
   function exportCsv() {
-    if (!wheel) return;
     const rows: (string | number)[][] = [['Frog_ID', 'Frog', 'Parent A', 'Parent B', 'Habitats', 'Status']];
     for (const row of frogRows) {
       const s = row.source;
@@ -235,10 +342,12 @@ export default function NoMuWheels() {
       const habitats = s.kind === 'pair' ? (hidePair(row) ? '' : habitatText(s.a, s.b)) : s.kind === 'wheel' ? habitatText(row.frog) : '';
       rows.push([row.frog, `${nameOf(row.frog)} ${breedLabel}`, ...parents, habitats, STATUS_TEXT[rowStatus(row)]]);
     }
-    downloadCsv(`nomu-${breedLabel}-${mode}-${wheelIndex + 1}`, rows);
+    downloadCsv(`nomu-${breedLabel}-${mode}`, rows);
   }
 
   const loading = !lookup || !pairs || !mutations;
+  const resultTitle = (index: number) =>
+    (index < completeCount ? `Wheel ${index + 1}` : `Near miss ${index - completeCount + 1}`);
 
   return (
     <div>
@@ -246,7 +355,8 @@ export default function NoMuWheels() {
       <p className="search-hint" style={{ marginTop: 0 }}>
         A colour wheel is one frog of each base colour, all the same breed, that between them breed every
         frog of that breed for the Froggydex. Wheels here are built from verified pairs only. Near misses
-        list the pairs still to record. Arrange the habitats, then open each one in the Mutation Planner.
+        list the pairs still to record. Add frogs you already own and lock them, and the wheels found will
+        keep them.
       </p>
 
       <div className="filter-grid">
@@ -258,7 +368,7 @@ export default function NoMuWheels() {
           initialSelection={breedOpt}
           onSelect={opt => {
             const code = opt && lookup?.breed.code.get(opt.id);
-            if (code) update({ breed: code, wheel: null, h: null });
+            if (code && code !== breedCode) update({ breed: code, h: null });
           }}
         />
         <div className="combobox-field">
@@ -270,7 +380,7 @@ export default function NoMuWheels() {
                 type="button"
                 className={`settings-theme-opt nomu-mode-btn${mode === m ? ' active' : ''}`}
                 aria-pressed={mode === m}
-                onClick={() => update({ mode: m === 'nomu' ? null : m, wheel: null, h: null })}
+                onClick={() => update({ mode: m === 'nomu' ? null : m })}
                 title={MODE_TEXT[m].hint}
               >
                 {MODE_TEXT[m].label}
@@ -283,22 +393,25 @@ export default function NoMuWheels() {
 
       {loading ? (
         <p className="search-hint">Loading pair data…</p>
-      ) : !breedOpt ? (
+      ) : !breedOpt || !solver || !analysis ? (
         <p className="search-hint">Choose a breed to find its wheels.</p>
-      ) : !analysis || analysis.recordedPairs === 0 ? (
-        <p className="search-hint">No verified pairs are recorded for {breedLabel} yet, so there's nothing to build a wheel from.</p>
       ) : (
         <>
           <div className="nomu-results">
             <div className="nomu-result-group">
               <h2>Complete wheels</h2>
-              {completeCount === 0 ? (
-                <p className="search-hint">None yet, from {analysis.recordedPairs} verified {breedLabel} pairs.</p>
+              {solver.recordedPairs === 0 ? (
+                <p className="search-hint">No verified {breedLabel} pairs are recorded yet.</p>
+              ) : completeCount === 0 ? (
+                <p className="search-hint">
+                  None yet, from {solver.recordedPairs} verified {breedLabel} pairs
+                  {locked.size > 0 && ` with your ${locked.size} locked frog${locked.size === 1 ? '' : 's'}`}.
+                </p>
               ) : (
                 <div className="nomu-result-list">
                   {analysis.complete.map((w, i) => (
-                    <ResultButton key={i} wheel={w} title={`Wheel ${i + 1}`} active={i === wheelIndex}
-                      onSelect={() => update({ wheel: i ? String(i) : null, h: null })} />
+                    <ResultButton key={i} wheel={w} title={resultTitle(i)} active={i === activeResult}
+                      onSelect={() => save(applyWheel(layout, locked, w.frogs), locked)} />
                   ))}
                 </div>
               )}
@@ -313,8 +426,8 @@ export default function NoMuWheels() {
                   {analysis.nearMisses.map((w, i) => {
                     const index = completeCount + i;
                     return (
-                      <ResultButton key={index} wheel={w} title={`Near miss ${i + 1}`} active={index === wheelIndex}
-                        onSelect={() => update({ wheel: index ? String(index) : null, h: null })} />
+                      <ResultButton key={index} wheel={w} title={resultTitle(index)} active={index === activeResult}
+                        onSelect={() => save(applyWheel(layout, locked, w.frogs), locked)} />
                     );
                   })}
                 </div>
@@ -322,99 +435,163 @@ export default function NoMuWheels() {
             )}
           </div>
 
-          {wheel && (
-            <>
-              <div className="nomu-section-head">
-                <h2>{wheelIndex < completeCount ? `Wheel ${wheelIndex + 1}` : `Near miss ${wheelIndex - completeCount + 1}`}: habitats</h2>
-                {savedLayout && (
-                  <button type="button" className="csv-btn" onClick={() => update({ h: null })}>Reset order</button>
+          <div className="nomu-section-head">
+            <h2>Habitats{activeResult >= 0 && `: ${resultTitle(activeResult)}`}</h2>
+            {boardFrogs.length > 0 && (
+              <div className="nomu-head-actions">
+                {boardFrogs.length > locked.size && (
+                  <button type="button" className="csv-btn"
+                    onClick={() => save(layout.map(h => h.filter(f => locked.has(f))), locked)}>
+                    Clear unlocked
+                  </button>
                 )}
+                <button type="button" className="csv-btn" onClick={() => { setEditor(null); setLockState(null); update({ h: null }); }}>
+                  Clear all
+                </button>
               </div>
-              <p className="search-hint" style={{ marginTop: 0 }}>
-                Drag a frog onto another to swap them, or onto an empty slot to move it. On touch screens, tap a
-                frog, then tap where it should go.
-              </p>
+            )}
+          </div>
+          <p className="search-hint" style={{ marginTop: 0 }}>
+            Choose a wheel above to fill the habitats, or add frogs with +. Lock the frogs you own to keep them
+            in every wheel; choosing a wheel replaces only unlocked frogs. Drag a frog onto another to swap them
+            or onto an empty slot to move it (on touch screens, tap a frog, then tap where it should go).
+          </p>
 
-              <div className="nomu-habitats">
-                {layout.map((frogs, h) => (
-                  <section key={h} className="nomu-habitat" aria-label={`Habitat ${h + 1}`}>
-                    <header className="nomu-habitat-head">
-                      <h3>Habitat {h + 1}</h3>
-                      <span className="planner-count">{frogs.length} / {HABITAT_SIZE}</span>
-                      {frogs.length > 0 && (
-                        <Link className="csv-btn" to={`/planner${frogSearch('frogs', frogIdsParam(frogs))}`}>
-                          Open in Planner
-                        </Link>
-                      )}
-                    </header>
-                    <ol className="nomu-slots">
-                      {Array.from({ length: HABITAT_SIZE }, (_, i) => {
-                        const id = frogs[i];
-                        const slot = { h, i };
-                        const isHeld = held?.h === h && held.i === i;
-                        if (!id) {
-                          return (
-                            <li key={i}>
-                              <button
-                                type="button"
-                                className="nomu-slot-empty"
-                                disabled={!held}
-                                onClick={() => tapSlot(slot, false)}
-                                aria-label={`Empty slot in habitat ${h + 1}${held ? ': move the picked frog here' : ''}`}
-                                {...dragProps(slot)}
-                              >
-                                Empty
-                              </button>
-                            </li>
-                          );
-                        }
-                        const { base, sec } = partsOf(id);
-                        return (
-                          <li key={id}>
-                            <button
-                              type="button"
-                              className={`nomu-frog${isHeld ? ' is-held' : ''}`}
-                              draggable
-                              onDragStart={e => {
-                                e.dataTransfer.setData('text/plain', `${h},${i}`);
-                                e.dataTransfer.effectAllowed = 'move';
-                              }}
-                              onClick={() => tapSlot(slot, true)}
-                              aria-pressed={isHeld}
-                              aria-label={`${nameOf(id)}, habitat ${h + 1}. ${
-                                isHeld ? 'Picked up; select again to put it back.'
-                                : held ? 'Swap with the picked frog.'
-                                : 'Select to pick up.'}`}
-                              {...dragProps(slot)}
-                            >
-                              <span>{base}</span>
-                              <span>{sec}</span>
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ol>
-                  </section>
-                ))}
+          <div className="nomu-habitats">
+            {layout.map((frogs, h) => (
+              <section key={h} className="nomu-habitat" aria-label={`Habitat ${h + 1}`}>
+                <header className="nomu-habitat-head">
+                  <h3>Habitat {h + 1}</h3>
+                  <span className="planner-count">{frogs.length} / {HABITAT_SIZE}</span>
+                  {frogs.length > 0 && (
+                    <Link className="csv-btn" to={`/planner${frogSearch('frogs', frogIdsParam(frogs))}`}>
+                      Open in Planner
+                    </Link>
+                  )}
+                </header>
+                <ol className="nomu-slots">
+                  {Array.from({ length: HABITAT_SIZE }, (_, i) => {
+                    const id = frogs[i];
+                    const slot = { h, i };
+                    const isEditing = editor?.slot.h === h && editor.slot.i === i;
+                    if (!id) {
+                      return (
+                        <li key={`empty-${i}`}>
+                          <button
+                            type="button"
+                            className={`nomu-slot-empty${held ? ' is-target' : ''}${isEditing ? ' is-editing' : ''}`}
+                            onClick={() => (held ? applyMove(held, slot) : openEditor({ h, i: frogs.length }))}
+                            aria-label={held ? `Move the picked frog to habitat ${h + 1}` : `Add a frog to habitat ${h + 1}`}
+                            title={held ? 'Move here' : 'Add a frog'}
+                            {...dragProps(slot)}
+                          >
+                            {held ? 'Move here' : '+'}
+                          </button>
+                        </li>
+                      );
+                    }
+                    const { base, sec } = partsOf(id);
+                    const isHeld = held?.h === h && held.i === i;
+                    const isLocked = locked.has(id);
+                    return (
+                      <li
+                        key={id}
+                        className={`nomu-frog${isHeld ? ' is-held' : ''}${isLocked ? ' is-locked' : ''}${isEditing ? ' is-editing' : ''}`}
+                        draggable
+                        onDragStart={e => {
+                          e.dataTransfer.setData('text/plain', `${h},${i}`);
+                          e.dataTransfer.effectAllowed = 'move';
+                        }}
+                        {...dragProps(slot)}
+                      >
+                        <button
+                          type="button"
+                          className="nomu-frog-main"
+                          onClick={() => tapFrog(slot)}
+                          aria-pressed={isHeld}
+                          aria-label={`${nameOf(id)}, habitat ${h + 1}${isLocked ? ', locked' : ''}. ${
+                            isHeld ? 'Picked up; select again to put it back.'
+                            : held ? 'Swap with the picked frog.'
+                            : 'Select to pick up and move.'}`}
+                        >
+                          <span>{base}</span>
+                          <span>{sec}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="nomu-frog-icon is-lock"
+                          onClick={() => toggleLock(id)}
+                          aria-pressed={isLocked}
+                          aria-label={`${isLocked ? 'Unlock' : 'Lock'} ${nameOf(id)}`}
+                          title={isLocked ? 'Locked: every wheel keeps this frog. Select to unlock.' : 'Lock to keep this frog in every wheel'}
+                        >
+                          <IconLock open={!isLocked} />
+                        </button>
+                        <button
+                          type="button"
+                          className="nomu-frog-icon is-edit"
+                          onClick={() => openEditor(slot)}
+                          aria-label={`Change ${nameOf(id)}`}
+                          title="Change this frog"
+                        >
+                          <IconPencil />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </section>
+            ))}
+          </div>
+
+          {editor && (
+            <div className="nomu-editor">
+              <h3>
+                {editingId ? `Change ${nameOf(editingId)}` : `Add a ${breedLabel} frog`} · Habitat {editor.slot.h + 1}
+              </h3>
+              <div className="filter-grid">
+                <ComboBox key={`base-${editor.key}`} label="Base Color" options={baseOpts} presorted
+                  initialSelection={editor.base}
+                  onSelect={o => setEditor(prev => (prev ? { ...prev, editor: { ...prev.editor, base: o } } : prev))} />
+                <ComboBox key={`sec-${editor.key}`} label="Secondary Color" options={secOpts} presorted
+                  initialSelection={editor.sec}
+                  onSelect={o => setEditor(prev => (prev ? { ...prev, editor: { ...prev.editor, sec: o } } : prev))} />
               </div>
+              {baseClash && (
+                <p className="planner-duplicate" role="alert">
+                  {nameOf(baseClash)} already holds this base colour. A wheel has one frog per base colour.
+                </p>
+              )}
+              <div className="crop-buttons">
+                <button type="button" className="csv-btn" onClick={saveEditor} disabled={!editId || !!baseClash}>
+                  {editingId ? 'Save' : 'Add'}
+                </button>
+                {editingId && <button type="button" className="csv-btn" onClick={removeEditing}>Remove</button>}
+                <button type="button" className="csv-btn" onClick={() => setEditor(null)}>Cancel</button>
+              </div>
+            </div>
+          )}
 
+          {plan ? (
+            <>
               <div className="nomu-section-head">
                 <h2>Breeding plan</h2>
                 <button type="button" className="csv-btn" onClick={exportCsv}>Download CSV</button>
               </div>
               <p className="nomu-summary">
-                <span>{wheel.frogs.length} wheel frogs</span>
-                <span>{wheel.pairCount} breeding pairs</span>
-                {wheel.toRecord.length > 0 && <span className="nomu-status is-unknown">{wheel.toRecord.length} pairs to record</span>}
-                {wheel.unobtainable > 0 && <span className="nomu-status is-missing">{wheel.unobtainable} unobtainable</span>}
+                <span>{plan.frogs.length} wheel frogs</span>
+                <span>{plan.pairCount} breeding pairs</span>
+                {plan.complete && <span className="nomu-status is-clear">Complete</span>}
+                {plan.toRecord.length > 0 && <span className="nomu-status is-unknown">{plan.toRecord.length} pairs to record</span>}
+                {plan.unobtainable > 0 && <span className="nomu-status is-missing">{plan.unobtainable} unobtainable</span>}
               </p>
               <p className="search-hint" style={{ marginTop: 0 }}>
-                Each {breedLabel} frog and the pair to breed for it, using as few pairs as possible.
+                Each {breedLabel} frog and the pair in your habitats to breed for it, using as few pairs as possible.
                 {mode === 'mutation' && !spoilers && ' Spoilers are off, so pairs that give Glass or Chroma mutations are hidden.'}
               </p>
 
               <div className="table-toolbar">
-                <div className="settings-row">
+                <div className="settings-row nomu-view-toggle">
                   {(['frog', 'pair'] as const).map(v => (
                     <button key={v} type="button" className={`settings-theme-opt nomu-mode-btn${view === v ? ' active' : ''}`}
                       aria-pressed={view === v} onClick={() => setView(v)}>
@@ -422,7 +599,7 @@ export default function NoMuWheels() {
                     </button>
                   ))}
                 </div>
-                {(wheel.toRecord.length > 0 || wheel.unobtainable > 0) && (
+                {(plan.toRecord.length > 0 || plan.unobtainable > 0) && (
                   <label className="nomu-filter">
                     <input type="checkbox" checked={onlyToRecord} onChange={e => setOnlyToRecord(e.target.checked)} />
                     Only what's left to record
@@ -506,6 +683,8 @@ export default function NoMuWheels() {
                 )}
               </div>
             </>
+          ) : (
+            <p className="search-hint">Choose a wheel or add frogs to see the breeding plan.</p>
           )}
         </>
       )}
@@ -520,7 +699,8 @@ function ResultButton({ wheel, title, active, onSelect }: {
   onSelect: () => void;
 }) {
   return (
-    <button type="button" className={`nomu-result${active ? ' active' : ''}`} aria-pressed={active} onClick={onSelect}>
+    <button type="button" className={`nomu-result${active ? ' active' : ''}`} aria-pressed={active} onClick={onSelect}
+      title="Fill the habitats with this wheel (locked frogs stay put)">
       <strong>{title}</strong>
       <span>{wheel.frogs.length} frogs · {wheel.pairCount} pairs</span>
       {!wheel.complete && (
