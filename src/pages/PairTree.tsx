@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchFrogPairs } from '../api/teable';
 import FrogInputs from '../components/FrogInputs';
@@ -58,10 +58,15 @@ function IconToTop() {
 }
 
 // The tree lives in the URL as Frog_IDs (?frog=18:11:0&with=18:4:0_18:5:0) so
-// it can be shared as a link. Written by hand, as frogSearch does, so the
-// colons aren't escaped.
-function treeSearch(rootParam: string, listParam: string): string {
-  const parts = [rootParam && `frog=${rootParam}`, listParam && `with=${listParam}`].filter(Boolean);
+// it can be shared as a link, along with any habitat dividers (&gaps=4_8, each
+// the index of the row a divider sits above). Written by hand, as frogSearch
+// does, so the colons aren't escaped.
+function treeSearch(rootParam: string, listParam: string, gaps: number[]): string {
+  const parts = [
+    rootParam && `frog=${rootParam}`,
+    listParam && `with=${listParam}`,
+    gaps.length > 0 && `gaps=${[...gaps].sort((a, b) => a - b).join('_')}`,
+  ].filter(Boolean);
   return parts.length ? `?${parts.join('&')}` : '';
 }
 
@@ -78,7 +83,6 @@ function uniqueFrogs(list: CompleteFrogSel[]): CompleteFrogSel[] {
 
 export default function PairTree() {
   const [searchParams] = useSearchParams();
-  const { search } = useLocation();
   const navigate = useNavigate();
   const frogOptions = useFrogOptions();
   const { lookup } = frogOptions;
@@ -107,12 +111,20 @@ export default function PairTree() {
       .filter(f => f.name !== root?.name);
   }, [lookup, searchParams, toTreeFrog, root]);
 
-  function saveTree(nextRoot: CompleteFrogSel | null, nextList: CompleteFrogSel[]) {
+  // Habitat dividers: purely visual marks on the trunk, between two rows, that
+  // group the list into the habitats being bred in.
+  const gaps = useMemo(() => new Set(
+    (searchParams.get('gaps') ?? '').split('_').map(Number)
+      .filter(g => Number.isInteger(g) && g >= 1 && g < list.length),
+  ), [searchParams, list.length]);
+
+  function saveTree(nextRoot: CompleteFrogSel | null, nextList: CompleteFrogSel[], nextGaps: Iterable<number> = gaps) {
     if (!lookup) return;
     navigate({
       search: treeSearch(
         nextRoot ? encodeFrogParam([nextRoot], lookup) : '',
         encodeFrogParam(uniqueFrogs(nextList).filter(sel => !nextRoot || frogName(sel) !== frogName(nextRoot)), lookup),
+        [...nextGaps],
       ),
     }, { replace: true });
   }
@@ -126,7 +138,9 @@ export default function PairTree() {
   const [verifyPlan, setVerifyPlan] = useState<string | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [confirming, setConfirming] = useState(false);
-  const verifyMode = isMod && verifyPlan === search;
+  // Keyed on the frogs only, so toggling a divider doesn't leave Verify mode.
+  const treeKey = `${searchParams.get('frog') ?? ''}&${searchParams.get('with') ?? ''}`;
+  const verifyMode = isMod && verifyPlan === treeKey;
 
   const pickKey = (f: TreeFrog) => (root?.id && f.id ? pairKey(root.id, f.id) : null);
   const pickable = (f: TreeFrog) => verifyMode && status(f) === 'unknown' && !!pickKey(f);
@@ -162,7 +176,7 @@ export default function PairTree() {
     setEditor(null);
     setPicked(new Set());
     setConfirming(false);
-    setVerifyPlan(search);
+    setVerifyPlan(treeKey);
   }
 
   const finishVerify = useCallback(() => {
@@ -209,9 +223,17 @@ export default function PairTree() {
     resetEditor();
   }
 
+  // Dividers below the removed row move up with the rows they sit between.
   function removeRow(index: number) {
-    saveTree(root?.sel ?? null, list.filter((_, i) => i !== index).map(f => f.sel));
+    saveTree(root?.sel ?? null, list.filter((_, i) => i !== index).map(f => f.sel),
+      [...gaps].map(g => (g > index ? g - 1 : g)));
     resetEditor();
+  }
+
+  function toggleGap(index: number) {
+    const next = new Set(gaps);
+    if (!next.delete(index)) next.add(index);
+    saveTree(root?.sel ?? null, list.map(f => f.sel), next);
   }
 
   // A row's arrow: it becomes the top frog, and the old top frog takes its place.
@@ -381,6 +403,12 @@ export default function PairTree() {
                   const className = `planner-mark is-${shown}${verifyClass(f)}`;
                   return (
                     <li key={f.name} className={`tree-row${draft.target === i && !verifyMode ? ' is-editing' : ''}`}>
+                      {i > 0 && (
+                        <button type="button" className={`tree-gap${gaps.has(i) ? ' is-on' : ''}`} onClick={() => toggleGap(i)}
+                          aria-pressed={gaps.has(i)}
+                          aria-label={`Habitat divider between ${list[i - 1].name} and ${f.name}`}
+                          title={gaps.has(i) ? 'Remove habitat divider' : 'Add habitat divider'} />
+                      )}
                       <span className={`tree-branch is-${shown}${verifyClass(f)}`}>
                         {verifyMode ? (
                           <VerifyMark className={className} status={shown} pickable={pickable(f)} picked={isPicked(f)}

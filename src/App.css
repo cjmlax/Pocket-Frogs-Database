@@ -1221,6 +1221,47 @@ a.tree-name:hover { color: var(--accent); }
   list-style: none;
 }
 
+/* Habitat divider: a dash across the trunk between two rows. Hidden until
+   switched on; hovering the spot shows a faint one as a hint */
+.tree-row { position: relative; }
+
+.tree-gap {
+  position: absolute;
+  left: -1px; /* centre of the trunk */
+  top: 0;
+  z-index: 1;
+  width: 32px;
+  height: 14px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+
+.tree-gap::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 20px;
+  border-top: 3px solid var(--text-h);
+  border-radius: 2px;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.tree-gap:hover::before,
+.tree-gap:focus-visible::before { opacity: 0.3; }
+.tree-gap.is-on::before { opacity: 1; }
+.tree-gap.is-on:hover::before { opacity: 0.6; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tree-gap::before { transition: none; }
+}
+
 /* A branch is a line off the trunk with the pair's mark centred on it */
 .tree-branch {
   position: relative;
