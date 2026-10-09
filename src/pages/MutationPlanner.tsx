@@ -1,43 +1,18 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { useAuth } from 'react-oidc-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchFrogPairs, type FrogPair } from '../api/teable';
 import FrogInputs from '../components/FrogInputs';
 import VerifyPairsDialog, { type VerifyPairItem } from '../components/VerifyPairsDialog';
+import { IconPencil, StatusMark, VerifyMark } from '../components/PairStatus';
+import { useModToken } from '../hooks/useModToken';
+import { usePairByKey } from '../hooks/usePairByKey';
 import { useFrogOptions } from '../hooks/useFrogOptions';
 import {
   EMPTY_FROG, MAX_PLANNER_FROGS as MAX_FROGS, decodeFrogParam, encodeFrogParam, frogId, frogName, frogPath, frogSearch, isComplete,
   type CompleteFrogSel, type FrogSel,
 } from '../utils/frogIds';
-
-// Grey: no pair record, or one that isn't Verified (its data implies nothing).
-// Green: Verified with no mutations. Red: Verified and produces a mutation.
-type LineStatus = 'unknown' | 'clear' | 'mutation';
-
-const STATUS_TEXT: Record<LineStatus, string> = {
-  unknown:  'Not verified',
-  clear:    'Verified, no mutations',
-  mutation: 'Verified, produces a mutation',
-};
-
-// Warning triangle for mutation pairs — a different shape from the round
-// ✓ / ? marks, so it doesn't lean on colour alone.
-function IconWarning() {
-  return (
-    <svg viewBox="0 0 24 22" aria-hidden="true">
-      <path d="M12 1.5 22.8 20.5H1.2Z" fill="var(--code-bg)" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
-      <line x1="12" y1="8" x2="12" y2="13.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
-      <circle cx="12" cy="17" r="1.25" fill="currentColor"/>
-    </svg>
-  );
-}
-
-const STATUS_MARK: Record<LineStatus, React.ReactNode> = { unknown: '?', clear: '✓', mutation: <IconWarning /> };
-
-// pfdb_groups arrives with the "pfdb-" prefix stripped, so "pfdb-mods" → "mods".
-// Verify mode is for mods only (not admins, unless they're also mods).
-const MOD_GROUP = 'mods';
+import { STATUS_TEXT, pairKey, pairStatusById, type LineStatus } from '../utils/pairStatus';
 
 interface PlannedFrog {
   sel:  CompleteFrogSel;
@@ -87,14 +62,8 @@ interface Editor {
   key:   number;
 }
 
-const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
-
-// Grey: no pair record, or one that isn't Verified. Green: Verified, no
-// mutations. Yellow: Verified and produces a mutation. A frog with itself is a
-// pair too (its record has the same frog as Frog A and Frog B).
 function pairStatus(pairByKey: Map<string, FrogPair>, fa: PlannedFrog, fb: PlannedFrog): LineStatus {
-  const pair = fa.id && fb.id ? pairByKey.get(pairKey(fa.id, fb.id)) : undefined;
-  return !pair?.verified ? 'unknown' : pair.mutationCount > 0 ? 'mutation' : 'clear';
+  return pairStatusById(pairByKey, fa.id, fb.id);
 }
 
 // Mark placement, in board pixels. Each mark takes the spot along its own line
@@ -159,14 +128,6 @@ function nodePositions(n: number): { x: number; y: number }[] {
     const angle = start + (i * 2 * Math.PI) / n;
     return { x: 50 + 37 * Math.cos(angle), y: 50 + 36 * Math.sin(angle) };
   });
-}
-
-function IconPencil() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-    </svg>
-  );
 }
 
 function IconMinus() {
@@ -238,37 +199,6 @@ function useBoardSize(el: HTMLDivElement | null): BoardSize {
   return size;
 }
 
-// A line's mark (or a frog's self-breeding mark) in Verify mode: a toggle for
-// pairs not yet verified, inert for the rest.
-function VerifyMark({ status, pickable, picked, label, onToggle, ...rest }: {
-  status:    LineStatus;
-  pickable:  boolean;
-  picked:    boolean;
-  label:     string;
-  onToggle:  () => void;
-  className: string;
-  style:     React.CSSProperties;
-  onMouseEnter?: () => void;
-  onMouseLeave?: () => void;
-  onFocus?:      () => void;
-  onBlur?:       () => void;
-}) {
-  if (!pickable) {
-    return (
-      <span {...rest} role="img" aria-label={`${label}: ${STATUS_TEXT[status]}`} title={STATUS_TEXT[status]}>
-        {STATUS_MARK[status]}
-      </span>
-    );
-  }
-  return (
-    <button type="button" {...rest} onClick={onToggle} aria-pressed={picked}
-      aria-label={`${label}: ${picked ? 'marked as no mutations' : 'not verified'}. Toggle.`}
-      title={picked ? 'Marked as no mutations. Select to undo.' : 'Select to mark as no mutations.'}>
-      {STATUS_MARK[status]}
-    </button>
-  );
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function MutationPlanner() {
@@ -279,10 +209,7 @@ export default function MutationPlanner() {
   const { data: pairs } = useQuery({ queryKey: ['pairs'], queryFn: fetchFrogPairs });
   const queryClient = useQueryClient();
 
-  const auth = useAuth();
-  const idToken = auth.user?.id_token;
-  const groups = (auth.user?.profile?.pfdb_groups as string[] | undefined) ?? [];
-  const isMod = auth.isAuthenticated && !!idToken && groups.includes(MOD_GROUP);
+  const { idToken, isMod } = useModToken();
 
   // Verify mode (mods): unverified pairs are picked as having no mutations, and
   // everything else on the board is locked. `picked` holds pair keys of Frog_IDs.
@@ -320,17 +247,7 @@ export default function MutationPlanner() {
     navigate({ search: frogSearch('frogs', encodeFrogParam(list, lookup)) }, { replace: true });
   }
 
-  // Pair records keyed by both Frog_IDs (either order). If a pair was somehow
-  // recorded twice, the Verified record wins.
-  const pairByKey = useMemo(() => {
-    const m = new Map<string, FrogPair>();
-    for (const p of pairs ?? []) {
-      if (!p.frogATitle || !p.frogBTitle) continue;
-      const k = pairKey(p.frogATitle, p.frogBTitle);
-      if (!m.get(k)?.verified) m.set(k, p);
-    }
-    return m;
-  }, [pairs]);
+  const pairByKey = usePairByKey(pairs);
 
   const positions = useMemo(() => nodePositions(frogs.length), [frogs.length]);
 
@@ -495,7 +412,7 @@ export default function MutationPlanner() {
             <ul className="planner-legend">
               {(['clear', 'mutation', 'unknown'] as const).map(s => (
                 <li key={s}>
-                  <span className={`planner-mark is-${s}`} aria-hidden="true">{STATUS_MARK[s]}</span>
+                  <span className={`planner-mark is-${s}`} aria-hidden="true"><StatusMark status={s} /></span>
                   {STATUS_TEXT[s]}
                 </li>
               ))}
@@ -597,7 +514,7 @@ export default function MutationPlanner() {
                   aria-label={`${fa.name} × ${fb.name}: ${STATUS_TEXT[e.status]}. Open in Breeding Pairs.`}
                   title={`${STATUS_TEXT[e.status]}. Open in Breeding Pairs.`}
                 >
-                  {STATUS_MARK[e.status]}
+                  <StatusMark status={e.status} />
                 </Link>
               );
             })}
@@ -635,7 +552,7 @@ export default function MutationPlanner() {
                     aria-label={`${f.name} with itself: ${STATUS_TEXT[self]}. Open in Breeding Pairs.`}
                     title={`Self-breeding: ${STATUS_TEXT[self]}. Open in Breeding Pairs.`}
                   >
-                    {STATUS_MARK[self]}
+                    <StatusMark status={self} />
                   </Link>
                 )}
                 {!verifyMode && (

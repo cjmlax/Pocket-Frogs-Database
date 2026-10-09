@@ -1104,6 +1104,165 @@ button.planner-mark {
   color: #e06666;
 }
 
+/* ─── Pair Tree page ───────────────────────────────────────────────────────── */
+/* The top frog, a trunk down the left, and one branch per listed frog carrying
+   that pair's status mark (reusing the planner's marks and status colours) */
+
+.tree-editor {
+  margin-bottom: 20px;
+  container-type: inline-size;
+}
+
+@container (min-width: 600px) {
+  .tree-editor .parent-group {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    column-gap: 18px;
+  }
+
+  .tree-editor .parent-group > :not(.combobox-field),
+  .tree-editor .parent-group > .frog-text-field {
+    grid-column: 1 / -1;
+  }
+}
+
+.tree-hint-icon {
+  display: inline-flex;
+  vertical-align: -4px;
+  color: var(--accent);
+}
+
+.tree {
+  padding: 12px 16px 16px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.tree.is-verifying {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.tree-root,
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  border-radius: 6px;
+}
+
+.tree-root.is-editing,
+.tree-row.is-editing {
+  background: var(--accent-bg);
+}
+
+.tree-root .tree-name {
+  font-size: 18px;
+}
+
+.tree-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-h);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+a.tree-name:hover { color: var(--accent); }
+
+.tree-name.is-empty {
+  color: var(--text);
+  font-weight: 400;
+  font-style: italic;
+}
+
+.tree-self {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.tree-btn {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.tree-btn.tree-move { color: var(--accent); }
+
+.tree-btn:hover {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.tree-empty {
+  margin: 8px 0 0 18px;
+  color: var(--text);
+}
+
+/* The trunk: a left border running from under the top frog to the last row */
+.tree-list {
+  margin: 4px 0 0 12px;
+  padding: 0;
+  border-left: 2px solid var(--text-h);
+  list-style: none;
+}
+
+/* A branch is a line off the trunk with the pair's mark centred on it */
+.tree-branch {
+  position: relative;
+  flex: none;
+  width: 96px;
+  height: 28px;
+  margin-right: 6px;
+  color: var(--text);
+}
+
+.tree-branch.is-clear    { color: var(--cell-max-text); }
+.tree-branch.is-mutation { color: var(--warn-text); }
+
+.tree-branch::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 2px solid currentColor;
+  transform: translateY(-50%);
+}
+
+/* Unverified branches are dashed so they don't rely on colour alone */
+.tree-branch.is-unknown::before {
+  border-top-style: dashed;
+  opacity: 0.7;
+}
+
+.tree-branch.is-picked::before { border-top-width: 3px; }
+.tree-branch.is-locked { opacity: 0.35; }
+
+.tree-branch .planner-mark {
+  left: 50%;
+  top: 50%;
+}
+
+.tree-branch .planner-mark.is-locked { opacity: 1; }
+
+@media (max-width: 640px) {
+  .tree { padding: 10px 10px 12px; }
+  .tree-branch { width: 60px; }
+  .tree-root .tree-name { font-size: 16px; }
+}
+
 /* ─── Submit a Combination page ─────────────────────────────────────────────── */
 /* Verified, locked-in parent pairing shown above the rest of the form */
 .locked-parents {

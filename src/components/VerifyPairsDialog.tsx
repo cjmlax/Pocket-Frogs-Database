@@ -18,10 +18,12 @@ interface Row { item: VerifyPairItem; state: RowState }
 
 // How long a verified row stays on screen, with its check, before it clears.
 const CLEAR_AFTER_MS = 3000;
+// Pairs per check request — the worker's limit.
+const CHECK_BATCH = 64;
 // Pairs sent at once while verifying.
 const SEND_LIMIT = 3;
 
-// "Are you sure?" for the Mutation Planner's Verify mode. Opens by checking
+// "Are you sure?" for Verify mode (Mutation Planner, Pair Tree). Opens by checking
 // every picked pair with the worker, flagging any that can't be recorded
 // (already verified, leftover data, a combo pending review…). Accept then sends
 // the rest one by one: each shows a check as it lands, then clears. Decline
@@ -47,16 +49,21 @@ export default function VerifyPairsDialog({
 
   useEffect(() => {
     let cancelled = false;
-    checkClearPairs(idToken, items.map(({ frogA, frogB }) => ({ frogA, frogB })))
-      .then(({ version, results }) => {
+    // Checked a batch at a time (the worker takes up to CHECK_BATCH per call),
+    // each batch's rows updating as its results arrive.
+    (async () => {
+      for (let start = 0; start < items.length; start += CHECK_BATCH) {
+        const batch = items.slice(start, start + CHECK_BATCH);
+        const { version, results } = await checkClearPairs(idToken, batch.map(({ frogA, frogB }) => ({ frogA, frogB })));
         if (cancelled) return;
         setVersion(version);
-        setRows(items.map((item, i) => {
+        const states = new Map(batch.map((item, i): [string, RowState] => {
           const r = results[i];
-          return { item, state: !r ? { kind: 'flagged', error: 'No result.' } : r.ok ? { kind: 'ready' } : { kind: 'flagged', error: r.error } };
+          return [item.key, !r ? { kind: 'flagged', error: 'No result.' } : r.ok ? { kind: 'ready' } : { kind: 'flagged', error: r.error }];
         }));
-      })
-      .catch(e => { if (!cancelled) setCheckError((e as Error).message); });
+        setRows(prev => prev.map(row => (states.has(row.item.key) ? { ...row, state: states.get(row.item.key)! } : row)));
+      }
+    })().catch(e => { if (!cancelled) setCheckError((e as Error).message); });
     return () => { cancelled = true; };
     // Checked once, for the pairs picked when the dialog opened.
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -138,6 +138,7 @@ const VIEW_LINKS: MenuLink[] = [
 const CALCULATE_LINKS: MenuLink[] = [
   { to: '/breeding', label: 'Breeding Pairs' },
   { to: '/planner',  label: 'Mutation Planner' },
+  { to: '/tree',     label: 'Pair Tree' },
   { to: '/nomu',     label: 'NoMu Wheels' },
 ];
 
