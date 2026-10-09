@@ -423,6 +423,27 @@ export function createWheelSolver(input: WheelInput): WheelSolver {
   return { recordedPairs, analyze, plan: frogs => plan(toSig(frogs, NONE)) };
 }
 
+// ── Pair floors ─────────────────────────────────────────────────────────────
+// The fewest breeding pairs any wheel can need depends only on how many frogs
+// share each secondary: frogs with secondaries u ≠ t give one new frog to each
+// side, so covering both groups takes max(m_u, m_t) pairs. The most even
+// spread is the floor (204 for 23 frogs over 16 secondaries); one secondary
+// held three times is the next best (210). Infinity when a shape can't exist.
+export function pairFloors(frogs: number, secs: number): { best: number; next: number } {
+  const total = (counts: number[]) => {
+    let sum = 0;
+    for (let i = 0; i < counts.length; i++) for (let j = i + 1; j < counts.length; j++) sum += Math.max(counts[i], counts[j]);
+    return sum;
+  };
+  const extra = frogs - secs;
+  const spread = (threes: number) => {
+    const twos = extra - threes * 2;
+    if (extra < 0 || twos < 0 || threes + twos > secs) return Infinity;
+    return total(Array.from({ length: secs }, (_, i) => (i < threes ? 3 : i < threes + twos ? 2 : 1)));
+  };
+  return { best: spread(0), next: spread(1) };
+}
+
 // ── Minimum set cover ───────────────────────────────────────────────────────
 // Each pair covers at most two frogs by inheritance (a third only through a
 // mutation), so: take pairs a frog can't do without, then any pair still

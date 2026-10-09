@@ -8,13 +8,18 @@ interface Point { x: number; y: number; }
 // natural resolution, lets the admin drag a region, and POSTs the normalized
 // rectangle to the crop endpoint. Ported from the old server-rendered panel.
 export default function CropDialog({
-  id, screenshotUrl, onClose, onCropped,
+  id, screenshotUrl, originalUrl, onClose, onCropped,
 }: {
   id: string;
   screenshotUrl: string;
+  // Uncropped upload behind an auto-crop; when given, the admin can switch to
+  // it and crop from scratch instead of trimming the auto-crop further.
+  originalUrl?: string | null;
   onClose: () => void;
   onCropped: () => void;
 }) {
+  const [useOriginal, setUseOriginal] = useState(false);
+  const sourceUrl = useOriginal && originalUrl ? originalUrl : screenshotUrl;
   const auth = useAuth();
   const idToken = auth.user?.id_token;
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -30,7 +35,7 @@ export default function CropDialog({
     if (!idToken) return;
     let cancelled = false;
     let objectUrl: string | null = null;
-    fetchImageObjectUrl(idToken, screenshotUrl)
+    fetchImageObjectUrl(idToken, sourceUrl)
       .then(url => {
         objectUrl = url;
         const img = new Image();
@@ -50,7 +55,14 @@ export default function CropDialog({
       .catch(() => setError('Could not load image'));
     return () => { cancelled = true; if (objectUrl) URL.revokeObjectURL(objectUrl); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idToken, screenshotUrl]);
+  }, [idToken, sourceUrl]);
+
+  function toggleSource() {
+    startRef.current = null;
+    endRef.current = null;
+    setReady(false);
+    setUseOriginal(o => !o);
+  }
 
   function draw() {
     const canvas = canvasRef.current, img = imgRef.current;
@@ -89,7 +101,7 @@ export default function CropDialog({
     try {
       await cropScreenshot(idToken, id, {
         left: x / c.width, top: y / c.height, right: (x + w) / c.width, bottom: (y + h) / c.height,
-      });
+      }, useOriginal && !!originalUrl);
       onCropped();
     } catch (err) {
       setError((err as Error).message);
@@ -112,6 +124,11 @@ export default function CropDialog({
         <div className="crop-footer">
           <span className="search-hint">{ready ? 'Drag to select crop region' : 'Loading…'}</span>
           <div className="crop-buttons">
+            {originalUrl && (
+              <button className="csv-btn" disabled={saving} onClick={toggleSource}>
+                {useOriginal ? 'Back to auto-crop' : 'Use original'}
+              </button>
+            )}
             <button className="csv-btn" disabled={saving || !ready} onClick={apply}>
               {saving ? 'Cropping…' : 'Apply Crop'}
             </button>

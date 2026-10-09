@@ -702,6 +702,11 @@ a.plain-link:hover {
   color: var(--accent);
 }
 
+.breeding-credit {
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
 /* ─── Mutation Planner page ────────────────────────────────────────────────── */
 
 .planner-editor {
@@ -1536,6 +1541,7 @@ button.planner-mark {
 
 .nomu-head-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -3391,6 +3397,15 @@ a.csv-btn {
 
 /* Friend Code tile before one is set — visible like the others but static
    (no clickable/hover affordance) since there's nothing to select yet. */
+.credit-opt-in {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
 .display-name-opt-empty {
   cursor: default;
 }
@@ -3430,4 +3445,88 @@ a.csv-btn {
 .display-name-add-label {
   font-size: 12px;
   font-weight: 600;
+}
+
+/* ─── Submit Mutation Details page ───────────────────────────────────────── */
+/* One card per incomplete mutation: its pair for context, then the lost frog
+   and screenshot side by side (stacked on narrow screens). */
+.completion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.completion-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+}
+
+.completion-card.is-entered {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.completion-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.completion-heading .mutation-tag {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.completion-parents {
+  color: var(--text-h);
+}
+
+.completion-result {
+  color: var(--text);
+}
+
+.completion-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.completion-shot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.completion-shot .screenshot-drop {
+  align-self: stretch;
+  min-height: 96px;
+}
+
+.completion-shot .screenshot-drop img {
+  max-height: 200px;
+}
+
+.completion-hint {
+  margin: 4px 0 0;
+}
+
+.completion-lost {
+  margin: 0;
+}
+
+.completion-review-shot {
+  display: block;
+  max-width: 100%;
+  max-height: 240px;
+  object-fit: contain;
+  border-radius: 4px;
+  align-self: flex-start;
 }

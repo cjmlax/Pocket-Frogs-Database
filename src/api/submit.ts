@@ -25,6 +25,18 @@ export interface FrogStatsSubmission {
   stamina:  number;
 }
 
+// Fills a recorded mutation's missing Lost Frog and screenshot. The names are
+// for reviewers; the worker checks them against the records.
+export interface MutationCompletionSubmission {
+  mutationId:     string;
+  variant:        'Glass' | 'Chroma';
+  frog1Name:      string;
+  frog2Name:      string;
+  resultFrogName: string;
+  lostFrogId:     string;
+  lostFrogName:   string;
+}
+
 // Per-item outcome of a batch submit, in the order the items were sent.
 export type BatchResult =
   | { index: number; ok: true;  id: string }
@@ -54,6 +66,54 @@ export async function submitFrogStats(
   try { body = await res.json(); } catch { /* handled below */ }
   if (!res.ok) throw new Error(body.error ?? `Submission failed (HTTP ${res.status}).`);
   return body.results ?? [];
+}
+
+// Screenshots one batch request may carry (the worker's MAX_BATCH_FILES).
+const BATCH_FILES = 10;
+
+// Posts mutation completions, each with its screenshot, as multipart batches
+// of up to BATCH_FILES items. Results come back indexed into `items`. A failed
+// request stops there; the results so far are returned with the error.
+export async function submitMutationCompletions(
+  items: { payload: MutationCompletionSubmission; screenshot: Blob }[],
+  idToken?: string | null,
+): Promise<{ results: BatchResult[]; error?: string }> {
+  const results: BatchResult[] = [];
+  for (let start = 0; start < items.length; start += BATCH_FILES) {
+    const chunk = items.slice(start, start + BATCH_FILES);
+    const form = new FormData();
+    form.append('type', 'mutationCompletion');
+    form.append('payloads', JSON.stringify(chunk.map(i => i.payload)));
+    form.append('hp_url', ''); // honeypot — must stay empty
+    chunk.forEach((item, i) => form.append(`screenshot.${i}`, item.screenshot));
+
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/api/submit/batch`, {
+        method: 'POST',
+        body: form,
+        headers: idToken ? { Authorization: `Bearer ${idToken}` } : undefined,
+      });
+    } catch {
+      return { results, error: 'Could not reach the submission service. Please try again later.' };
+    }
+
+    let body: { results?: BatchResult[]; error?: string } = {};
+    try { body = await res.json(); } catch { /* handled below */ }
+    if (!res.ok) {
+      const error = res.status === 413 && !body.error ? 'A screenshot is too large.' : body.error;
+      return { results, error: error ?? `Submission failed (HTTP ${res.status}).` };
+    }
+    for (const r of body.results ?? []) results.push({ ...r, index: r.index + start });
+  }
+  return { results };
+}
+
+// Mutation record IDs that already have a completion awaiting review.
+export async function fetchPendingMutationCompletionIds(): Promise<string[]> {
+  const res = await fetch(`${API_BASE}/api/mutation-completions/pending`);
+  if (!res.ok) throw new Error(`Pending lookup failed (HTTP ${res.status}).`);
+  return res.json() as Promise<string[]>;
 }
 
 // Frog record IDs that already have a stats submission awaiting review.

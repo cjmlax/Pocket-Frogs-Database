@@ -11,6 +11,8 @@ export interface PendingSubmission {
   submitter: string | null;   // display name, or null for anonymous
   submitterSub: string | null; // their Authentik subject (stable user id), or null
   screenshot: string | null;  // URL path, e.g. /api/admin/uploads/<file>
+  // Uncropped upload, kept only while an auto-cropped screenshot is pending.
+  screenshotOriginal: string | null;
   createdAt: string;
   batchId: string | null;     // shared by every item from one batch submit
 }
@@ -126,12 +128,13 @@ export async function cropScreenshot(
   idToken: string,
   id: string,
   region: { left: number; top: number; right: number; bottom: number },
+  fromOriginal = false,
 ) {
   return asJson<{ ok: boolean; screenshot: string }>(
     await authed(idToken, `/api/admin/${id}/crop`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(region),
+      body: JSON.stringify({ ...region, fromOriginal }),
     }),
   );
 }

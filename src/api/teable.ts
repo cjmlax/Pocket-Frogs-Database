@@ -120,6 +120,7 @@ interface PairFields extends Record<string, unknown> {
   'Frog B'?:     unknown;
   Verified?:     boolean;
   Screenshot?:   unknown;
+  Submitter?:    string;
   Mutations?:    unknown;
 }
 
@@ -156,6 +157,8 @@ export interface Mutation {
   lostId: string | null;
   lostTitle: string | null;
   screenshotCount: number;   // the pair's screenshots (shared by its mutations)
+  submitter: string | null;  // the pair's Submitter: a user's sub, or '~' + manual credit
+  verified: boolean;         // the pair's Verified flag
 }
 
 function linkRef(val: unknown): { id: string; title: string | null } | null {
@@ -208,6 +211,8 @@ export async function fetchMutations(): Promise<Mutation[]> {
       resultId: result?.id ?? null, resultTitle: result?.title ?? null,
       lostId: lost?.id ?? null, lostTitle: lost?.title ?? null,
       screenshotCount: attachmentCount(pair.fields.Screenshot),
+      submitter: pair.fields.Submitter?.trim() || null,
+      verified: !!pair.fields.Verified,
     }];
   });
 }

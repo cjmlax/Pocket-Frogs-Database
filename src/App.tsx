@@ -10,6 +10,7 @@ import MutationPlanner from './pages/MutationPlanner';
 import NoMuWheels from './pages/NoMuWheels';
 import SubmitCombo from './pages/SubmitCombo';
 import SubmitFrogStats from './pages/SubmitFrogStats';
+import SubmitMutationCompletion from './pages/SubmitMutationCompletion';
 import Download from './pages/Download';
 import Account from './pages/Account';
 import AuthCallback from './pages/AuthCallback';
@@ -41,6 +42,7 @@ const router = createBrowserRouter([
       { path: 'nomu', element: <NoMuWheels /> },
       { path: 'submit', element: <SubmitCombo /> },
       { path: 'submit/stats', element: <SubmitFrogStats /> },
+      { path: 'submit/details', element: <SubmitMutationCompletion /> },
       { path: 'download', element: <Download /> },
       { path: 'frogs', element: <Moved to="/search" /> },
       { path: 'breeds', element: <Moved to="/breed" /> },

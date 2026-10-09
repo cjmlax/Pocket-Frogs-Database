@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchMe, submitFriendCode, cancelFriendCode, confirmFriendCode, fetchMySubmissions } from '../api/profile';
-import { useDisplayName, platformIcon, type DisplayNameOption } from '../hooks/useDisplayName';
+import { fetchMe, submitFriendCode, cancelFriendCode, confirmFriendCode, fetchMySubmissions, saveShowCredit } from '../api/profile';
+import { useDisplayName, platformIcon, SIGN_IN_ONLY_SOURCES, type DisplayNameOption } from '../hooks/useDisplayName';
 import { badgeChipStyle } from '../utils/badgeStyle';
 import { sourceLoginOptions } from '../auth/authConfig';
 
@@ -37,7 +37,7 @@ export default function Account() {
   const auth = useAuth();
   const queryClient = useQueryClient();
   const idToken = auth.user?.id_token;
-  const { source, setSource, options } = useDisplayName();
+  const { source, setSource, options, connectedKeys } = useDisplayName();
 
   // The worker-owned profile (badges + flair), keyed on the Authentik subject.
   const { data: profile, isLoading: profileLoading, isError: profileError } = useQuery({
@@ -75,6 +75,11 @@ export default function Account() {
       else setConfirmError('That frog was incorrect. Please double check spelling and re-submit.');
     },
     onError: e => setConfirmError((e as Error).message),
+  });
+
+  const showCredit = useMutation({
+    mutationFn: (show: boolean) => saveShowCredit(idToken!, show),
+    onSuccess: updated => queryClient.setQueryData(['me'], updated),
   });
 
   const { data: submissions } = useQuery({
@@ -131,6 +136,19 @@ export default function Account() {
           const opt = options.find(o => o.key === s.key);
           if (opt) return <ConnectedTile key={s.key} opt={opt} active={source === opt.key} onSelect={() => setSource(opt.key)} />;
           const icon = platformIcon(s.key);
+          // Connected, but sign-in only (the name would be an email address).
+          if (SIGN_IN_ONLY_SOURCES.has(s.key) && connectedKeys.includes(s.key)) {
+            return (
+              <div key={s.key} className="display-name-opt display-name-opt-empty" aria-disabled="true"
+                title={`${s.label} is used for sign-in only and can't be your display name`}>
+                <span className="display-name-opt-header">
+                  {icon && <img src={icon} width={16} height={16} style={{ borderRadius: 3 }} alt="" />}
+                  <span className="display-name-opt-platform">{s.label}</span>
+                </span>
+                <span className="display-name-opt-name">Sign-in only</span>
+              </div>
+            );
+          }
           return (
             <a key={s.key} className="display-name-add" href={s.loginUrl} aria-label={`Connect ${s.label}`} title={`Connect ${s.label}`}>
               {icon && <img src={icon} width={16} height={16} style={{ borderRadius: 3 }} alt="" />}
@@ -147,6 +165,19 @@ export default function Account() {
             <ConnectedTile key={opt.key} opt={opt} active={source === opt.key} onSelect={() => setSource(opt.key)} />
           ))}
       </div>
+
+      {profile && (
+        <label className="credit-opt-in">
+          <input
+            type="checkbox"
+            checked={showCredit.isPending ? showCredit.variables : profile.show_credit}
+            disabled={showCredit.isPending}
+            onChange={e => showCredit.mutate(e.target.checked)}
+          />
+          Show my preferred display name with submitted mutations.
+        </label>
+      )}
+      {showCredit.isError && <p className="search-error">{(showCredit.error as Error).message}</p>}
 
       <h2 style={{ marginTop: 24 }}>Badges</h2>
       {profileLoading ? (

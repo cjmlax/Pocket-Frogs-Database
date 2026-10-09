@@ -22,6 +22,8 @@ export interface Profile {
   flair_pending: string | null;  // requested friend code while a request is active
   flair_status: FlairStatus;     // null | 'pending' (awaiting admin) | 'sent' (awaiting user confirm)
   flair_sender_code: string | null; // sender's Friend Code, set once status is 'sent'
+  display_source: string | null; // chosen display-name source: 'pfdb' or a platform key
+  show_credit: boolean;          // named in public mutation credits
   badges: Badge[];
 }
 
@@ -30,6 +32,36 @@ export async function fetchMe(idToken: string): Promise<Profile> {
     headers: { Authorization: `Bearer ${idToken}` },
   });
   if (!res.ok) throw new Error(`Profile fetch failed (${res.status})`);
+  return res.json();
+}
+
+// Saves which name the site shows for the user (also used for public credits).
+export async function saveDisplaySource(idToken: string, source: string): Promise<Profile> {
+  const res = await fetch(`${API_BASE}/api/me/display-source`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source }),
+  });
+  if (!res.ok) throw new Error(`Could not save display name (${res.status})`);
+  return res.json();
+}
+
+// Opts in/out of being named in public mutation credits.
+export async function saveShowCredit(idToken: string, show: boolean): Promise<Profile> {
+  const res = await fetch(`${API_BASE}/api/me/show-credit`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ show }),
+  });
+  if (!res.ok) throw new Error(`Could not save credit preference (${res.status})`);
+  return res.json();
+}
+
+// Public credit names for Frog Pairs submitters, keyed by sub. Subs the worker
+// doesn't know (or that have no name) are absent.
+export async function fetchCredits(subs: string[]): Promise<Record<string, string>> {
+  const res = await fetch(`${API_BASE}/api/credits?subs=${encodeURIComponent(subs.join(','))}`);
+  if (!res.ok) throw new Error(`Credits fetch failed (${res.status})`);
   return res.json();
 }
 

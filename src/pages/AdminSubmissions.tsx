@@ -71,7 +71,7 @@ export default function AdminSubmissions() {
   const FRIEND_CODE_TYPE = 'friend code';
   // Types that always belong in the filter, even with nothing currently pending —
   // union with live data so any new backend-issued type still shows up too.
-  const KNOWN_TYPES = ['combo', 'frogStats'];
+  const KNOWN_TYPES = ['combo', 'frogStats', 'mutationCompletion'];
   const submissionTypes = Array.from(new Set([...KNOWN_TYPES, ...rows.map(sub => sub.type)])).sort();
 
   const showRegular = typeFilter === 'all' || typeFilter !== FRIEND_CODE_TYPE;
@@ -150,7 +150,9 @@ function groupByBatch(rows: PendingSubmission[]): PendingSubmission[][] {
 }
 
 // Plural noun for a batch's items, e.g. "12 frog stat entries".
-const TYPE_NOUN: Record<string, string> = { frogStats: 'frog stat entries', combo: 'combinations' };
+const TYPE_NOUN: Record<string, string> = {
+  frogStats: 'frog stat entries', combo: 'combinations', mutationCompletion: 'mutation completions',
+};
 
 // One card standing in for a whole batch submit: approve or reject everything at
 // once, or expand it to handle the items individually.
@@ -400,6 +402,7 @@ function SubmissionCard({ sub, idToken }: { sub: PendingSubmission; idToken: str
         <CropDialog
           id={sub.id}
           screenshotUrl={sub.screenshot}
+          originalUrl={sub.screenshotOriginal}
           onClose={() => setCropping(false)}
           onCropped={() => { setCropping(false); setImgBust(b => b + 1); refresh(); }}
         />

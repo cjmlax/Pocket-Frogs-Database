@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { fetchFrogPairs, fetchMutations } from '../api/teable';
-import ComboBox from '../components/ComboBox';
+import ComboBox, { type ComboOption } from '../components/ComboBox';
 import FrogInputs from '../components/FrogInputs';
 import { useFrogOptions } from '../hooks/useFrogOptions';
 import { useSpoilers } from '../hooks/useSpoilers';
@@ -11,7 +11,8 @@ import {
   MAX_PLANNER_FROGS as HABITAT_SIZE, frogId, frogIdsParam, frogName, frogPath, frogSearch, isComplete, parseFrogId,
   type FrogSel,
 } from '../utils/frogIds';
-import { createWheelSolver, type PlanRow, type WheelMode, type WheelResult } from '../utils/nomuWheel';
+import { createWheelSolver, pairFloors, type PlanRow, type WheelMode, type WheelResult } from '../utils/nomuWheel';
+import { WHEEL_PRESETS } from '../utils/wheelPresets';
 
 // Wheels are laid out over three habitats of up to 8 frogs (a habitat's cap,
 // and the Mutation Planner's), so each habitat can be opened in the Planner.
@@ -200,6 +201,31 @@ export default function NoMuWheels() {
   const activeResult = analysis
     ? [...analysis.complete, ...analysis.nearMisses].findIndex(w => sameFrogs(w.frogs, boardFrogs))
     : -1;
+
+  // Presets name their colours; resolve them to this breed's Frog_IDs.
+  const presets = useMemo(() => {
+    if (!lookup || !breedCode) return [];
+    const codeOf = (part: Map<string, ComboOption>, label: string) =>
+      [...part].find(([, o]) => o.label.toLowerCase() === label.toLowerCase())?.[0];
+    return WHEEL_PRESETS.map(p => ({
+      ...p,
+      ids: p.frogs.flatMap(([base, sec]) => {
+        const b = codeOf(lookup.base.byCode, base), s = codeOf(lookup.sec.byCode, sec);
+        return b && s ? [`${b}:${s}:${breedCode}`] : [];
+      }),
+    }));
+  }, [lookup, breedCode]);
+  const activePreset = presets.find(p => sameFrogs(p.ids, boardFrogs)) ?? null;
+
+  // Like choosing a wheel, except a locked frog wins over the preset's frog
+  // of the same base colour.
+  function applyPreset(ids: string[]) {
+    const lockedBases = new Map([...locked].map(id => [baseCodeOf(id), id]));
+    const frogs = ids.filter(id => (lockedBases.get(baseCodeOf(id)) ?? id) === id);
+    for (const id of locked) if (!frogs.includes(id)) frogs.push(id);
+    setEditor(null);
+    save(applyWheel(layout, locked, frogs), locked);
+  }
 
   const habitatOf = useMemo(() => {
     const m = new Map<string, number>();
@@ -419,7 +445,7 @@ export default function NoMuWheels() {
               ) : (
                 <div className="nomu-result-list">
                   {analysis.complete.map((w, i) => (
-                    <ResultButton key={i} wheel={w} title={resultTitle(i)} active={i === activeResult}
+                    <ResultButton secs={lookup?.sec.byCode.size ?? 16} key={i} wheel={w} title={resultTitle(i)} active={i === activeResult}
                       onSelect={() => save(applyWheel(layout, locked, w.frogs), locked)} />
                   ))}
                 </div>
@@ -435,7 +461,7 @@ export default function NoMuWheels() {
                   {analysis.nearMisses.map((w, i) => {
                     const index = completeCount + i;
                     return (
-                      <ResultButton key={index} wheel={w} title={resultTitle(index)} active={index === activeResult}
+                      <ResultButton secs={lookup?.sec.byCode.size ?? 16} key={index} wheel={w} title={resultTitle(index)} active={index === activeResult}
                         onSelect={() => save(applyWheel(layout, locked, w.frogs), locked)} />
                     );
                   })}
@@ -445,23 +471,31 @@ export default function NoMuWheels() {
           </div>
 
           <div className="nomu-section-head">
-            <h2>Habitats{activeResult >= 0 && `: ${resultTitle(activeResult)}`}</h2>
-            {boardFrogs.length > 0 && (
-              <div className="nomu-head-actions">
-                {boardFrogs.length > locked.size && (
+            <h2>
+              Habitats{activeResult >= 0 ? `: ${resultTitle(activeResult)}` : activePreset ? `: ${activePreset.name}` : ''}
+            </h2>
+            <div className="nomu-head-actions">
+              {presets.map(p => (
+                <button key={p.name} type="button" className="csv-btn" onClick={() => applyPreset(p.ids)}
+                  aria-pressed={activePreset?.name === p.name} title={`${p.description}. Locked frogs stay.`}>
+                  {p.name}
+                </button>
+              ))}
+              {boardFrogs.length > 0 && boardFrogs.length > locked.size && (
                   <button type="button" className="csv-btn"
                     onClick={() => save(layout.map(h => h.filter(f => locked.has(f))), locked)}>
                     Clear unlocked
                   </button>
-                )}
+              )}
+              {boardFrogs.length > 0 && (
                 <button type="button" className="csv-btn" onClick={() => { setEditor(null); setLockState(null); update({ h: null }); }}>
                   Clear all
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
           <p className="search-hint" style={{ marginTop: 0 }}>
-            Choose a wheel above to fill the habitats, or add frogs with +. Lock the frogs you own to keep them
+            Choose a wheel above or a preset to fill the habitats, or add frogs with +. Lock the frogs you own to keep them
             in every wheel; choosing a wheel replaces only unlocked frogs. Drag a frog onto another to swap them
             or onto an empty slot to move it (on touch screens, tap a frog, then tap where it should go).
           </p>
@@ -704,16 +738,27 @@ export default function NoMuWheels() {
   );
 }
 
-function ResultButton({ wheel, title, active, onSelect }: {
+// Gold star: as few pairs as any wheel this size can need (204 for 23 frogs).
+// Accent star: the next best (210).
+function ResultButton({ wheel, title, active, secs, onSelect }: {
   wheel: WheelResult;
   title: string;
   active: boolean;
+  secs: number;
   onSelect: () => void;
 }) {
+  const floors = pairFloors(wheel.frogs.length, secs);
+  const star = wheel.pairCount <= floors.best ? 'gold' : wheel.pairCount <= floors.next ? 'accent' : null;
   return (
     <button type="button" className={`nomu-result${active ? ' active' : ''}`} aria-pressed={active} onClick={onSelect}
       title="Fill the habitats with this wheel (locked frogs stay put)">
-      <strong>{title}</strong>
+      <strong>
+        {title}
+        {star && (
+          <span className={`max-value-star${star === 'gold' ? ' is-gold' : ''}`}
+            title={star === 'gold' ? 'Fewest breeding pairs possible' : 'Second-fewest breeding pairs possible'}>★</span>
+        )}
+      </strong>
       <span>{wheel.frogs.length} frogs · {wheel.pairCount} pairs</span>
       {!wheel.complete && (
         <span className="nomu-status is-unknown">

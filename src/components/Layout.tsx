@@ -144,6 +144,7 @@ const CALCULATE_LINKS: MenuLink[] = [
 const SUBMIT_LINKS: MenuLink[] = [
   { to: '/submit',       label: 'Mutations', end: true },
   { to: '/submit/stats', label: 'Frog Stats' },
+  { to: '/submit/details', label: 'Mutation Details' },
 ];
 
 // Segment-aware, so /frog matches /frog/18:11:0 but not /frogs.

@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { fetchBreedFrogs, fetchFrogPairs, fetchMutations, fetchFrogById, type Mutation, type TeableRecord } from '../api/teable';
+import { fetchCredits } from '../api/profile';
 import type { ComboOption } from '../components/ComboBox';
 import FrogInputs from '../components/FrogInputs';
 import { formatNum } from '../utils/format';
@@ -188,6 +189,7 @@ export default function BreedingPairs() {
     return (mutations ?? []).filter(matches).map(m => ({
       type: m.type as string,
       screenshots: pairScreenshotUrls(m.pairId, m.screenshotCount),
+      submitter: m.submitter,
       lostId: m.lostId,
       resultId: m.resultId,
       resultTitle: m.resultTitle,
@@ -196,6 +198,20 @@ export default function BreedingPairs() {
 
   // All of a pair's mutations share its screenshots, so any match carries them.
   const pairScreenshots = specialMatches[0]?.screenshots ?? [];
+
+  // Credit for the pair. A Submitter starting with '~' is a manually recorded
+  // credit shown as written; anything else is a user's sub, resolved to the
+  // display name they chose. Unknown subs get no credit line.
+  const submitter = specialMatches[0]?.submitter ?? null;
+  const manualCredit = submitter?.startsWith('~') ? submitter.slice(1).trim() || null : null;
+  const creditSub = submitter && !submitter.startsWith('~') ? submitter : null;
+  const { data: credits } = useQuery({
+    queryKey: ['credit', creditSub],
+    queryFn: () => fetchCredits([creditSub!]),
+    enabled: !!creditSub,
+    staleTime: 10 * 60 * 1000,
+  });
+  const creditName = manualCredit ?? (creditSub ? credits?.[creditSub] ?? null : null);
 
   // Resolve each Result Frog's record (stats + fullname) for the swapped slot.
   // Shares the ['frog', id] cache with the Frog page.
@@ -365,6 +381,7 @@ export default function BreedingPairs() {
                   a <strong>{s.type}</strong>
                 </span>
               ))} frog!
+              {creditName && <span className="breeding-credit"> Thanks {creditName}!</span>}
               {pairScreenshots.length > 0 && (
                 <button
                   className="screenshot-btn"
