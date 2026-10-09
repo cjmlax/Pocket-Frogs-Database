@@ -1178,9 +1178,12 @@ a.tree-name:hover { color: var(--accent); }
   font-style: italic;
 }
 
-.tree-self {
-  font-size: 13px;
-  color: var(--text);
+/* The top frog's self-breeding mark, left of its name, drawn like the branch marks */
+.planner-mark.tree-self {
+  position: relative;
+  flex: none;
+  transform: none;
+  margin-right: 4px;
 }
 
 .tree-btn {

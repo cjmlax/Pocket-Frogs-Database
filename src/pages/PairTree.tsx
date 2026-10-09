@@ -98,19 +98,26 @@ export default function PairTree() {
     return sel ? toTreeFrog(sel) : null;
   }, [lookup, searchParams, toTreeFrog]);
 
-  // The top frog may also appear in the list: that row is its self pair.
+  // A frog appears once in the whole tree: the top frog is never also in the
+  // list (its self pair is the mark beside its name).
   const list = useMemo<TreeFrog[]>(() => {
     if (!lookup) return [];
-    return uniqueFrogs(decodeFrogParam(searchParams.get('with'), lookup)).map(toTreeFrog);
-  }, [lookup, searchParams, toTreeFrog]);
+    return uniqueFrogs(decodeFrogParam(searchParams.get('with'), lookup))
+      .map(toTreeFrog)
+      .filter(f => f.name !== root?.name);
+  }, [lookup, searchParams, toTreeFrog, root]);
 
   function saveTree(nextRoot: CompleteFrogSel | null, nextList: CompleteFrogSel[]) {
     if (!lookup) return;
     navigate({
-      search: treeSearch(nextRoot ? encodeFrogParam([nextRoot], lookup) : '', encodeFrogParam(uniqueFrogs(nextList), lookup)),
+      search: treeSearch(
+        nextRoot ? encodeFrogParam([nextRoot], lookup) : '',
+        encodeFrogParam(uniqueFrogs(nextList).filter(sel => !nextRoot || frogName(sel) !== frogName(nextRoot)), lookup),
+      ),
     }, { replace: true });
   }
 
+  // Each frog's pair with the top frog; the top frog itself gives its self pair.
   const status = (f: TreeFrog): LineStatus => pairStatusById(pairByKey, root?.id ?? null, f.id);
 
   // ── Verify mode ───────────────────────────────────────────────────────────
@@ -138,12 +145,13 @@ export default function PairTree() {
     });
   }
 
-  const pickableKeys = verifyMode ? list.filter(pickable).map(f => pickKey(f)!) : [];
+  const paired = root ? [root, ...list] : list; // every pair in the tree, self pair first
+  const pickableKeys = verifyMode ? paired.filter(pickable).map(f => pickKey(f)!) : [];
   const allPicked = pickableKeys.length > 0 && pickableKeys.every(k => picked.has(k));
 
   const pickedItems = useMemo<VerifyPairItem[]>(() => {
     if (!verifyMode || !root?.id) return [];
-    return list.flatMap(f => {
+    return [root, ...list].flatMap(f => {
       const key = f.id ? pairKey(root.id!, f.id) : null;
       if (!key || !picked.has(key) || pairStatusById(pairByKey, root.id, f.id) !== 'unknown') return [];
       return [{ key, frogA: root.id!, frogB: f.id!, label: `${root.name} × ${f.name}` }];
@@ -176,8 +184,11 @@ export default function PairTree() {
   const inputRef = useRef<HTMLDivElement>(null);
 
   const draftName = isComplete(draft.sel) ? frogName(draft.sel) : null;
-  // The list can't repeat a frog; the top frog may match a row (its self pair).
-  const duplicate = !!draftName && target !== 'root' && list.some((f, i) => i !== target && f.name === draftName);
+  // No frog may appear twice anywhere in the tree (the frog being edited aside).
+  const duplicate = !!draftName && (
+    list.some((f, i) => i !== target && f.name === draftName)
+    || (target !== 'root' && root?.name === draftName)
+  );
   const canSave = !!draftName && !duplicate;
 
   function openEditor(target: Editor['target'], sel: FrogSel = EMPTY_FROG) {
@@ -228,7 +239,7 @@ export default function PairTree() {
 
   const counts = useMemo(() => {
     const c: Record<LineStatus, number> = { clear: 0, mutation: 0, unknown: 0 };
-    for (const f of list) c[pairStatusById(pairByKey, root?.id ?? null, f.id)]++;
+    for (const f of root ? [root, ...list] : list) c[pairStatusById(pairByKey, root?.id ?? null, f.id)]++;
     return c;
   }, [list, root, pairByKey]);
 
@@ -241,12 +252,13 @@ export default function PairTree() {
       <p className="search-hint" style={{ marginTop: 0 }}>
         {verifyMode ? (
           <>
-            Verify mode: select each unverified branch whose pair with the top frog produces no mutations,
-            then Confirm. Pairs that produce a mutation are submitted as a combination instead.
+            Verify mode: select each unverified branch whose pair with the top frog produces no mutations
+            (or the mark beside the top frog for its self-breeding), then Confirm. Pairs that produce a mutation are submitted as a combination instead.
           </>
         ) : (
           <>
             Pair one frog with as many others as you like to see which pairs have verified breeding results.
+            The mark beside the top frog is its self-breeding.
             Use <span className="tree-hint-icon"><IconToTop /></span> to move a frog to the top, swapping it with the frog there, or <span className="tree-hint-icon"><IconToList /></span> to
             move the top frog into the list.
           </>
@@ -268,7 +280,7 @@ export default function PairTree() {
               >
                 {duplicate && (
                   <p className="planner-duplicate" role="alert">
-                    {draftName} is already in the list. Choose a different frog.
+                    {draftName} is already in the tree. Choose a different frog.
                   </p>
                 )}
                 <div className="crop-buttons">
@@ -291,7 +303,7 @@ export default function PairTree() {
               {(['clear', 'mutation', 'unknown'] as const).map(s => (
                 <li key={s}>
                   <span className={`planner-mark is-${s}`} aria-hidden="true"><StatusMark status={s} /></span>
-                  {STATUS_TEXT[s]}{root && list.length > 0 && ` (${counts[s]})`}
+                  {STATUS_TEXT[s]}{root && ` (${counts[s]})`}
                 </li>
               ))}
             </ul>
@@ -313,7 +325,7 @@ export default function PairTree() {
                     type="button"
                     className="csv-btn"
                     onClick={startVerify}
-                    disabled={!pairs || !root || list.length === 0}
+                    disabled={!pairs || !root}
                     title="Mark unverified pairs as producing no mutations"
                   >
                     Verify
@@ -327,6 +339,17 @@ export default function PairTree() {
             <div className={`tree-root${draft.target === 'root' && !verifyMode ? ' is-editing' : ''}`}>
               {root ? (
                 <>
+                  {verifyMode ? (
+                    <VerifyMark className={`planner-mark tree-self is-${shownStatus(root)}${verifyClass(root)}`}
+                      status={shownStatus(root)} pickable={pickable(root)} picked={isPicked(root)}
+                      label={`${root.name} with itself`} onToggle={() => togglePick(root)} />
+                  ) : (
+                    <Link to={pairHref(root)} className={`planner-mark tree-self is-${status(root)}`}
+                      aria-label={`${root.name} with itself: ${STATUS_TEXT[status(root)]}. Open in Breeding Pairs.`}
+                      title={`Self-breeding: ${STATUS_TEXT[status(root)]}. Open in Breeding Pairs.`}>
+                      <StatusMark status={status(root)} />
+                    </Link>
+                  )}
                   {root.id && !verifyMode
                     ? <Link to={frogPath(root.id)} className="tree-name" title={`View ${root.name}`}>{root.name}</Link>
                     : <span className="tree-name">{root.name}</span>}
@@ -375,7 +398,6 @@ export default function PairTree() {
                       {f.id && !verifyMode
                         ? <Link to={frogPath(f.id)} className="tree-name" title={`View ${f.name}`}>{f.name}</Link>
                         : <span className="tree-name">{f.name}</span>}
-                      {root?.name === f.name && <span className="tree-self">(self)</span>}
                       {!verifyMode && (
                         <>
                           <button type="button" className="tree-btn" onClick={() => openEditor(i, f.sel)}
