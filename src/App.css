@@ -3530,3 +3530,21 @@ a.csv-btn {
   border-radius: 4px;
   align-self: flex-start;
 }
+
+/* Non-user credit: the fixed "~" sits in front of the display name box. */
+.submission-nonuser {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.submission-nonuser-prefix {
+  font-family: var(--mono);
+  font-size: 16px;
+  color: var(--text-h);
+}
+
+.submission-nonuser .search-input {
+  flex: 1;
+  min-width: 0;
+}

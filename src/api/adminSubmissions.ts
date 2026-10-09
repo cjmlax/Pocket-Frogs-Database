@@ -104,7 +104,8 @@ export async function rejectSubmission(idToken: string, id: string, note: string
 }
 
 // `submitterSub` reassigns credit: undefined leaves it as is, '' makes the
-// submission anonymous, anything else must be a known user's sub.
+// submission anonymous, '~Name' credits a non-user by display name, and
+// anything else must be a known user's sub.
 export async function editSubmission(
   idToken: string,
   id: string,

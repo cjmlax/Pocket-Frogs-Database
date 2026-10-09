@@ -464,6 +464,10 @@ function GenericEditForm({ fields, ...rest }: EditFormProps) {
   );
 }
 
+// The Submitter dropdown's value for a non-user credit. Never a real sub,
+// which can't start with '~'.
+const NON_USER = '~';
+
 // What every edit shares: the submitter, the screenshot, and Save. Save stays
 // off while the payload is invalid (null), with the reason shown.
 function EditShell({
@@ -475,9 +479,16 @@ function EditShell({
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [clearShot, setClearShot] = useState(false);
-  // '' = anonymous. Only sent when changed, so an untouched edit keeps the credit.
+  // '' = anonymous, '~Name' = a non-user credited by display name, otherwise a
+  // user's sub. Only sent when changed, so an untouched edit keeps the credit.
   const original = sub.submitterSub ?? '';
-  const [submitter, setSubmitter] = useState(original);
+  const originalNonUser = original.startsWith('~');
+  // The dropdown holds NON_USER for a non-user; their name is typed separately.
+  const [choice, setChoice] = useState(originalNonUser ? NON_USER : original);
+  const [nonUserName, setNonUserName] = useState(originalNonUser ? original.slice(1) : '');
+  const nonUserTrimmed = nonUserName.trim();
+  const submitter = choice === NON_USER ? `~${nonUserTrimmed}` : choice;
+  const nonUserMissing = choice === NON_USER && !nonUserTrimmed;
 
   // Everyone who has signed in (shared with the Admin Badges page).
   const { data: users } = useQuery({ queryKey: ['admin-users'], queryFn: () => adminListUsers(idToken) });
@@ -486,9 +497,9 @@ function EditShell({
       .map(u => ({ sub: u.sub, name: u.username }))
       .sort((a, b) => (a.name ?? a.sub).localeCompare(b.name ?? b.sub));
     // Keep the current submitter selectable even if they've left the directory.
-    if (original && !list.some(u => u.sub === original)) list.unshift({ sub: original, name: sub.submitter });
+    if (original && !originalNonUser && !list.some(u => u.sub === original)) list.unshift({ sub: original, name: sub.submitter });
     return list;
-  }, [users, original, sub.submitter]);
+  }, [users, original, originalNonUser, sub.submitter]);
 
   const save = useMutation({
     mutationFn: () => editSubmission(
@@ -503,13 +514,31 @@ function EditShell({
 
       <label className="submission-edit-label submission-edit-submitter">
         Submitter
-        <select className="search-input" value={submitter} onChange={e => setSubmitter(e.target.value)}>
+        <select className="search-input" value={choice} onChange={e => setChoice(e.target.value)}>
           <option value="">Anonymous (no credit)</option>
+          <option value={NON_USER}>Non-User</option>
           {userOptions.map(u => (
             <option key={u.sub} value={u.sub}>{u.name ?? '(no username)'} · {u.sub}</option>
           ))}
         </select>
       </label>
+      {choice === NON_USER && (
+        <label className="submission-edit-label submission-edit-submitter">
+          Non-user display name
+          {/* The ~ is added on save; it marks the credit as a non-user's. */}
+          <span className="submission-nonuser">
+            <span className="submission-nonuser-prefix" aria-hidden="true">~</span>
+            <input
+              className="search-input"
+              value={nonUserName}
+              maxLength={80}
+              placeholder="Display name"
+              autoFocus
+              onChange={e => setNonUserName(e.target.value.replace(/^~+/, ''))}
+            />
+          </span>
+        </label>
+      )}
 
       <div className="submission-edit-screenshot">
         {sub.screenshot && !clearShot && <AuthedImage url={sub.screenshot} className="submission-thumb" alt="current" />}
@@ -525,12 +554,13 @@ function EditShell({
       </div>
 
       <div className="submission-actions">
-        <button className="csv-btn" disabled={save.isPending || !payload} onClick={() => save.mutate()}>
+        <button className="csv-btn" disabled={save.isPending || !payload || nonUserMissing} onClick={() => save.mutate()}>
           {save.isPending ? 'Saving…' : 'Save'}
         </button>
         <button className="csv-btn" disabled={save.isPending} onClick={onClose}>Cancel</button>
       </div>
       {problem && <p className="submission-result err">{problem}</p>}
+      {nonUserMissing && <p className="submission-result err">Enter the non-user's display name.</p>}
       {save.isError && <p className="submission-result err">{(save.error as Error).message}</p>}
     </div>
   );
