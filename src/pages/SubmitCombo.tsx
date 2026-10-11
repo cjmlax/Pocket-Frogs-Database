@@ -369,7 +369,7 @@ export default function SubmitCombo() {
                   : <span>Click or drop a screenshot here</span>}
               </label>
               <p className="search-hint" style={{ margin: 0 }}>
-                Please use original, uncropped images. Preferably tap the mutation to show its name.
+                Please use original, uncropped images - the submission engine will adjust images automatically. Preferably tap the mutation to show its name.
               </p>
               {fileError && <p className="search-error" style={{ margin: 0 }}>{fileError}</p>}
             </div>

@@ -342,9 +342,7 @@ const COMMUNITY_LINKS: LinkEntry[] = [
   { label: 'Community Discord',     url: 'https://discord.gg/XZ3eeEp', faviconDomain: 'discord.com' },
   { label: 'Community Subreddit',   url: 'https://www.reddit.com/r/Pocketfrogs' },
   { label: 'Community Wiki',        url: 'http://pocketfrogs.fandom.com/wiki/Pocket_Frogs_Wiki' },
-  { label: 'Old Google Sheet',   url: 'https://docs.google.com/spreadsheets/d/1TNTK09vM8tlj6BC8haobuWCQvV4qNyDsRYsf-4hXdCc/', faviconDomain: 'sheets.google.com' },
-  { label: 'This site\'s GitHub',         url: 'https://github.com/cjmlax/Pocket-Frogs-Database' },
-  { label: 'Site Feedback Form',     url: 'https://teable.cjmlax.com/share/shre9SHevGPtThTpVGz/view', faviconDomain: 'teable.io' },
+  { label: 'Old Google Sheet',   url: 'https://docs.google.com/spreadsheets/d/1TNTK09vM8tlj6BC8haobuWCQvV4qNyDsRYsf-4hXdCc/', faviconDomain: 'sheets.google.com' }
 ];
 
 function faviconSrc(entry: LinkEntry): string {
